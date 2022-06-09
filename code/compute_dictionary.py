@@ -91,6 +91,7 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
                                 lambda1=lda1, lambda2=1.0, mode=2, numThreads=THREADS,
                                 cholesky=use_chol, pos=posW)
                 W = np.asarray(W.todense())
+
         Xhat = U.dot(W)
         module_size = np.average([np.exp(entropy(u)) for u in U.T if u.sum()>0])
         activity_size = np.average([np.exp(entropy(abs(w))) for w in W.T])
@@ -107,11 +108,13 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
     # Remove empty columns (proteins that are never chosen?)
     U = U[:, (U.sum(0) > 0)]
 
+
+    # If an outpath is given
     if outpath!=None:
         path = Path(outpath)
         path.mkdir(parents=True, exist_ok=True)
         # Save U
-        np.save(os.path.join(outpath, 'gene_modules.npy'), U)
-        np.savetxt(os.path.join(outpath, 'gene_modules.csv'), U, delimiter=',')
+        np.save(os.path.join(path, 'gene_modules.npy'), U)
+        np.savetxt(os.path.join(path, 'gene_modules.csv'), U, delimiter=',')
 
     return U, W
