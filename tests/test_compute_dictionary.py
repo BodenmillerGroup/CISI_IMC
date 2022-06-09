@@ -14,16 +14,15 @@ import numpy as np
 import compute_dictionary
 from utils import check_file
 
-
 # Test SMAF
 class TestSMAF(unittest.TestCase):
 
-    def test_smaf_csv(self):
+    def test_smaf(self):
         U, W = compute_dictionary.smaf(np.array(np.load('data/training_data_sce.npy')),
                                        80, 3, 0.2)
         self.assertFalse(np.all((U == 0)))
 
-    def test_smaf_csv_with_output(self):
+    def test_smaf_with_output(self):
         U, W = compute_dictionary.smaf(np.array(np.load('data/training_data_sce.npy')),
                                        80, 3, 0.2, outpath='data')
         self.assertTrue(check_file('data/gene_modules.csv', ['.csv']) and
