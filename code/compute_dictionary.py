@@ -6,9 +6,8 @@ from scipy.spatial import distance
 
 # Import libraries (additionaly added)
 from pathlib import Path
-import pandas as pd
-from re import search
 from utils import sparse_decode
+import os
 
 
 '''
@@ -39,11 +38,9 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
          mode=1, mink=0, U0=[], U0_delta=0.1, doprint=False, THREADS=4,
          outpath=None):
 
-    # Check and read in X (either .csv, .npy or numpy array)
-    X = (read_input(X_input)).transpose()
     # Normalize X? (otherwise spams.nmf underneath will estimate U to only contain
     # 0s and smaf won't work)
-    X = (X.T / np.linalg.norm(X, axis=1)).T
+    X = (X_input.T / np.linalg.norm(X_input, axis=1)).T
 
     # use Cholesky when we expect a very sparse result
     # this tends to happen more on the full vs subsampled matrices
@@ -110,51 +107,11 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
     # Remove empty columns (proteins that are never chosen?)
     U = U[:, (U.sum(0) > 0)]
 
-    
-    # Save U ?
-#    np.save('%s/%d_ms_%d_max%s/gene_modules.npy' %
-#            (outpath, nmeasurements, maxcomposition-1, normalize), U)
+    if outpath!=None:
+        path = Path(outpath)
+        path.mkdir(parents=True, exist_ok=True)
+        # Save U
+        np.save(os.path.join(outpath, 'gene_modules.npy'), U)
+        np.savetxt(os.path.join(outpath, 'gene_modules.csv'), U, delimiter=',')
 
-    return U,W
-
-
-# Function that checks that file_path is an existing file and has a certain extension
-def read_input(X_input):
-    # Check if input is a file containing a numpy array, a csv file or a numpy array
-    if type(X_input).__module__ == np.__name__:
-        # Nothing really to do, but to initialze X to X_input
-        X = X_input
-
-    elif check_input(X_input, ['.csv']):
-        # Read intensities form .csv file
-        X = np.genfromtxt(X_input, delimiter=',', skip_header=1)
-        # Read in header names
-        X_header = pd.read_csv(X_input, nrows=0).columns.tolist()
-        # Get list of mean intensity columns and Image/Object number columns
-        selected_columns = list(map(lambda col:
-#            bool(search('(Intensity_MeanIntensity_FullStackFiltered_c|ImageNumber|ObjectNumber)', col)),
-            bool(search('Intensity_MeanIntensity_FullStackFiltered_c', col)),
-            X_header))
-        # Filter for above selected columns
-        X = X[:, selected_columns]
-
-    elif check_input(X_input, ['.npy']):
-        # Load numpy array (assumes only necessary columns are already selected for)
-        X = np.array(np.load(X_input))
-
-    else:
-        # If it is none of the above input types an error is
-        raise ValueError('''No valid input for X was given.
-              The input for X needs to be a .csv, .npy or numpy array with
-              dimensions: proteins x cells (/pixels?).''')
-
-    return X
-
-
-# Function that checks that file_path is an existing file and has a certain extension
-def check_input(file_path, extension):
-    file = Path(file_path)
-    if file.exists() and file.is_file() and file.suffix in extension:
-        return True
-    else:
-        return False
+    return U, W
