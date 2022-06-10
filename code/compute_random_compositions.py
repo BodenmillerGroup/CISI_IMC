@@ -54,7 +54,7 @@ def compute_A(X, U, nmeasurements, maxcomposition, mode='G', lasso_sparsity=0.2,
     print('%d measurements' % nmeasurements)
     best = np.zeros(50)
     Phi = [None for _ in best]
-    for _ in range(100) # TODO:  change back to 2000
+    for _ in range(100): # TODO:  change back to 2000
         # Initialze random A with constraints
         while True:
             if mode == 'M':
