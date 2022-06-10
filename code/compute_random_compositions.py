@@ -26,13 +26,16 @@ inputs:
     maxcomposition: maximum times each gene is represented (mode G),
                     or max genes per composition (mode M)
     THREADS: # Number of threads used (default=20)
+    outpath: If specified, the best 50 U versions are saved as .txt files in
+             compositions_A folder
+    proteins: If specified as list of proteins, then these are printed on the
+              first line in the files in compositions_A
 
 outputs:
-    A: composition matrix (composite channels (measurements) x proteins)
-
-
-    W: the module activity levels in each cell (/pixel?) of training data
-       (modules x pixels)
+    Phi/A: composition matrix (composite channels (measurements) x proteins,
+           binary)
+    compositions_A/version_<i>.txt: If outpath is specified, the best 50
+                                    composition matrices are saved
 '''
 
 
@@ -51,7 +54,7 @@ def compute_A(X, U, nmeasurements, maxcomposition, mode='G', lasso_sparsity=0.2,
     print('%d measurements' % nmeasurements)
     best = np.zeros(50)
     Phi = [None for _ in best]
-    for _ in range(100):#2000):
+    for _ in range(100) # TODO:  change back to 2000
         # Initialze random A with constraints
         while True:
             if mode == 'M':
@@ -80,15 +83,10 @@ def compute_A(X, U, nmeasurements, maxcomposition, mode='G', lasso_sparsity=0.2,
 
     xs = np.argsort(best)
     best = best[xs[::-1]]
-    # Sort Phi, such that best composite matrix is at the beginning
-    Phi = [Phi[i] for i in xs]
-    # Correlation between genes?
-    d_gene = np.array([np.percentile(1 - distance.pdist(phi.dot(U).T, 'correlation'), 90)
-                    for phi in Phi])
-    xs = np.argsort(d_gene)
-
     # Binarize phi (A)
     Phi_binary = [np.where(Phi[i] > 0, 1, 0) for i in xs]
+    # Sort Phi, such that best composite matrix is at the beginning
+    Phi = [Phi[i] for i in xs]
 
     # If outpath is specified, then the best 50 composite matrices are saved
     # into files
