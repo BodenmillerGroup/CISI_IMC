@@ -27,7 +27,7 @@ class TestInputX(unittest.TestCase):
 
     def test_X_input(self):
         X, X_header, proteins = utils.read_input('data/cell.csv', 'data/TH152_panel.csv')
-        self.assertIsNone(np.testing.assert_array_equal(X[:5, 2],
+        self.assertIsNone(np.testing.assert_array_equal(X[2, :5],
                                                         np.array([0.000158776,
                                                                   0.000232407,
                                                                   0.000186816,
@@ -55,6 +55,36 @@ class TestInputX(unittest.TestCase):
     def test_input_error(self):
         with self.assertRaises(ValueError):
             utils.read_input('dat', 'data/TH152_panel.csv')
+
+
+# Test inputs to compute_dictionary
+class TestSplitX(unittest.TestCase):
+
+    def test_split_roi(self):
+        X_test = np.array([[0, 1, 2, 3, 2],
+                           [0, 0, 0, 0, 1],
+                           [1, 2, 3, 4, 5],
+                           [6, 7, 8, 9, 10]])
+        X_header_test = ['ImageNumber', 'ObjectNumber', '1', '10']
+        X_training, X_validate, X_test = utils.split_X(X_test, X_header_test,
+                                                       by='roi',
+                                                       set_sizes=[[2, 3], [0], [1]])
+        self.assertTrue(X_training.shape==(2, 3) and
+                          X_validate.shape==(2, 1) and
+                          X_test.shape==(2, 1))
+
+    def test_split_percent(self):
+        X_test = np.array([[0, 1, 2, 3, 2],
+                           [0, 0, 0, 0, 1],
+                           [1, 2, 3, 4, 5],
+                           [6, 7, 8, 9, 10]])
+        X_header_test = ['ImageNumber', 'ObjectNumber', '1', '10']
+        X_training, X_validate, X_test = utils.split_X(X_test, X_header_test,
+                                                       by='percentage',
+                                                       set_sizes=[0.5, 0.25, 0.25])
+        self.assertTrue(X_training.shape==(2, 3) and
+                          X_validate.shape==(2, 1) and
+                          X_test.shape==(2, 1))
 
 
 ## Main
