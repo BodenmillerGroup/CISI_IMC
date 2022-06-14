@@ -2,7 +2,7 @@
 import numpy as np
 from scipy.spatial import distance
 from scipy.stats import spearmanr, pearsonr
-from sklearn.metrics import adjusted_rand_score,adjusted_mutual_info_score
+from sklearn.metrics import adjusted_rand_score, adjusted_mutual_info_score
 from sklearn.cluster import SpectralClustering, AffinityPropagation
 
 '''
