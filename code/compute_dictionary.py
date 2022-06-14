@@ -16,7 +16,7 @@ Sparse Module Activity Factorization (SMAF)
 
 Find X = UW with special constraints:
 inputs:
-    X: proteins x cells (/pixels?) -> .csv / .npy / numpy array
+    X: proteins x cells (/pixels?) -> numpy array
     d: the number of features (columns) in the dictionary U
     lda1: in mode 1 (recommended) the number of nonzeros per column in W
     lda2: an error threshold - when optimizing over U we will search for the
@@ -107,7 +107,6 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
 
     # Remove empty columns (proteins that are never chosen?)
     U = U[:, (U.sum(0) > 0)]
-
 
     # If an outpath is given
     if outpath!=None:
