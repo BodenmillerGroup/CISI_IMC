@@ -13,7 +13,7 @@ if __name__ == '__main__':
     panel_input = '/Users/lelo/Desktop/Munchkin/ETH/Master Thesis/CISI_IMC/tests/data/TH152_panel.csv'
 
     # Define output path
-    outpath = None
+    outpath = '/Users/lelo/Desktop/Munchkin/ETH/Master Thesis/CISI_IMC/analysis'
 
     # Set parameters
     d = 80
@@ -27,7 +27,8 @@ if __name__ == '__main__':
     X, X_header, proteins = read_input(X_input, panel_input)
 
     # Split into training, validate and test set
-    X_training, X_validate, X_test = split_X(X, X_header, set_sizes=[[3], [5], [2]])
+    X_training, X_validate, X_test = split_X(X, X_header, by='roi',
+                                             set_sizes=[[2, 5], [3], [4]])
 
     # Compute U
     U, W = smaf(X_training, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
@@ -41,4 +42,4 @@ if __name__ == '__main__':
                     THREADS=20)
 
     # Analize training
-    analyze_U_and_A(X_test, U, Phi, outpath='data', lasso_sparsity=0.2, THREADS=20)
+    analyze_U_and_A(X_test, U, Phi, outpath=outpath, lasso_sparsity=0.2, THREADS=20)

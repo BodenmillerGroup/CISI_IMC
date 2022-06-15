@@ -1,0 +1,42 @@
+---
+title: "Analyse Dictionary"
+output: html_document
+date: '2022-06-10'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load libraries
+library(tidyverse)
+library(cowplot)
+library(ggsci)
+library(reshape2)
+```
+
+
+## Read in training results
+
+```{r read_input}
+input.path <- "/Users/lelo/Desktop/Munchkin/ETH/Master Thesis/CISI_IMC/tests/data/simulation_results.txt"
+
+training_results <- read.delim(input.path)
+```
+
+
+## Best versions according to evaluation metric
+
+```{r best_results}
+best_result <- melt(training_results, id.vars=c("version")) %>%
+  group_by(variable) %>%
+  mutate(label=ifelse(max(value)==value, version, ""))
+
+ggplot(best_result, aes(x=variable, y=value, label=label)) +
+  geom_boxplot(aes(fill=variable), show.legend=FALSE) +
+  geom_text(nudge_x=0.15) +
+  scale_fill_npg() +
+  theme_cowplot() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x="", y="")
+```
+
