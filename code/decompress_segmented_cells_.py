@@ -17,6 +17,7 @@ import imageio
 # Import libraries (additionaly added)
 from utils import check_file
 from pathlib import Path
+import errno
 
 
 # Find genes that are comeasured but are not coexpressed (correlation<threshold)
@@ -99,6 +100,13 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 		else:
 			phi = np.loadtxt(os.path.join(trainpath, phi_name),
 					   usecols=list(range(2, len(AllGenes)+2)))
+
+    else:
+        # If file is not found, throw error
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
+                                os.path.join(trainpath, phi_name))
+
+
 
 	# phi = np.load('%s/%s/phi.npy' % (basepath,dictpath))
 	# Calculate correlation of phi?
