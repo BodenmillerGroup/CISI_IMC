@@ -3,3 +3,4 @@
 .RHistory
 *.swp
 __pycache__
+data
