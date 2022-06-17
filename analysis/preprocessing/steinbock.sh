@@ -4,21 +4,16 @@
 BASEDIR="Tonsil_th152"
 cd "${BASEDIR}"
 
-# collect raw data
-mkdir raw
-cd ${BASEDIR}
-
 # setup steinbock alias
 shopt -s expand_aliases
-alias steinbock="docker run -v ${BASEDIR}:/data -u $(id -u):$(id -g) ghcr.io/bodenmillergroup/steinbock:0.14.1"
+alias steinbock="docker run -e STEINBOCK_MASK_DTYPE=uint32  -v ${BASEDIR}:/data \
+-u $(id -u):$(id -g) ghcr.io/bodenmillergroup/steinbock:0.14.1"
 
 # preprocessing
-steinbock preprocess imc panel --imcpanel raw/TH152_panel.csv
-steinbock preprocess imc images --hpf 50
-
-# Add labels for deepcell
-gawk -i inplace -F "," '$1 ~ /In113|Ir191|Ir193/ {$5 = 1.0}' OFS="," panel.csv
-gawk -i inplace -F "," '$1 ~ /La139|Nd148|Sm152|Er166/ {$5 = 2.0}' OFS="," panel.csv
+steinbock preprocess imc panel --imcpanel config/TH152_panel.csv --mcd mcd/1 \
+-o steinbock/panel.csv
+steinbock preprocess imc images --hpf 50 --mcd mcd/1 --panel steinbock/panel.csv \
+--imgout steinbock/img --infoout steinbock/images.csv
 
 # classification using existing classifier
 # steinbock classify ilastik prepare --cropsize 500 --seed 123
@@ -32,23 +27,27 @@ gawk -i inplace -F "," '$1 ~ /La139|Nd148|Sm152|Er166/ {$5 = 2.0}' OFS="," panel
 # steinbock segment cellprofiler run -o masks_ilastik
 
 # deep learning-based segmentation
-steinbock segment deepcell --minmax -o masks_deepcell
+steinbock segment deepcell --minmax --panel steinbock/panel.csv --img steinbock/img \
+-o steinbock/masks_deepcell
 
 # measurement
-steinbock measure intensities --masks masks_deepcell
-steinbock measure regionprops --masks masks_deepcell
-steinbock measure neighbors --masks masks_deepcell --type expansion --dmax 4
+steinbock measure intensities --panel steinbock/panel.csv --img steinbock/img \
+--masks steinbock/masks_deepcell -o steinbock/intensities
+steinbock measure regionprops --img steinbock/img --masks steinbock/masks_deepcell \
+-o steinbock/regionprops
+steinbock measure neighbors --masks steinbock/masks_deepcell --type expansion \
+--dmax 4 -o steinbock/neighbors
 
 # export
-steinbock export ome
-steinbock export histocat --masks masks_deepcell
-steinbock export csv intensities regionprops -o cells.csv
-steinbock export csv intensities regionprops --no-concat -o cells_csv
-steinbock export fcs intensities regionprops -o cells.fcs
-steinbock export fcs intensities regionprops --no-concat -o cells_fcs
-steinbock export anndata --intensities intensities --data regionprops --neighbors neighbors -o cells.h5ad
-steinbock export anndata --intensities intensities --data regionprops --neighbors neighbors --no-concat -o cells_h5ad
-steinbock export graphs --data intensities
+# steinbock export ome
+# steinbock export histocat --masks masks_deepcell
+# steinbock export csv intensities regionprops -o cells.csv
+# steinbock export csv intensities regionprops --no-concat -o cells_csv
+# steinbock export fcs intensities regionprops -o cells.fcs
+# steinbock export fcs intensities regionprops --no-concat -o cells_fcs
+# steinbock export anndata --intensities intensities --data regionprops --neighbors neighbors -o cells.h5ad
+# steinbock export anndata --intensities intensities --data regionprops --neighbors neighbors --no-concat -o cells_h5ad
+# steinbock export graphs --data intensities
 
 # zip -r cells_csv.zip cells_csv
 # zip -r cells_fcs.zip cells_fcs
