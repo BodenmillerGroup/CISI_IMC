@@ -1,19 +1,37 @@
 #!/usr/bin/env bash
 
+# print start
+echo "----------------------------------------------------"
+echo "Init steinbock..."
+echo "----------------------------------------------------"
+
 # change directory
-BASEDIR="Tonsil_th152"
+BASEDIR="/mnt/bb_dqbm_volume/data/Tonsil_th152"
 cd "${BASEDIR}"
+
+# create output directory if it doesn't exist
+sudo mkdir -p steinbock
 
 # setup steinbock alias
 shopt -s expand_aliases
-alias steinbock="docker run -e STEINBOCK_MASK_DTYPE=uint32  -v ${BASEDIR}:/data \
--u $(id -u):$(id -g) ghcr.io/bodenmillergroup/steinbock:0.14.1"
+#alias steinbock="docker run -e STEINBOCK_MASK_DTYPE=uint32 -v ${BASEDIR}:/data \
+#-u $(id -u):$(id -g) ghcr.io/bodenmillergroup/steinbock:0.14.1"
+alias steinbock="docker run -e STEINBOCK_MASK_DTYPE=uint32 -v ${BASEDIR}:/data \
+-v /tmp/.X11-unix:/tmp/.X11-unix -v ~/.Xauthority:/home/steinbock/.Xauthority:ro \
+-u $(id -u):$(id -g) -e DISPLAY ghcr.io/bodenmillergroup/steinbock:0.14.1"
+
+
+
+# print starting steinbock
+echo "----------------------------------------------------"
+echo "Start preprocessing...."
+echo "----------------------------------------------------"
 
 # preprocessing
 steinbock preprocess imc panel --imcpanel config/TH152_panel.csv --mcd mcd/1 \
 -o steinbock/panel.csv
-steinbock preprocess imc images --hpf 50 --mcd mcd/1 --panel steinbock/panel.csv \
---imgout steinbock/img --infoout steinbock/images.csv
+steinbock preprocess imc images --hpf 50 --mcd mcd/1 --txt mcd/1 \
+--panel steinbock/panel.csv --imgout steinbock/img --infoout steinbock/images.csv
 
 # classification using existing classifier
 # steinbock classify ilastik prepare --cropsize 500 --seed 123
@@ -26,9 +44,19 @@ steinbock preprocess imc images --hpf 50 --mcd mcd/1 --panel steinbock/panel.csv
 # steinbock segment cellprofiler prepare
 # steinbock segment cellprofiler run -o masks_ilastik
 
+# print steinbock segmentation starts
+echo "----------------------------------------------------"
+echo "Start segmentation..."
+echo "----------------------------------------------------"
+
 # deep learning-based segmentation
 steinbock segment deepcell --minmax --panel steinbock/panel.csv --img steinbock/img \
 -o steinbock/masks_deepcell
+
+# print steinbock meausurements starts
+echo "----------------------------------------------------"
+echo "Start computing measurements..."
+echo "----------------------------------------------------"
 
 # measurement
 steinbock measure intensities --panel steinbock/panel.csv --img steinbock/img \
@@ -37,6 +65,12 @@ steinbock measure regionprops --img steinbock/img --masks steinbock/masks_deepce
 -o steinbock/regionprops
 steinbock measure neighbors --masks steinbock/masks_deepcell --type expansion \
 --dmax 4 -o steinbock/neighbors
+
+# print done
+echo "----------------------------------------------------"
+echo "Steinbock pipeline is done."
+echo "Files can be found at: $BASEDIR"
+echo "----------------------------------------------------"
 
 # export
 # steinbock export ome
