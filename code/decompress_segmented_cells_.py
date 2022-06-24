@@ -61,12 +61,51 @@ def threshold_genes(X, p=99.9, t0=0.05):
 	return X
 
 
+'''
+Decompress protein expression and analyze results
+(Using U and A from training, decompress tissues/single cell expression and output
+results given individual single cell expression)
+
+Find X given U, A/phi:
+inputs:
+    basepath: Path to directory with subdirs for parsed images in each tissue
+    npypath: Path to directory for compressed and individual cell expression.
+             If None, then Y_name and X_name need to be numpy arrays containing
+             individual single cell expression X and compressed single cell
+             expression Y (default=None)
+    Y_name: Compressed single cell expression (proteins x cells (/pixels?))
+    X_name: Individual single cell expression
+    outpath: Specify where output files should be saved to
+    tissues: Comma-separated list of tissue numbers to include (default=[1])
+    trainpath: Path to directory with composition (phi/A), gene module (U) matrices,
+               relative_abundance.npy and average_on_expression_level.npy
+    modules: Filename of gene module dictionary U (proteins x modules)
+    method: Signal integration method
+    region-mask: Mask for cells in a region of interest
+    correct-comeasured: Boolean if expression should be corrected using
+                        phi_corr and training_corr (default=False)
+    use-test-idx: Boolean if using test_idx.npy in basepath to specify which cells
+                  should be used for evaluation (default=False)
+    save-output: Boolean if output should be saved into outpath (default=True)
+    proteins: List of proteins that should be used
+
+outputs:
+    X1: X_hat
+    If outpath is specified: decoded_module_activity_<roi>.csv,
+                             decoded_expression<roi>.csv,
+                             segmented.segmentation.adjusted_<roi>.csv,
+                             scatter.segmented.heuristic_correction_<roi>,
+             			     scatter.segmented_pergene_<roi>.png,
+                             scatter.segmented.heuristic_correction.pdf',
+                             scatter.segmented.pdf,
+                             summary.segmentation.txt
+'''
 
 def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 					 X_name, modules='gene_modules.npy', phi_name='version_2.txt',
-					 use_test = False, correct_comeasured = False,
-					 save_output = True, method = "average_intensity",
-					 region_mask = None, rois=[1], proteins=[]):
+					 use_test=False, correct_comeasured=False,
+					 save_output=True, method='average_intensity',
+					 region_mask=None, rois=[1], proteins=[]):
 # 	parser = argparse.ArgumentParser()
 # 	parser.add_argument('--basepath', help='Path to directory with subdirs for parsed images in each tissue',default="output")
 # 	parser.add_argument('--npypath', help='Path to directory for compressed and individual cell expression',default="preparation/npy_decoding")
@@ -100,7 +139,6 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 		else:
 			phi = np.loadtxt(os.path.join(trainpath, phi_name),
 					   usecols=list(range(2, len(AllGenes)+2)))
-
     else:
         # If file is not found, throw error
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
@@ -113,9 +151,18 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 	phi_corr = (np.einsum('ij,ik->jk', phi, phi)/phi.sum(0)).T - np.eye(phi.shape[1])
 
     if utils.check_file(os.path.join(trainpath, 'relative_abundance.npy'), ['.npy']):
-		abundance_train = np.load(os.path.join(trainpath, 'relative_abundance.npy'))
+		relative_abundance = np.load(os.path.join(trainpath, 'relative_abundance.npy'))
+    else:
+        # If file is not found, throw error
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
+                                os.path.join(trainpath, 'relative_abundance.npy'))
+
     if utils.check_file(os.path.join(trainpath, 'average_on_expression_level.npy'), ['.npy']):
-		abundance_train = np.load(os.path.join(trainpath, 'average_on_expression_level.npy'))
+		expression_level = np.load(os.path.join(trainpath, 'average_on_expression_level.npy'))
+    else:
+        # If file is not found, throw error
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
+                                os.path.join(trainpath, 'average_on_expression_level.npy'))
 
 	# train_corr = np.load('%s/correlations.npy' % args.trainpath)
 	# train_corr = distance.squareform(train_corr)
@@ -123,6 +170,10 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 	# Load dictionary U
 	if utils.check_file(os.path.join(trainpath, modules), ['.npy']):
 		U = np.load(os.path.join(trainpath, modules))
+    else:
+        # If file is not found, throw error
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
+                                os.path.join(trainpath, modules))
 
 	# U = np.load('%s/%s/gene_modules.npy' % (basepath,dictpath))
 	# Inliers = np.load('%s/%s.inliers.npy' % (args.trainpath, args.modules),allow_pickle=True)
@@ -130,6 +181,10 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 	if use_test:
 		if utils.check_file(os.path.join(basepath, 'test_idx.npy'), ['.npy']):
 			test_idx = np.load(os.path.join(basepath, 'test_idx.npy'))
+        else:
+            # If file is not found, throw error
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
+                                    os.path.join(basepath, 'test_idx.npy'))
 		# test_idx = np.load('%s/%s.test_idx.npy' % (basepath, dictpath))
 	else:
 		test_idx = np.arange(1e7, dtype=np.int)
@@ -157,11 +212,20 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
                                                            (Y_name + r + '.csv')),
                                               delimiter=',', skip_header=1))
                 composite_measurements = np.float32(composite_measurements)
+            else:
+                # If file is not found, throw error
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
+                                        os.path.join(npypath, (Y_name + r + '.csv'))
             if utils.check_file(os.path.join(npypath, (X_name + r + '.csv')), ['.csv']):
     			direct_measurements = np.genfromtxt(os.path.join(npypath,
                                                            (X_name + r + '.csv')),
                                               delimiter=',', skip_header=1))
                 direct_measurements = np.float32(direct_measurements)
+            else:
+                # If file is not found, throw error
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
+                                        os.path.join(npypath, (X_name + r + '.csv'))
+
     	direct_labels = AllGenes
         # TODO: Change if we need this part
 		if region_mask is not None:
@@ -213,9 +277,9 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 		xhat = xhat[:, test_idx_t]
 		idx_offset += composite_measurements.shape[1]
 		X1.append(xhat)
-# 		idx = [np.where(AllGenes == l)[0][0] for l in direct_labels]
-# 		xhat = xhat[idx]
-		n = direct_measurements.shape[0]+1
+ 		idx = [np.where(AllGenes == l)[0][0] for l in direct_labels]
+ 		xhat = xhat[idx]
+		n = direct_measurements.shape[0] + 1
         # Create and save figures comparing results
 		if save_output:
 			fig, axes = plt.subplots(max(2, int(np.floor(np.sqrt(n)))),
@@ -224,7 +288,7 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 			axes = axes.flatten()
 			plt.rcParams["axes.labelsize"] = 2.5
 		for i in range(n-1):
-			corr = 1-distance.correlation(direct_measurements[i], xhat[i])
+			corr = 1 - distance.correlation(direct_measurements[i], xhat[i])
 			if save_output:
 				sns_plt = sns.scatterplot(direct_measurements[i], xhat[i], ax=axes[i])
 				_= sns_plt.set(xlabel='Direct Intensity', ylabel='Recovered Intensity',
@@ -232,7 +296,7 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 			print(r, direct_labels[i], corr)
 			C.append((r, direct_labels[i], corr))
 		if save_output:
-			corr = 1-distance.correlation(direct_measurements.flatten(), xhat.flatten())
+			corr = 1 - distance.correlation(direct_measurements.flatten(), xhat.flatten())
 			sns_plt = sns.scatterplot(direct_measurements.flatten(), xhat.flatten(),
                              ax=axes[-1])
 			_= sns_plt.set(xlabel='Direct Intensity', ylabel='Recovered Intensity',
@@ -242,7 +306,7 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 			if correct_comeasured:
 				path = os.path.join(outpath, ('scatter.segmented.heuristic_correction_%s.png' % r))
 			else:
-				path = os.path.join(outpath, ('scatter.segmented%s_pergene_%s.png' % r))
+				path = os.path.join(outpath, ('scatter.segmented_pergene_%s.png' % r))
 			fig.savefig(path)
 			plt.close()
 		X0.append(direct_measurements.flatten())
@@ -252,7 +316,7 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 	X0 = np.hstack(X0)
 	X1 = np.hstack(X1)
 	X2 = np.hstack(X2)
-	corr = 1-distance.correlation(X0, X2)
+	corr = 1 - distance.correlation(X0, X2)
 	corr_gene_avg = np.average([c[2] for c in C])
 	if save_output:
 		sns_plt = sns.scatterplot(X0, X2)
@@ -280,9 +344,12 @@ def decompress_cells(basepath, npypath=None, trainpath, outpath, Y_name,
 		_=f.write('\t'.join([str(x) for x in [corr, corr_gene_avg, avg_ng]]) + '\n')
 		_=f.write('\n')
 		_=f.write('\t'.join(['Gene', 'Tissue', 'Correlation across segmented cells',
-                       'abundance_train', 'abundance_decode']) + '\n')
+                       'Expression level in ON cells', 'Relative abundance in scRNA']) + '\n')
 		for c in C:
- 			el = abundance_train[np.where(AllGenes == c[1])[0][0]]
- 			ra = abundance_decode[np.where(AllGenes == c[1])[0][0]]
+ 			el = expression_level[np.where(AllGenes == c[1])[0][0]]
+ 			ra = relative_abundance[np.where(AllGenes == c[1])[0][0]]
  			_=f.write('\t'.join([c[1], c[0], str(c[2]), str(el), str(ra)]) + '\n')
 		f.close()
+
+    # Return X1 (xhat)
+    return X1
