@@ -20,7 +20,7 @@ are installed (for reproducibiltiy).
 
 Then, load necessary libraries for downstream analysis.
 
-```{r load_libraries, echo=FALSE}
+```{r load_libraries, results='hide', message=FALSE, warning=FALSE}
 library(imcRtools)
 library(cytomapper)
 library(tidyverse)

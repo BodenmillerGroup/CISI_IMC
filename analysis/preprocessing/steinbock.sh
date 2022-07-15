@@ -2,7 +2,7 @@
 
 # print start
 echo "----------------------------------------------------"
-echo "Init steinbock..."
+echo $(date +"%D %T") "Init steinbock..."
 echo "----------------------------------------------------"
 
 # change directory
@@ -14,17 +14,17 @@ sudo mkdir -p steinbock
 
 # setup steinbock alias
 shopt -s expand_aliases
-#alias steinbock="docker run -e STEINBOCK_MASK_DTYPE=uint32 -v ${BASEDIR}:/data \
-#-u $(id -u):$(id -g) ghcr.io/bodenmillergroup/steinbock:0.14.1"
 alias steinbock="docker run -e STEINBOCK_MASK_DTYPE=uint32 -v ${BASEDIR}:/data \
--v /tmp/.X11-unix:/tmp/.X11-unix -v ~/.Xauthority:/home/steinbock/.Xauthority:ro \
--u $(id -u):$(id -g) -e DISPLAY ghcr.io/bodenmillergroup/steinbock:0.14.1"
+-u $(id -u):$(id -g) ghcr.io/bodenmillergroup/steinbock:0.14.2"
+#alias steinbock="docker run -e STEINBOCK_MASK_DTYPE=uint32 -v ${BASEDIR}:/data \
+#-v /tmp/.X11-unix:/tmp/.X11-unix -v ~/.Xauthority:/home/steinbock/.Xauthority:ro \
+#-u $(id -u):$(id -g) -e DISPLAY ghcr.io/bodenmillergroup/steinbock:0.14.1"
 
 
 
 # print starting steinbock
 echo "----------------------------------------------------"
-echo "Start preprocessing...."
+echo $(date +"%D %T") "Start preprocessing...."
 echo "----------------------------------------------------"
 
 # preprocessing
@@ -46,7 +46,7 @@ steinbock preprocess imc images --hpf 50 --mcd mcd/1 --txt mcd/1 \
 
 # print steinbock segmentation starts
 echo "----------------------------------------------------"
-echo "Start segmentation..."
+echo $(date +"%D %T") "Start segmentation..."
 echo "----------------------------------------------------"
 
 # deep learning-based segmentation
@@ -55,7 +55,7 @@ steinbock segment deepcell --minmax --panel steinbock/panel.csv --img steinbock/
 
 # print steinbock meausurements starts
 echo "----------------------------------------------------"
-echo "Start computing measurements..."
+echo $(date +"%D %T") "Start computing measurements..."
 echo "----------------------------------------------------"
 
 # measurement
@@ -68,8 +68,8 @@ steinbock measure neighbors --masks steinbock/masks_deepcell --type expansion \
 
 # print done
 echo "----------------------------------------------------"
-echo "Steinbock pipeline is done."
-echo "Files can be found at: $BASEDIR"
+echo $(date +"%D %T") "Steinbock pipeline is done."
+echo $(date +"%D %T") "Files can be found at: $BASEDIR"
 echo "----------------------------------------------------"
 
 # export
