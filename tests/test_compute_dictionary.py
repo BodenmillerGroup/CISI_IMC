@@ -41,15 +41,11 @@ class TestSMAF(unittest.TestCase):
                                        80, 3, 0.2, normalization='zscore_norm')
         self.assertFalse(np.all((U == 0)))
 
-    def test_smaf_with_min_max(self):
-        U, W = compute_dictionary.smaf(self.test_data,
-                                       80, 3, 0.2, normalization='min_max_norm')
-        self.assertFalse(np.all((U == 0)))
+    # def test_smaf_with_min_max(self):
+    #     U, W = compute_dictionary.smaf(self.test_data,
+    #                                    80, 3, 0.2, normalization='min_max_norm')
+    #     self.assertFalse(np.all((U == 0)))
 
-    def test_smaf_with_min_max_channelwise(self):
-        U, W = compute_dictionary.smaf(self.test_data,
-                                       80, 3, 0.2, normalization='min_max_norm_channelwise')
-        self.assertFalse(np.all((U == 0)))
 
 ## Main
 if __name__ == '__main__':
