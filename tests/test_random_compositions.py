@@ -13,33 +13,25 @@ import unittest
 import numpy as np
 import compute_random_compositions
 from utils import check_file
+import anndata as ad
 
 
 # Test SMAF
 class TestCompositeA(unittest.TestCase):
 
-    '''
     def test_A(self):
         A = compute_random_compositions.compute_A(
-            X=np.array(np.load('data/training_data_sce.npy')),
+            X_input=ad.read_h5ad('data/test.h5ad'),
             U=np.array(np.load('data/gene_modules.npy')),
-            nmeasurements=10, maxcomposition=3)
-        self.assertFalse(np.all((A[1] == 0)))
-    '''
+            nmeasurements=10, maxcomposition=3, outpath='data')
+        self.assertFalse(np.all((A == 0)))
 
-    def test_A_with_output(self):
-        p = ['Histone H3', 'CD45RA', 'CD20', 'CD11b', 'CD56 ', 'GranzymeB', 'CD3',
-             'DC-LAMP', 'CD11c', 'PD-1', 'GITR', 'SMA', 'MMP9', 'CD14', 'PD-L1',
-             'TCF1/TCF7', 'CD45RO', 'FOXP3', 'ICOS', 'Ki-67', 'CD8a', 'Tim-3',
-             'E-Cad/P-Cad', 'IRF4', 'VISTA', 'CD1c', 'CD4', 'CD31', 'CXCL12',
-             'CCL21', 'panCK', 'CXCL13', 'Ir191', 'CCR7', 'Ir193', 'Vimentin',
-             'CD15', 'MPO', 'CD38', 'HLA-DR', 'CD27', 'CD303', 'CD68']
+    def test_A_binary(self):
         A = compute_random_compositions.compute_A(
-            X=np.array(np.load('data/training_data_sce.npy')),
+            X_input=ad.read_h5ad('data/test.h5ad'),
             U=np.array(np.load('data/gene_modules.npy')),
-            nmeasurements=10, maxcomposition=3,
-            outpath='data', proteins=p)
-        self.assertTrue(check_file('data/compositions_A/version_49.txt', ['.txt']))
+            nmeasurements=10, maxcomposition=3, outpath='data', binary=True)
+        self.assertFalse(np.all((A == 0)))
 
 
 ## Main
