@@ -1,0 +1,2 @@
+version	Overall pearson	Overall spearman	Gene average	Sample average	Sample dist pearson	Sample dist spearman	Gene dist pearson	Gene dist spearman	Matrix coherence (90th ptile)
+0	0.23416358245610236	0.3395568740895961	0.35057753691171223	0.23172699405363062	0.8249200383420555	0.7072348979819901	-0.08304260398599352	0.07415478547624578	0.5965285513360886

@@ -3,7 +3,6 @@
 .RHistory
 *.swp
 __pycache__
-data
 .ipynb_checkpoints
 renv
 !renv.lock
