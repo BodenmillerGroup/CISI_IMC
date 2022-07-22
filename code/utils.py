@@ -7,6 +7,7 @@ import pandas as pd
 from re import search
 from analyze_predictions import *
 import math
+import random
 
 
 '''
@@ -26,84 +27,6 @@ def check_file(file_path, extension):
         return True
     else:
         return False
-
-
-# Function that reads in a cell.csv type file and prepares it for decomposition
-# training (selects only meanIntensity, ImageNumber and ObjectNumber columns and
-# determines protein names)
-def read_input(X_input, panel_input):
-    # Check if input is a valid csv file
-    if check_file(X_input, ['.csv']) and check_file(panel_input, ['.csv']):
-        # Read intensities form .csv file
-        X = np.genfromtxt(X_input, delimiter=',', skip_header=1)
-        # Read in header names
-        X_header = pd.read_csv(X_input, nrows=0).columns.tolist()
-        # Get list of mean intensity columns and Image/Object number columns
-        selected_columns = list(map(lambda col:
-            bool(search('(Intensity_MeanIntensity_FullStackFiltered_c|ImageNumber|ObjectNumber)', col)),
-            X_header))
-        # Filter for above selected columns
-        X = X[:, selected_columns]
-        # Remove everything before channel numbers in X_header
-        X_header = [x.replace('Intensity_MeanIntensity_FullStackFiltered_c', '')
-                    for x in X_header]
-
-        # Read in panel data
-        panel = pd.read_csv(panel_input)
-        proteins = [panel.loc[panel['channel'] == int(i), 'Target'].values[0]
-                    for i in X_header if i not in ['ImageNumber', 'ObjectNumber']]
-
-    else:
-        # If it is none of the above input types an error is
-        raise ValueError('''No valid input for X was given.
-              The input for X needs to be a .csv, .npy or numpy array with
-              dimensions: proteins x cells (/pixels?).''')
-
-    return X.T, X_header, proteins
-
-
-# Function splitting X into training, validate and test either by ROI or percentage
-def split_X(X, X_header, by='roi', set_sizes=[]):
-    if by=='roi':
-        roi_index = X_header.index('ImageNumber')
-        X_training = X[:, np.isin(X[roi_index, :], set_sizes[0])]
-        X_training = np.delete(X_training, [X_header.index('ImageNumber'),
-                                            X_header.index('ObjectNumber')], 0)
-
-        X_validate = X[:, np.isin(X[roi_index, :], set_sizes[1])]
-        X_validate = np.delete(X_validate, [X_header.index('ImageNumber'),
-                                            X_header.index('ObjectNumber')], 0)
-
-        X_test = X[:, np.isin(X[roi_index, :], set_sizes[2])]
-        X_test = np.delete(X_test, [X_header.index('ImageNumber'),
-                                    X_header.index('ObjectNumber')], 0)
-
-    elif by=='percentage':
-        # Delete Image and Object numbers
-        X = np.delete(X, [X_header.index('ImageNumber'),
-                          X_header.index('ObjectNumber')], 0)
-        # Get indices for training, valdiate and test sets
-        training_index = np.random.choice(np.arange(X.shape[1]),
-                                          math.ceil(X.shape[1]*set_sizes[0]),
-                                          replace=False)
-        remaining_index = np.setdiff1d(np.arange(X.shape[1]), training_index)
-        validate_index = np.random.choice(remaining_index,
-                                          math.ceil(remaining_index.shape[0]*set_sizes[1]),
-                                          replace=False)
-        test_index = np.setdiff1d(remaining_index, validate_index)
-
-        # Subset into training, validate and test sets
-        X_training = X[:, training_index]
-        X_validate = X[:, validate_index]
-        X_test = X[:, test_index]
-
-    else:
-        # If it is none of the above splitting methods, return ValueError
-        raise ValueError('''No valid splitting method for X was given.
-                         In split_X(), parameter <by> needs to be either
-                         "roi" or "percentage".''')
-
-    return X_training, X_validate, X_test
 
 
 '''
