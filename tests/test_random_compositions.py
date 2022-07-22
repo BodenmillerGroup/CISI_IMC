@@ -16,7 +16,7 @@ from utils import check_file
 import anndata as ad
 
 
-# Test SMAF
+# Test compute_A
 class TestCompositeA(unittest.TestCase):
 
     def test_A(self):

@@ -17,7 +17,7 @@ import os
 import anndata as ad
 
 
-# Test inputs to compute_dictionary
+# Test inputs to analyze_U_and_A
 class TestPerformanceUandA(unittest.TestCase):
 
     def test_analyze_dictionary_and_composition(self):
