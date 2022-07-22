@@ -116,8 +116,14 @@ def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsit
     # If outpath is specified, then the best num_phi composite matrices are saved
     # into files
     if outpath!=None:
-        path = Path(os.path.join(outpath, 'compositions_A'))
-        path.mkdir(parents=True, exist_ok=True)
+        # If more than one phi should be saved then create folder for A's, else
+        # save it at outpath location
+        if num_phi!=1:
+            path = Path(os.path.join(outpath, 'compositions_A'))
+            path.mkdir(parents=True, exist_ok=True)
+        else:
+            path = outpath
+
         for i in xs[:num_phi]:
             f1 = open(os.path.join(path, 'version_%d.txt' % i), 'w')
             phi = Phi[i]

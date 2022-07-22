@@ -20,17 +20,18 @@ import anndata as ad
 class TestCompositeA(unittest.TestCase):
 
     def test_A(self):
-        A = compute_random_compositions.compute_A(
+        A, best = compute_random_compositions.compute_A(
             X_input=ad.read_h5ad('data/test.h5ad'),
             U=np.array(np.load('data/gene_modules.npy')),
             nmeasurements=10, maxcomposition=3, outpath='data')
         self.assertFalse(np.all((A == 0)))
 
     def test_A_binary(self):
-        A = compute_random_compositions.compute_A(
+        A, best = compute_random_compositions.compute_A(
             X_input=ad.read_h5ad('data/test.h5ad'),
             U=np.array(np.load('data/gene_modules.npy')),
             nmeasurements=10, maxcomposition=3, outpath='data', binary=True)
+        print(best)
         self.assertFalse(np.all((A == 0)))
 
 
