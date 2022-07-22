@@ -81,9 +81,9 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
             X = X_mat
         case _:
             # In case no valid normalization is given, an error is thrown
-            raise ValueError('The normalization {0} used by smaf is not valid.\
-                            Please use one of the following: paper_norm, min_max_norm,\
-                            min_max_norm_channelwise, zscore_norm or none.'.format(normalization))
+            raise ValueError(('The normalization {0} used by smaf is not valid.'.format(normalization) +
+                              'Please use one of the following: paper_norm, min_max_norm, ' +
+                              'min_max_norm_channelwise, zscore_norm or none.'))
 
     # use Cholesky when we expect a very sparse result
     # this tends to happen more on the full vs subsampled matrices

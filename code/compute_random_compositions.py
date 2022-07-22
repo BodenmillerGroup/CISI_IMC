@@ -30,7 +30,7 @@ inputs:
     THREADS: # Number of threads used (default=20)
     outpath: If specified, the best 50 U versions are saved as .txt files in
              compositions_A folder
-    num_phi: the number of best phi's that are returned/saved (default: 1, at most: 50)
+    num_phi: the number of best phi's that are saved (default: 1, at most: 50)
     binary: boolean variable that specifies if Phi is binary or not (default: False)
             If True, then Phi will be binarized directly after computation and the
             best Phi is chosen according to the results of its binarized version
@@ -57,9 +57,9 @@ def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsit
         X = (X_input.X).T
 
     # Assert that number of phi's to be returned is between 1 and 50
-    assert (num_phi>=1 and num_phi<=50), 'Number of Phis to be returned in \
-                                          compute_random_compositions is not \
-                                          between 1 and 50.'
+    assert (num_phi>=1 and num_phi<=50), ('Number of Phis to be returned in ' +
+                                          'compute_random_compositions is not ' +
+                                          'between 1 and 50.')
 
     # Empirical observation: using a sparsity constraint that is softer than
     # that used during training slightly improves results
@@ -132,7 +132,7 @@ def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsit
                 f1.write('\t'.join(genes) + '\n')
             f1.close()
 
-    return Phi[:num_phi]
+    return Phi[0], best[0]
 
 # For mode 'M': Create random A matrix with at most n[1] selected proteins
 # per channel (at most n[1] 1s per row)
