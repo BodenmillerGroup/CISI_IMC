@@ -18,8 +18,8 @@ inputs:
 
 def make_cor(X_input, outpath):
 
-	X = (X_input.X).T
-	corr = 1 - distance.pdist(X, 'correlation')
-	np.savetxt(os.path.join(outpath, 'correlations.csv'), corr, delimiter=',')
+    X = (X_input.X).T
+    corr = 1 - distance.pdist(X, 'correlation')
+    np.savetxt(os.path.join(outpath, 'correlations.csv'), corr, delimiter=',')
 
     return corr

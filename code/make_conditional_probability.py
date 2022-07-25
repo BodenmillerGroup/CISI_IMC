@@ -20,20 +20,20 @@ inputs:
 
 def make_cond_prob(X_input, outpath, threshold=10.0):
 
-	X = (X_input.X).T
-	cond_prob = gene_conditional_probs(X, threshold)
-    np.savetxt(os.path.join(outpath, 'conditional_probability.csv'), cond_prob,
-               delimiter=',')
+        X = (X_input.X).T
+        cond_prob = gene_conditional_probs(X, threshold)
+        np.savetxt(os.path.join(outpath, 'conditional_probability.csv'), cond_prob,
+                delimiter=',')
 
-    return cond_prob
+        return cond_prob
 
 
 # Function that actually does the calculations
 def gene_conditional_probs(X, thresh):
-	CP = np.eye(X.shape[0])
-	for i in range(X.shape[0]):
-		a = (X[i] > thresh)
-		for j in range(X.shape[0]):
-			b = (X[j] > thresh)
-			CP[i,j] = np.average(a*b) / np.average(a)
-	return CP
+        CP = np.eye(X.shape[0])
+        for i in range(X.shape[0]):
+                a = (X[i] > thresh)
+                for j in range(X.shape[0]):
+                        b = (X[j] > thresh)
+                        CP[i,j] = np.average(a*b) / np.average(a)
+        return CP
