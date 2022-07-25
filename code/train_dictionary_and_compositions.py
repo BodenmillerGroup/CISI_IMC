@@ -5,6 +5,8 @@ from analyze_dictionary_and_compositions import analyze_U_and_A
 from alive_progress import alive_bar
 import numpy as np
 import os
+from make_correlations import make_cor
+from make_conditional_probability import make_cond_prob
 
 
 '''
@@ -72,6 +74,10 @@ inputs:
                   can't be used)
         test_size: size of test set (eg. 0.2)
 
+    For fnc. make_cond_prob():
+        threshold_cond_prob: Threshold to stratify if particular protein in particular
+                             cell is counted as positive (default: 10.0)
+
 
 outputs:
 
@@ -84,7 +90,8 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
                   U0_delta=0.1, doprint=False, normalization='paper_norm',
                   THREADS_smaf=4, nmeasurements = 10, maxcomposition = 3, mode_phi='G',
                   lasso_sparsity=0.2, THREADS_A=20, num_phi=1, binary=False,
-                  THREADS_A_and_U=20, split_by='roi', k_cv=4, test_set=(), test_size=None):
+                  THREADS_A_and_U=20, split_by='roi', k_cv=4, test_set=(), test_size=None,
+                  threshold_cond_prob=10.0):
 
     # Add a seed to use by numpy for reproducibility
     np.random.seed(11)
@@ -99,7 +106,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
     all_pearson_cor = [0] * k_cv
     for k in range(k_cv):
         # Initialize progress bar
-        with alive_bar(4, title="Fold {0}".format(str(k))) as bar:
+        with alive_bar(4, title="Fold {0}".format(str(k)), force_tty=True) as bar:
             # Split into training and validating sets
             X_validate = X[X.obs.index.isin(remaining[k]), ]
             X_training = X[X.obs.index.isin(np.concatenate(remaining[:k]+remaining[(k+1):])), ]
@@ -137,6 +144,13 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
     # Analize training
     training_res = analyze_U_and_A(X_test, U_best, Phi_best, outpath,
                                    lasso_sparsity, THREADS_A_and_U)
+
+    # Calculate pairwise protein correlations
+    cor = make_cor(X, outpath)
+    # Compute pairwise conditional probabilities between proteins/channels
+    cond_prob = make_cond_prob(X, outpath, threshold_cond_prob)
+
+    return training_res, cor, cond_prob
 
 
 # Function splitting X into training, validate and test either by 'roi' or 'percentage'
