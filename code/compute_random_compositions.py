@@ -8,7 +8,6 @@ import os
 # Import libraries (additionaly added)
 from utils import sparse_decode, compare_results, get_observations
 from pathlib import Path
-from alive_progress import alive_bar
 
 
 '''
@@ -71,41 +70,37 @@ def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsit
     best = np.zeros(50)
     Phi = [None for _ in best]
 
-    # Progress bar depicting the progress of
-    with alive_bar(2000, title="Iterating over random A's...") as bar:
-        for _ in range(2000):
-            # Initialze random A with constraints
-            while True:
-                if mode == 'M':
-                    phi = random_phi_subsets_m(nmeasurements, X.shape[0],
-                                   (2, maxcomposition), d_thresh=0.8)
-                elif mode == 'G':
-                    phi = random_phi_subsets_g(nmeasurements, X.shape[0],
-                                   (1, maxcomposition), d_thresh=0.8)
-                if check_balance(phi):
-                    break
-            if _%100 == 0:
-                print(_, best)
+    for _ in range(2000):
+        # Initialze random A with constraints
+        while True:
+            if mode == 'M':
+                phi = random_phi_subsets_m(nmeasurements, X.shape[0],
+                               (2, maxcomposition), d_thresh=0.8)
+            elif mode == 'G':
+                phi = random_phi_subsets_g(nmeasurements, X.shape[0],
+                               (1, maxcomposition), d_thresh=0.8)
+            if check_balance(phi):
+                break
+        if _%100 == 0:
+            print(_, best)
 
-            # If binary= True then binarize phi (A)
-            if binary:
-                phi = np.where(phi > 0, 1, 0)
+        # If binary= True then binarize phi (A)
+        if binary:
+            phi = np.where(phi > 0, 1, 0)
 
-            # Initialze composite oservations Y using X and noise
-            y = get_observations(X, phi, snr=5)
-            # Compute W given Y, A and U
-            w = sparse_decode(y, phi.dot(U), sparsity, method='lasso', numThreads=THREADS)
-            x2 = U.dot(w)
-            # Compare X to predicted X
-            r = compare_results(X, x2)
-            # Update best A
-            if r[2] > best.min():
-                i = np.argmin(best)
-                best[i] = r[2]
-                Phi[i] = phi
+        # Initialze composite oservations Y using X and noise
+        y = get_observations(X, phi, snr=5)
+        # Compute W given Y, A and U
+        w = sparse_decode(y, phi.dot(U), sparsity, method='lasso', numThreads=THREADS)
+        x2 = U.dot(w)
+        # Compare X to predicted X
+        r = compare_results(X, x2)
+        # Update best A
+        if r[2] > best.min():
+            i = np.argmin(best)
+            best[i] = r[2]
+            Phi[i] = phi
 
-            # Mark end on one iteration for progressbar
-            bar()
 
     xs = np.argsort(best)
     best = best[xs[::-1]]
