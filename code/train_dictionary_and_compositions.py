@@ -142,7 +142,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
           'The pearson correlations are: {0}'.format(all_pearson_cor)))
 
     # Analize training
-    training_res = analyze_U_and_A(X_test, U_best, Phi_best, outpath,
+    training_res = analyze_U_and_A(X_test, U_best, [Phi_best], outpath,
                                    lasso_sparsity, THREADS_A_and_U)
 
     # Calculate pairwise protein correlations
