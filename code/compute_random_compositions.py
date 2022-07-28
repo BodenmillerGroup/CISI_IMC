@@ -17,7 +17,7 @@ Estimating best random composition matrix
 
 Find A given U, X with special constraints:
 inputs:
-    X: anndata object containing numpy array X (proteins x cells/pixels)
+    X: anndata object containing numpy array X (cells/pixels x proteins)
        with proteins names as X.var_names
     U: a dictionary of gene modules (proteins x modules)
     mode: 'M', max genes per composition is constrained

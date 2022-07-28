@@ -11,7 +11,7 @@ Compute pairwise correlations between proteins/channels
 
 Save into correlations.csv file and return correlations:
 inputs:
-    X_input: anndata object containing numpy array X (proteins x cells/pixels)
+    X_input: anndata object containing numpy array X (cells/pixels x proteins)
              Will be divided into: training, validate and test set
     outpath: Specify where output files should be saved to
 '''

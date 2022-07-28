@@ -11,7 +11,7 @@ inputs:
     X: proteins x cells (/pixels?) -> numpy array
     savepath: path where output will be stored
 outputs:
-    U: a dictionary of gene modules (proteins x modules)
+    U: a dictionary of gene modules (cells/pixels x proteins)
     W: the module activity levels in each cell (/pixel?) of training data
        (modules x pixels)
 '''

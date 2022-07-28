@@ -18,7 +18,7 @@ Sparse Module Activity Factorization (SMAF)
 
 Find X = UW with special constraints:
 inputs:
-    X_input: anndata object containing numpy array X (proteins x cells/pixels)
+    X_input: anndata object containing numpy array X (cells/pixels x proteins)
     d: the number of features (columns) in the dictionary U
     lda1: in mode 1 (recommended) the number of nonzeros per column in W
     lda2: an error threshold - when optimizing over U we will search for the

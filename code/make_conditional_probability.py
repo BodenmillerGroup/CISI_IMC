@@ -12,7 +12,7 @@ Matrix (proteins x proteins) contains if protein i is True (bigger than threshol
 given that protein j is True (bigger than threshold) for all possible combinations
 
 inputs:
-    X_input: anndata object containing numpy array X (proteins x cells/pixels)
+    X_input: anndata object containing numpy array X (cells/pixels x proteins)
              Will be divided into: training, validate and test set
     outpath: Specify where output files should be saved to
     threshold:
