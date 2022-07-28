@@ -4,6 +4,7 @@ from analyze_predictions import *
 
 # Import libraries (additionaly added)
 from utils import sparse_decode, compare_results, get_observations
+from decompress import decompress
 from pathlib import Path
 import sys
 import os
@@ -16,7 +17,7 @@ Analyze performance of computed U and A
 
 For given X, U and A, simulate composite results y and analyze performance:
 inputs:
-    X: anndata object containing numpy array X (proteins x cells/pixels)
+    X: anndata object containing numpy array X (cells/pixels x proteins)
        with proteins names as X.var_names
     U: a dictionary of gene modules (proteins x modules)
     Phi: list containing (best) composition matrices (composite channels (measurements) x proteins,
@@ -55,14 +56,17 @@ def analyze_U_and_A(X_input, U, Phi, outpath, lasso_sparsity=0.2, THREADS=20,
     path.mkdir(parents=True, exist_ok=True)
     # Write output to file
     f2 = open(os.path.join(path, 'simulation_results.txt'), 'w')
+    f3 = open(os.path.join(path, 'composite_simulation_results.txt'), 'w')
     colnames = ['version', 'Overall pearson', 'Overall spearman', 'Gene average',
                 'Sample average', 'Sample dist pearson', 'Sample dist spearman',
                 'Gene dist pearson', 'Gene dist spearman',
                 'Matrix coherence (90th ptile)']
     f2.write('\t'.join(colnames) + '\n')
+    f3.write('\t'.join(colnames) + '\n')
 
     # Create empty pandas df to return all analysis
     results_df = pd.DataFrame(columns=colnames)
+    results_comp_df = pd.DataFrame(columns=colnames)
 
     for i in xs:
         phi = Phi[i]
@@ -71,10 +75,17 @@ def analyze_U_and_A(X_input, U, Phi, outpath, lasso_sparsity=0.2, THREADS=20,
         x2 = U.dot(w)
         results = compare_results(X_test, x2)
         f2.write('\t'.join([str(x) for x in [i]+results+[d_gene[i]]]) + '\n')
-        print(d_gene[i], compare_results(X_test, x2))
+
+        y_comp = simulate_composite_measurements(X_test, phi)
+        x2_comp = decompress(y_comp, U, phi)
+        results_comp = compare_results(X_test, x2_comp)
+        f3.write('\t'.join([str(x) for x in [i]+results_comp+[d_gene[i]]]) + '\n')
 
         # Add results to pandas df
         results_df.loc[len(results_df)] = [i]+results+[d_gene[i]]
-    f2.close()
+        results_comp_df.loc[len(results_comp_df)] = [i]+results_comp+[d_gene[i]]
 
-    return results_df
+    f2.close()
+    f3.close()
+
+    return results_df, results_comp_df

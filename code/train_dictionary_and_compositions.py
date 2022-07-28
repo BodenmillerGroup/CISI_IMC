@@ -15,7 +15,7 @@ save results from crossvalidation
 
 Find U, A/phi given X and return goodness of fit:
 inputs:
-    X_input: anndata object containing numpy array X (proteins x cells/pixels)
+    X_input: anndata object containing numpy array X (cells/pixels x proteins)
              Will be divided into: training, validate and test set
     outpath: Specify where output files should be saved to (used in all fnc)
     layer: Name of layer in anndata object to be used as X (default: None, =anndata.X)
@@ -80,6 +80,10 @@ inputs:
 
 
 outputs:
+    training_res: results of training evaluated on test set (pandas dataframe)
+    cor: pairwise protein correlations (numpy array)
+    cond_prob: pairwise conditional probabilities between proteins/channels
+               (numpy array)
 
 '''
 
@@ -142,15 +146,16 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
           'The pearson correlations are: {0}'.format(all_pearson_cor)))
 
     # Analize training
-    training_res = analyze_U_and_A(X_test, U_best, [Phi_best], outpath,
-                                   lasso_sparsity, THREADS_A_and_U)
+    training_res, training_res_comp = analyze_U_and_A(X_test, U_best, [Phi_best],
+                                                      outpath, lasso_sparsity,
+                                                      THREADS_A_and_U)
 
     # Calculate pairwise protein correlations
     cor = make_cor(X, outpath)
     # Compute pairwise conditional probabilities between proteins/channels
     cond_prob = make_cond_prob(X, outpath, threshold_cond_prob)
 
-    return training_res, cor, cond_prob
+    return training_res, training_res_comp, cor, cond_prob
 
 
 # Function splitting X into training, validate and test either by 'roi' or 'percentage'

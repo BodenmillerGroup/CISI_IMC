@@ -29,6 +29,18 @@ def check_file(file_path, extension):
         return False
 
 
+# Simulate composite measurements using composite matrix A assuming no noise
+def simulate_composite_measurements(X_input, phi, layer=None):
+    # Select layer of anndata object that should be used to simulate the
+    # composite measurements
+    if layer is not None:
+        X = (X_input.layers[layer]).T
+    else:
+        X = (X_input.X).T
+
+    return phi.dot(X)
+
+
 '''
 Old functions (from original publication)
 '''
@@ -52,6 +64,21 @@ def sparse_decode(Y, D, k, numThreads, method='omp', worstFit=1., mink=0, nonneg
         W = np.asarray(W.todense())
 
     return W
+
+
+# Fixing U, approximating W (in blocks)
+def sparse_decode_blocks(Y, D, lda=0.1, numThreads=20, method='omp', worstFit=1.,
+                         mink=0, nonneg=False, num_blocks=20):
+	W = np.zeros((D.shape[1], Y.shape[1]))
+	ynorm = np.linalg.norm(Y, axis=0)
+	xs = np.argsort(ynorm)
+	block_size = int(len(xs) / num_blocks)
+	for i in range(0, len(xs), block_size):
+		idx = xs[i:i+block_size]
+		w = sparse_decode(Y[:, idx], D, lda, numThreads, method, worstFit,
+                    mink, nonneg)
+		W[:, idx] = w
+	return W
 
 
 # Simulate random composite observations Y from X
