@@ -1,0 +1,221 @@
+---
+title: "Analysis Plots"
+output: html_document
+date: '2027-06-10'
+---
+
+## Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load libraries
+library(tidyverse)
+library(cowplot)
+library(ggplot2)
+library(ggsci)
+library(metan)
+```
+
+```{r specify_paths}
+# Set general output paths to all analysis files
+test.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/analysis/tests"
+
+u_stability.path <- file.path(test.path, "test_U_stability")
+u_stability_par.path <- file.path(test.path, "test_U_stability_par")
+```
+
+```{r helper_fnc}
+# Define fnc to read in all modules and save into dataframe
+read_results <- function(file, type){
+  # Depending which test run different helper columns are added
+  if(type=="size"){
+    rep_name <- str_split(file, "/")[[1]][10]
+  } else if(type=="par"){
+    k_name <- str_split(file, "/")[[1]][10]
+    rep_name <- str_split(file, "/")[[1]][11]
+  }
+      
+  temp.df <- read.csv(file) 
+  temp.df <- temp.df %>%
+    dplyr::rename(protein=X) %>%
+    dplyr::rename_with(~gsub("X", "", .x, fixed=TRUE)) %>%
+    melt(id="protein") %>%
+    mutate(rep=rep_name)
+  
+  if(type=="par"){
+    temp.df <- temp.df %>%
+    mutate(k=k_name)
+  }
+  
+  temp.df
+}
+
+compare_cor <- function(A, B){
+    sum(abs(A - B))
+}
+```
+
+```{r plot_defaults}
+# Define fnc for heatmap colours
+col_fun <- colorRamp2(c(0, 0.14, 0.4, 0.8), c("grey", "grey","red", "purple"))
+```
+
+## U stability analysis
+
+### Using different training data sizes
+
+Read in results from the stability analysis of U using different training data sizes 
+(U_stability.ipynb) into dataframe and plot.
+
+```{r read_u_stability_size}
+# Read .csv file
+u_stability.df <- read.csv(file.path(u_stability.path, "results.csv"))
+
+# Read in segmentation SCE results
+u_stability_modules.path <- list.files(file.path(u_stability.path, "162624"), 'gene_modules.csv', 
+                                      full.names=TRUE, recursive=TRUE)
+u_stability.modules <- lapply(u_stability_modules.path, read_results, type="size") %>% bind_rows()
+```
+
+```{r plot_u_stability_size}
+# Reshape correlation distances for plotting
+u_stability.long <- u_stability.df %>%
+  dplyr::select(-X) %>%
+  dplyr::rename_with(~ gsub('X', '', .x)) %>%
+  melt() %>%
+  dplyr::rename(train_size=variable, distance=value) %>%
+  mutate(train_size=strtoi(train_size))
+  
+# Plot stability of U
+ggplot(u_stability.long, aes(train_size, distance)) +
+  geom_point() +
+  geom_smooth(method=lm, colour=pal_npg("nrc")(1)) +
+  theme_cowplot() +
+  labs(x="Training size", y="Correlation distance")
+```
+
+```{r plot_u_stability_size_2}
+# Create empty HeatmapList and add all folds as individual heatmaps
+ht_list = NULL  
+for(r in unique(u_stability.modules$rep)) {
+  res.temp <- u_stability.modules %>%
+    filter(rep==r) %>%
+    dplyr::select(-c("rep")) %>%
+    pivot_wider(names_from = variable, values_from = value) %>%
+    column_to_rownames(var="protein") %>%
+    as.matrix()
+  
+  ht_list = ht_list + Heatmap(res.temp, column_title = paste0("Rep ", r, 
+                                                              "\n(dictionary size: ", 
+                                                              ncol(res.temp), ")"),
+                              col=col_fun, show_heatmap_legend=FALSE, 
+                              show_row_dend=FALSE, row_names_gp=gpar(fontsize = 7),
+                              column_names_gp=gpar(fontsize=6),
+                              column_title_gp=gpar(fontsize=8))
+}
+
+# Draw all heatmaps together
+draw(ht_list, heatmap_legend_list=list(Legend(col_fun=col_fun, title="Value")))
+```
+
+### Using different parameters
+
+Read in results from the stability analysis of U using different parameters
+(U_stability.ipynb) into dataframe and plot.
+
+#### k (sparsity)
+
+```{r read_u_stability_k}
+# Define path for results of different k's (sparsity)
+u_stability_k.path <- file.path(u_stability_par.path, "k")
+
+# Read in segmentation SCE results
+u_stability_modules_k.path <- list.files(u_stability_k.path, 'gene_modules.csv',
+                                         full.names=TRUE, recursive=TRUE)
+u_stability_k.modules <- lapply(u_stability_modules_k.path, read_results, type="par") %>% bind_rows()
+```
+
+```{r plot_u_stability_k}
+# Empty list to save correlation matrices
+u_stability_k.cor <- list()
+
+for (k_iter in unique(u_stability_k.modules$k)) {
+  temp_list <-  list()
+  
+  # Create empty HeatmapList and add all repetitions as individual heatmaps
+  ht_list = NULL
+  for(r in unique(u_stability_k.modules$rep)) {
+    res.temp <- u_stability_k.modules %>%
+      filter(rep==r & k==k_iter) %>%
+      dplyr::select(-c("rep", "k")) %>%
+      pivot_wider(names_from = variable, values_from = value) %>%
+      column_to_rownames(var="protein") %>%
+      as.matrix()
+    
+    ht_list = ht_list + Heatmap(res.temp, column_title = paste0("Rep ", r, 
+                                                                "\n(dictionary size: ", 
+                                                                ncol(res.temp), ")"),
+                                col=col_fun, show_heatmap_legend=FALSE, 
+                                show_row_dend=FALSE, row_names_gp=gpar(fontsize = 7),
+                                column_names_gp=gpar(fontsize=6),
+                                column_title_gp=gpar(fontsize=8))
+    
+    
+    temp_list[[length(temp_list)+1]] <- cor(t(res.temp))
+  }
+  
+  # Draw all heatmaps together
+  draw(ht_list, heatmap_legend_list=list(Legend(col_fun=col_fun, title="Value")),
+       column_title = paste0("k = ", k_iter))
+  
+  u_stability_k.cor[[length(u_stability_k.cor)+1]] <- temp_list
+}
+
+names(u_stability_k.cor) <- unique(u_stability_k.modules$k)
+```
+
+```{r plot_u_stability_k_cor}
+# Compute all pairwise distances between correlation matrices of repetions for
+# each k
+u_stability_k.dist <- as.data.frame(lapply(u_stability_k.cor, function(l){
+  temp_comp <- sapply(l, function(x) sapply(l, function(y) compare_cor(x, y)))
+  temp_comp[upper.tri(temp_comp)]
+})) %>%
+  dplyr::rename_with(~gsub("X", "", .x, fixed=TRUE)) %>%
+  melt() %>%
+  dplyr::rename(k=variable, distance=value)
+u_stability_k.dist <- u_stability_k.dist %>%
+  mutate(k=factor(k, levels=sort(as.integer(unique(u_stability_k.dist$k)))))
+  
+ggplot(u_stability_k.dist, aes(x=k, y=distance, fill=k)) +
+  geom_boxplot() +
+  scale_fill_npg() +
+  theme_cowplot()
+```
+```{r plot_u_stability_k_mantel}
+for (n in names(u_stability_k.cor)) {
+  mantel_plot <- as.lpcor(u_stability_k.cor[[n]][[1]],
+                          u_stability_k.cor[[n]][[2]],
+                          u_stability_k.cor[[n]][[3]],
+                          u_stability_k.cor[[n]][[4]],
+                          u_stability_k.cor[[n]][[5]],
+                          u_stability_k.cor[[n]][[6]],
+                          u_stability_k.cor[[n]][[7]],
+                          u_stability_k.cor[[n]][[8]],
+                          u_stability_k.cor[[n]][[9]],
+                          u_stability_k.cor[[n]][[10]]) %>%
+    pairs_mantel(diag = TRUE,
+                 pan.spacing = 0,
+                 shape.point = 21,
+                 col.point = "black",
+                 fill.point = "red",
+                 size.point = 1.5,
+                 alpha.point = 0.6,
+                 main = "My own plot",
+                 alpha = 0.2)
+  print(mantel_plot)
+  
+}
+```
+

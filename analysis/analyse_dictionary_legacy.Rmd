@@ -1,0 +1,88 @@
+---
+title: "Analyse Training"
+output: html_document
+date: '2022-06-10'
+---
+
+## Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load libraries
+library(tidyverse)
+library(cowplot)
+library(reshape2)
+library(stringr)
+library(ComplexHeatmap)
+library(circlize)
+```
+
+```{r specify_paths}
+training.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/training"
+
+segmentationSCE.path <- file.path(training.path, "segmentation/sce")
+```
+
+```{r plot_defaults}
+# Define fnc for heatmap colours
+col_fun <- colorRamp2(c(0, 0.14, 0.4, 0.8), c("grey", "grey","red", "purple"))
+```
+
+## Read in training data
+
+Read in U (dictionary) and A/Phi (composite measurements) from different cross-validation
+folds and both interrupted and uninterrupted training.
+
+```{r read_input}
+# Define fnc to read in all modules and save into dataframe
+read_results <- function(file){
+  fold_name <- gsub(".*_", "", str_split(file, "/")[[1]][9])
+  
+  temp.df <- read.csv(file) 
+  temp.df <- temp.df %>%
+    dplyr::rename(protein=X) %>%
+    dplyr::rename_with(~gsub("X", "", .x, fixed=TRUE)) %>%
+    melt(id="protein") %>%
+    mutate(fold=fold_name) %>%
+    mutate(version=str_split(file, "/")[[1]][8])
+  
+  temp.df
+}
+
+# Read in segmentation SCE results
+segmentationSCE.modules <- list.files(segmentationSCE.path, 'gene_modules.csv', 
+                                      full.names=TRUE, recursive=TRUE)
+results <- lapply(segmentationSCE.modules, read_results) %>% bind_rows()
+```
+
+
+## Best versions according to evaluation metric
+
+```{r best_results}
+# Only select files from uninterrupted sce ran
+results.sce <- results %>%
+  filter(version=="sce")
+
+# Create empty HeatmapList and add all folds as individual heatmaps
+ht_list = NULL  
+for(f in unique(results.sce$fold)) {
+  res.temp <- results.sce %>%
+    filter(fold==f) %>%
+    dplyr::select(-c("fold", "version")) %>%
+    pivot_wider(names_from = variable, values_from = value) %>%
+    column_to_rownames(var="protein") %>%
+    as.matrix()
+  
+  ht_list = ht_list + Heatmap(res.temp, column_title = paste0("Fold ", f, 
+                                                              "\n(dictionary size: ", 
+                                                              ncol(res.temp), ")"),
+                              col=col_fun, show_heatmap_legend=FALSE, 
+                              show_row_dend=FALSE, row_names_gp=gpar(fontsize = 10),
+                              column_names_gp=gpar(fontsize=10))
+}
+
+# Draw all heatmaps together
+draw(ht_list, heatmap_legend_list=list(Legend(col_fun=col_fun, title="Value")))
+```
+
