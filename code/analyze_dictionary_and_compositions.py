@@ -73,6 +73,7 @@ def analyze_U_and_A(X_input, U, Phi, outpath, lasso_sparsity=0.2, THREADS=20,
         y = get_observations(X_test, phi, snr=5)
         w = sparse_decode(y, phi.dot(U), sparsity, method='lasso', numThreads=THREADS)
         x2 = U.dot(w)
+        np.savetxt(os.path.join(path, 'simulatedX_'+str(i)+'.csv'), x2, delimiter=",")
         results = compare_results(X_test, x2)
         f2.write('\t'.join([str(x) for x in [i]+results+[d_gene[i]]]) + '\n')
 

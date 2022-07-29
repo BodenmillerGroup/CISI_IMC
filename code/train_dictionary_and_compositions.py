@@ -155,7 +155,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
     # Compute pairwise conditional probabilities between proteins/channels
     cond_prob = make_cond_prob(X, outpath, threshold_cond_prob)
 
-    return training_res, training_res_comp, cor, cond_prob
+    return training_res, training_res_comp, U_best, Phi_best, X_test.obs.index
 
 
 # Function splitting X into training, validate and test either by 'roi' or 'percentage'
