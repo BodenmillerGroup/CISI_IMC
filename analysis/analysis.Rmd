@@ -19,10 +19,10 @@ library(metan)
 
 ```{r specify_paths}
 # Set general output paths to all analysis files
-test.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/analysis/tests"
+test.path <- "/mnt/bb_dqbm_volume/analysis"
 
-u_stability.path <- file.path(test.path, "test_U_stability")
-u_stability_par.path <- file.path(test.path, "test_U_stability_par")
+u_stability.path <- file.path(test.path, "Tonsil_th152/analysis/tests/test_U_stability")
+u_stability_par.path <- file.path(test.path, "Tonsil_th152/analysis/tests/test_U_stability_par")
 ```
 
 ```{r helper_fnc}
