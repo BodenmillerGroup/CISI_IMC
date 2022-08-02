@@ -34,7 +34,7 @@ outputs:
     simulation_results.txt: Performance analysis
 '''
 
-def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2, 
+def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
                     THREADS=20, layer=None):
     # Select layer of anndata object that should be used and transpose it
     # to proteins x cells/channels
@@ -56,6 +56,10 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
     # Create output directories if necessary
     path = Path(outpath)
     path.mkdir(parents=True, exist_ok=True)
+
+    # Write x_test to file for analysis
+    np.savetxt(os.path.join(path, 'X_test.csv'), X_test, delimiter=",")
+
     # Write output to file
     f2 = open(os.path.join(path, 'simulation_results.txt'), 'w')
     f3 = open(os.path.join(path, 'composite_simulation_results.txt'), 'w')
@@ -77,16 +81,16 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
         x2 = U.dot(w)
         np.savetxt(os.path.join(path, 'simulatedX_'+str(i)+'.csv'), x2, delimiter=",")
         results = compare_results(X_test, x2)
-        f2.write('\t'.join([str(x) for x in versions[i]+results+[d_gene[i]]]+k) + '\n')
+        f2.write('\t'.join([str(x) for x in [versions[i]]+results+[d_gene[i]]+[k]]) + '\n')
 
         y_comp = simulate_composite_measurements(X_test, phi)
         x2_comp = decompress(y_comp, U, phi)
         results_comp = compare_results(X_test, x2_comp)
-        f3.write('\t'.join([str(x) for x in versions[i]+results_comp+[d_gene[i]]]+k) + '\n')
+        f3.write('\t'.join([str(x) for x in [versions[i]]+results_comp+[d_gene[i]]+[k]]) + '\n')
 
         # Add results to pandas df
-        results_df.loc[len(results_df)] = versions[i]+results+[d_gene[i]] + k
-        results_comp_df.loc[len(results_comp_df)] = versions[i]+results_comp+[d_gene[i]] + k
+        results_df.loc[len(results_df)] = [versions[i]]+results+[d_gene[i]] + [k]
+        results_comp_df.loc[len(results_comp_df)] = [versions[i]]+results_comp+[d_gene[i]] + [k]
 
     f2.close()
     f3.close()

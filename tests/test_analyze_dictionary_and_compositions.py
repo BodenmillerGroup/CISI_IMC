@@ -23,9 +23,10 @@ class TestPerformanceUandA(unittest.TestCase):
     def test_analyze_dictionary_and_composition(self):
         P = [np.loadtxt(os.path.join('data/compositions_A/version_16.txt'),
                         skiprows=1, usecols=list(range(2, 45)))]
-        results = analyze_U_and_A(X_input=ad.read_h5ad('data/test.h5ad'),
-                                  U=np.array(np.load('data/gene_modules.npy')),
-                                  Phi=P, outpath='data')
+        results, results_comp = analyze_U_and_A(X_input=ad.read_h5ad('data/test.h5ad'),
+                                                U=np.array(np.load('data/gene_modules.npy')),
+                                                Phi=P, versions=[16], outpath='data',
+                                                k=2)
         print(results)
         self.assertTrue(check_file('data/simulation_results.txt', [".txt"]))
 
