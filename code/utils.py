@@ -30,14 +30,8 @@ def check_file(file_path, extension):
 
 
 # Simulate composite measurements using composite matrix A assuming no noise
-def simulate_composite_measurements(X_input, phi, layer=None):
-    # Select layer of anndata object that should be used to simulate the
-    # composite measurements
-    if layer is not None:
-        X = (X_input.layers[layer]).T
-    else:
-        X = (X_input.X).T
-
+def simulate_composite_measurements(X, phi):
+    # Simulate composite measurements
     return phi.dot(X)
 
 

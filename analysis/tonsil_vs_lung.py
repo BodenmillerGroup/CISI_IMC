@@ -3,10 +3,11 @@ import anndata as ad
 from pathlib import Path
 import errno
 import os
+import numpy as np
 
 
 # Helper fncs
-import analysis_utils
+import helpers.analysis_utils
 
 
 ## CISI
@@ -27,9 +28,9 @@ from analyze_dictionary_and_compositions import analyze_U_and_A
 
 # Specify input paths
 data_path = Path('/mnt/bb_dqbm_volume')
-tonsil_path = Path(os.path.join(training_data_path,
-                                'data/Tonsil_th152/preprocessed_data/sce.h5ad'))
-lung_path = Path(os.path.join(training_data_path,
+tonsil_path = Path(os.path.join(data_path,
+                                'data/Tonsil_th152/preprocessed_data/spe.h5ad'))
+lung_path = Path(os.path.join(data_path,
                               'data/Immucan_lung/Lung_sce.h5ad'))
 
 # Specify output path
@@ -39,11 +40,11 @@ out_path.mkdir(parents=True, exist_ok=True)
 
 
 # Check that input files/dictionary exist
-if not analysis_utils.is_valid_file(tonsil_path, ['.h5ad']):
+if not helpers.analysis_utils.is_valid_file(tonsil_path, ['.h5ad']):
     # If file is not found, throw error
     raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
                             tonsil_path)
-if not analysis_utils.is_valid_file(lung_path, ['.h5ad']):
+if not helpers.analysis_utils.is_valid_file(lung_path, ['.h5ad']):
     # If file is not found, throw error
     raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
                             lung_path)
@@ -77,7 +78,7 @@ sce_lung = sce_lung[(np.random.choice(range(sce_lung.n_obs), sce_tonsil.n_obs,
  U_best_lung, Phi_best_lung,
  X_test_lung) = train_U_and_A(sce_lung,
                                         os.path.join(out_path,
-                                                     'Tonsil_th152/training/subset'),
+                                                     'Immucan_lung/training/subset'),
                                         split_by='percentage', k_cv=4, test_size=0.2)
 
 

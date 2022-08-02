@@ -107,6 +107,8 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
     # Do crossvalidation to determine best U, Phi/A
     U_best = None
     Phi_best = None
+    k_best = None
+    version_best = None
     all_pearson_cor = [0] * k_cv
     for k in range(k_cv):
         # Initialize progress bar
@@ -126,9 +128,10 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
             bar()
 
             # Compute A
-            Phi, pearson_cor = compute_A(X_validate, U, nmeasurements, maxcomposition, mode_phi,
-                                  lasso_sparsity, os.path.join(outpath, 'crossvalidation_'+str(k)),
-                                  THREADS_A, layer, num_phi, binary)
+            Phi, pearson_co, versions = compute_A(X_validate, U, nmeasurements, maxcomposition, 
+                                                  mode_phi, lasso_sparsity, 
+                                                  os.path.join(outpath, 'crossvalidation_'+str(k)),
+                                                  THREADS_A, layer, num_phi, binary)
             # Mark step for progressbar
             bar()
 
@@ -136,6 +139,8 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
             if pearson_cor > max(cor for cor in all_pearson_cor if cor is not None):
                 U_best = U
                 Phi_best = Phi
+                k_best = k
+                version_best
             all_pearson_cor[k] = pearson_cor
 
             # Mark step for progressbar
@@ -147,7 +152,8 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
 
     # Analize training
     training_res, training_res_comp = analyze_U_and_A(X_test, U_best, [Phi_best],
-                                                      outpath, lasso_sparsity,
+                                                      [version_best], outpath, k_best, 
+                                                      lasso_sparsity,
                                                       THREADS_A_and_U)
 
     # Calculate pairwise protein correlations

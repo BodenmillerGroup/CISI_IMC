@@ -133,7 +133,7 @@ def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsit
                 f1.write('\t'.join(genes) + '\n')
             f1.close()
 
-    return Phi[0], best[0]
+    return Phi[0], best[0], xs[0]
 
 # For mode 'M': Create random A matrix with at most n[1] selected proteins
 # per channel (at most n[1] 1s per row)

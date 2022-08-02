@@ -3,7 +3,7 @@ import numpy as np
 from analyze_predictions import *
 
 # Import libraries (additionaly added)
-from utils import sparse_decode, compare_results, get_observations
+from utils import sparse_decode, compare_results, get_observations, simulate_composite_measurements
 from decompress import decompress
 from pathlib import Path
 import sys
@@ -26,14 +26,16 @@ inputs:
     THREADS: # Number of threads used (default=20)
     outpath: If specified, the best 50 U versions are saved as .txt files in
              compositions_A folder
+    k: Which crossvalidation led to best results
+    versions: list containing versions of phi's in Phi
 
 outputs:
     results_df: All performance analyis in one pandas df
     simulation_results.txt: Performance analysis
 '''
 
-def analyze_U_and_A(X_input, U, Phi, outpath, lasso_sparsity=0.2, THREADS=20,
-                    layer=None):
+def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2, 
+                    THREADS=20, layer=None):
     # Select layer of anndata object that should be used and transpose it
     # to proteins x cells/channels
     if layer is not None:
@@ -60,7 +62,7 @@ def analyze_U_and_A(X_input, U, Phi, outpath, lasso_sparsity=0.2, THREADS=20,
     colnames = ['version', 'Overall pearson', 'Overall spearman', 'Gene average',
                 'Sample average', 'Sample dist pearson', 'Sample dist spearman',
                 'Gene dist pearson', 'Gene dist spearman',
-                'Matrix coherence (90th ptile)']
+                'Matrix coherence (90th ptile)', 'Best crossvalidation fold']
     f2.write('\t'.join(colnames) + '\n')
     f3.write('\t'.join(colnames) + '\n')
 
@@ -75,16 +77,16 @@ def analyze_U_and_A(X_input, U, Phi, outpath, lasso_sparsity=0.2, THREADS=20,
         x2 = U.dot(w)
         np.savetxt(os.path.join(path, 'simulatedX_'+str(i)+'.csv'), x2, delimiter=",")
         results = compare_results(X_test, x2)
-        f2.write('\t'.join([str(x) for x in [i]+results+[d_gene[i]]]) + '\n')
+        f2.write('\t'.join([str(x) for x in versions[i]+results+[d_gene[i]]]+k) + '\n')
 
         y_comp = simulate_composite_measurements(X_test, phi)
         x2_comp = decompress(y_comp, U, phi)
         results_comp = compare_results(X_test, x2_comp)
-        f3.write('\t'.join([str(x) for x in [i]+results_comp+[d_gene[i]]]) + '\n')
+        f3.write('\t'.join([str(x) for x in versions[i]+results_comp+[d_gene[i]]]+k) + '\n')
 
         # Add results to pandas df
-        results_df.loc[len(results_df)] = [i]+results+[d_gene[i]]
-        results_comp_df.loc[len(results_comp_df)] = [i]+results_comp+[d_gene[i]]
+        results_df.loc[len(results_df)] = versions[i]+results+[d_gene[i]] + k
+        results_comp_df.loc[len(results_comp_df)] = versions[i]+results_comp+[d_gene[i]] + k
 
     f2.close()
     f3.close()
