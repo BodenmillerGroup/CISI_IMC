@@ -55,9 +55,9 @@ sce_tonsil = ad.read_h5ad(tonsil_path)
 sce_lung = ad.read_h5ad(lung_path)
 
 # Remove uninteresting proteins/channels
-sce_tonsil = sce_tonsil[:, ~sce_tonsil.var.index.str.contains('Histone|Ir[0-9]',
+sce_tonsil = sce_tonsil[:, ~sce_tonsil.var.index.str.contains('Histone|Ir[0-9]|E-Cad',
                                                               regex=True, case=False)]
-sce_lung = sce_lung[:, ~sce_lung.var.index.str.contains('Histone|Ir[0-9]',
+sce_lung = sce_lung[:, ~sce_lung.var.index.str.contains('Histone|Ir[0-9]|E-Cad',
                                                         regex=True, case=False)]
 
 # Get intersection of common proteins/channels and randomly select the same amount
