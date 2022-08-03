@@ -128,7 +128,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
             bar()
 
             # Compute A
-            Phi, pearson_co, versions = compute_A(X_validate, U, nmeasurements, maxcomposition, 
+            Phi, pearson_cor, versions = compute_A(X_validate, U, nmeasurements, maxcomposition, 
                                                   mode_phi, lasso_sparsity, 
                                                   os.path.join(outpath, 'crossvalidation_'+str(k)),
                                                   THREADS_A, layer, num_phi, binary)
