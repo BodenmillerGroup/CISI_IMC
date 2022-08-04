@@ -140,7 +140,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
                 U_best = U
                 Phi_best = Phi
                 k_best = k
-                version_best
+                version_best = versions
             all_pearson_cor[k] = pearson_cor
 
             # Mark step for progressbar
