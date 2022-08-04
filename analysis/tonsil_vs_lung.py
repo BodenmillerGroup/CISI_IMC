@@ -67,22 +67,24 @@ sce_tonsil = sce_tonsil[:, intersection_proteins]
 sce_lung = sce_lung[(np.random.choice(range(sce_lung.n_obs), sce_tonsil.n_obs,
                                       replace=False)), intersection_proteins]
 
-# Specify k-sparsity of dictionary used in training
+# Specify k-sparsity of dictionary used in training and name of final folder
+# for each dataset, where results will be saved
 k = 1
+folder_name = "k_1"
 
 # Train CISI
 (training_res_tonsil, training_res_comp_tonsil,
  U_best_tonsil, Phi_best_tonsil,
  X_test_tonsil) = train_U_and_A(sce_tonsil,
                                           os.path.join(out_path,
-                                                       'Tonsil_th152/training/full/k_1'),
+                                                       'Tonsil_th152/training/full', folder_name),
                                           split_by='percentage', k_cv=4, test_size=0.2,
                                           lda1=k)
 (training_res_lung, training_res_comp_lung,
  U_best_lung, Phi_best_lung,
  X_test_lung) = train_U_and_A(sce_lung,
                                         os.path.join(out_path,
-                                                     'Immucan_lung/training/subset/k_1'),
+                                                     'Immucan_lung/training/subset', folder_name),
                                         split_by='percentage', k_cv=4, test_size=0.2,
                                         lda1=k)
 
@@ -92,9 +94,11 @@ training_res_lung, training_res_comp_lung = analyze_U_and_A(sce_lung[sce_lung.ob
                                                             U_best_tonsil,
                                                             [Phi_best_tonsil], ["none"],
                                                             os.path.join(out_path,
-                                                                         'tonsil_vs_lung/test_lung/k_1'), "none")
+                                                                         'tonsil_vs_lung/test_lung', folder_name),
+                                                            "none")
 training_res_tonsil, training_res_comp_tonsil = analyze_U_and_A(sce_tonsil[sce_tonsil.obs.index.isin(X_test_tonsil), ],
                                                                 U_best_lung,
                                                                 [Phi_best_lung], ["none"],
                                                                 os.path.join(out_path,
-                                                                             'tonsil_vs_lung/test_tonsil/k_1'), "none")
+                                                                             'tonsil_vs_lung/test_tonsil', 
+                                                                             folder_name), "none")
