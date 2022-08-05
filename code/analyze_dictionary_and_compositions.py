@@ -58,7 +58,7 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
     path.mkdir(parents=True, exist_ok=True)
 
     # Write x_test to file for analysis
-    np.savetxt(os.path.join(path, 'X_test.csv'), X_test, delimiter=",")
+    X_input.write(os.path.join(path, 'X_test.h5ad'))
 
     # Write output to file
     f2 = open(os.path.join(path, 'simulation_results.txt'), 'w')
@@ -79,7 +79,9 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
         y = get_observations(X_test, phi, snr=5)
         w = sparse_decode(y, phi.dot(U), sparsity, method='lasso', numThreads=THREADS)
         x2 = U.dot(w)
-        np.savetxt(os.path.join(path, 'X_simulated_'+str(i)+'.csv'), x2, delimiter=",")
+        x2_anndata = X_input
+        x2_anndata.X = x2.T
+        x2_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
         results = compare_results(X_test, x2)
         f2.write('\t'.join([str(x) for x in [versions[i]]+results+[d_gene[i]]+[k]]) + '\n')
 
