@@ -8,7 +8,7 @@ from scipy.spatial import distance
 from pathlib import Path
 from utils import sparse_decode
 import os
-from scipy.stats import zscore
+# from scipy.stats import zscore
 import pandas as pd
 
 
@@ -76,7 +76,7 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
                 X_mat.max(axis=1, keepdims=True)-X_mat.min(axis=1, keepdims=True)
                 )
         case 'zscore_norm':
-            X = zscore(X_mat, axis=1)
+            X = ((X_mat.T-np.mean(X_mat, axis=1)) / np.std(X_mat, axis=1)).T # zscore(X_mat, axis=1)
         case 'none':
             X = X_mat
         case _:
