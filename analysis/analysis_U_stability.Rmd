@@ -1,0 +1,577 @@
+---
+title: "Analysis of U stability"
+output: html_document
+date: '2027-06-10'
+---
+
+## Setup
+
+```{r setup, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+# Load libraries
+library(tidyverse)
+library(cowplot)
+library(ggplot2)
+library(ggpattern)
+library(ggsci)
+library(metan)
+library(circlize)
+library(utils)
+library(reshape2)
+library(ComplexHeatmap)
+library(stringr)
+library(gridGraphics)
+```
+
+```{r specify_paths}
+# Set general input paths to all analysis files
+analysis.path <- "/mnt/bb_dqbm_volume/analysis"
+
+u_stability.path <- file.path(analysis.path, "Tonsil_th152/tests/test_U_stability")
+u_stability_par.path <- file.path(analysis.path, "Tonsil_th152/tests/test_U_stability_par")
+
+# Set path to masks
+masks_tonsil.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell"
+#masks_lung.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell"
+```
+
+```{r helper_fnc}
+# Define fnc to read in all modules and save into dataframe
+read_U <- function(file, type){
+  # Depending which test run different helper columns are added
+  if(type=="size"){
+    k_name <- gsub("k_", "", str_split(file, "/")[[1]][8])
+    rep_name <- str_split(file, "/")[[1]][10]
+    size_name <- str_split(file, "/")[[1]][9]
+  } else if(type=="par"){
+    k_name <- str_split(file, "/")[[1]][9]
+    rep_name <- str_split(file, "/")[[1]][10]
+  } else if(type=="training") {
+    k_name <- gsub("k_", "", str_split(file, "/")[[1]][8])
+    rep_name <- str_split(file, "/")[[1]][5]
+  }
+      
+  temp.df <- read.csv(file) 
+  temp.df <- temp.df %>%
+    dplyr::rename(protein=X) %>%
+    dplyr::rename_with(~gsub("X", "", .x, fixed=TRUE)) %>%
+    melt(id="protein") %>%
+    mutate(rep=rep_name)
+  
+  if(type=="par" | type=="training"){
+    temp.df <- temp.df %>%
+    mutate(k=k_name)
+  } else if (type=="size"){
+    temp.df <- temp.df %>%
+    mutate(k=k_name,
+           size=size_name)
+  }
+  
+  temp.df
+}
+
+
+# Function that reads in results .csv file and adjust its just that all results
+# file for the comparison of lung and tonsil can be put into one dataframe
+read_results <- function(file, type){
+  if(grepl("training", file)){
+    dataset_name <- str_split(file, "/")[[1]][5]
+    training_name <- dataset_name
+    k_name <- gsub("k_", "", str_split(file, "/")[[1]][8])
+    
+    if(type=="u"){
+      datasize_name <- gsub("k_", "", str_split(file, "/")[[1]][7])
+    }
+  } else {
+    dataset_name <- gsub(".*_", "", str_split(file, "/")[[1]][6])
+    training_name <- stringi::stri_replace_all_regex(str_split(file, "/")[[1]][5],
+                                         pattern=c(dataset_name, "_vs_"),
+                                         replacement=c("", ""), vectorize=FALSE)
+    k_name <- gsub("k_", "", str_split(file, "/")[[1]][7])
+    if(type=="u"){
+      datasize_name <- NA
+    }
+  }
+  
+  if(type=="u"){
+    res <- read_tsv(file, show_col_types=FALSE) %>%
+      mutate(dataset=dataset_name,
+             training=training_name,
+             simulation=ifelse(grepl("composite", file), "composite", "noisy"),
+             k=k_name,
+             datasize=datasize_name)
+    res[which(res=="none")] <- NA
+    
+  } else if(type=="x") {
+    res <- readH5AD(file)
+    metadata(res) <- list(dataset=dataset_name, training=training_name, k=k_name, 
+                          ground_truth=ifelse(grepl("X_test", file), TRUE, FALSE))
+  }
+  
+  res
+}
+
+
+# Function to compare correlation matrices of proteins in U (all plots using
+# this fnc. are not in the final output .html, since the mantel test is used
+# instead)
+compare_cor <- function(A, B){
+    sum(abs(A - B))
+}
+```
+
+```{r plot_defaults}
+# Define fnc for heatmap colours
+col_fun <- colorRamp2(c(0, 0.14, 0.4, 0.8), c("grey", "grey","red", "purple"))
+```
+
+```{r plot_fnc}
+plot_U <- function(df, iter_var, repetition){
+  # Empty list to save correlation matrices
+  df.cor <- list()
+  
+  for (i in unique(df[[iter_var]])) {
+    cat('#####', iter_var, ' = ', i, '\n')
+    temp_list <-  list()
+    
+    # Create empty HeatmapList and add all repetitions as individual heatmaps
+    ht_list = NULL
+    for(r in unique(df[[repetition]])) {
+      res.temp <- df %>%
+        dplyr::filter(!!as.symbol(repetition)==r & !!as.symbol(iter_var)==i) %>%
+        dplyr::select(-c(repetition, iter_var)) %>%
+        pivot_wider(names_from = variable, values_from = value) %>%
+        column_to_rownames(var="protein") %>%
+        as.matrix()
+      
+      ht_list = ht_list + Heatmap(res.temp, column_title = paste0(str_to_title(repetition), 
+                                                                  " ", r, 
+                                                                  "\n(dictionary size: ", 
+                                                                  ncol(res.temp), ")"),
+                                  col=col_fun, show_heatmap_legend=FALSE, 
+                                  show_row_dend=FALSE, row_names_gp=gpar(fontsize = 8),
+                                  column_names_gp=gpar(fontsize=8),
+                                  column_title_gp=gpar(fontsize=10))
+      
+      
+      temp_list[[length(temp_list)+1]] <- cor(t(res.temp))
+    }
+    
+    # Draw all heatmaps together
+    draw(ht_list, heatmap_legend_list=list(Legend(col_fun=col_fun, title="Value")),
+         column_title = paste0(iter_var, " = ", i))
+    
+    df.cor[[length(df.cor)+1]] <- temp_list
+    cat('\n\n')
+  }
+  
+  names(df.cor) <- unique(df[[iter_var]])
+  df.cor  
+}
+
+plot_dist_boxplot <- function(df, x_lab){
+  # Compute all pairwise distances between correlation matrices of repetions for
+  # each k
+  df.dist <- data.frame((sapply((lapply(df, function(l){
+    temp_comp <- sapply(l, function(x) sapply(l, function(y) compare_cor(x, y)))
+    temp_comp[upper.tri(temp_comp)]
+  })), c))) %>%
+    dplyr::rename_with(~ gsub("X", "", .x, fixed = TRUE)) %>%
+    melt() %>%
+    dplyr::rename(Distance=value)
+  df.dist <- df.dist %>%
+    mutate(variable=factor(df.dist$variable, levels=sort(strtoi(unique(df.dist$variable)))))
+  
+  df.boxplot <- ggplot(df.dist, aes(x=variable, y=Distance, fill=variable)) +
+    geom_boxplot() +
+    scale_fill_npg() +
+    theme_cowplot() +
+    theme(legend.position = "none") +
+    labs(x=x_lab) 
+  
+  df.boxplot
+}
+
+plot_metan_mantel <- function(df, var_name){
+  for (n in names(df)) {
+    cat('##### ', var_name, ' = ', n, '\n')
+    mantel_plot <- as.lpcor(df[[n]][[1]],
+                            df[[n]][[2]],
+                            df[[n]][[3]],
+                            df[[n]][[4]],
+                            df[[n]][[5]],
+                            df[[n]][[6]],
+                            df[[n]][[7]],
+                            df[[n]][[8]],
+                            df[[n]][[9]],
+                            df[[n]][[10]]) %>%
+      pairs_mantel(diag = TRUE,
+                   pan.spacing = 0,
+                   shape.point = 21,
+                   col.point = "black",
+                   fill.point = "red",
+                   size.point = 1.5,
+                   alpha.point = 0.6,
+                   alpha = 0.2)
+    print(mantel_plot)
+    cat('\n\n')
+  }
+}
+
+plot_mantel_boxplot <- function(df, var_name){
+  df.mantel <- data.frame((sapply((lapply(df, function(l){
+    temp_comp <- sapply(l, function(x) sapply(l, function(y) mantel_test(x, y)$mantel_r))
+    temp_comp[upper.tri(temp_comp)]
+  })), c))) %>%
+    dplyr::rename_with(~ gsub("X", "", .x, fixed = TRUE)) %>%
+    melt() %>%
+    dplyr::rename(mantel=value)
+  df.mantel <- df.mantel %>%
+    mutate(variable=factor(df.mantel$variable, levels=sort(strtoi(unique(df.mantel$variable)))))
+  
+  df.mantelBoxplot <- ggplot(df.mantel, aes(x=variable, y=mantel, fill=variable)) +
+    geom_boxplot() +
+    scale_fill_npg() +
+    theme_cowplot() +
+    guides(fill=FALSE) +
+    labs(x=var_name, y=expression(cor["Mantel"])) 
+    
+  df.mantelBoxplot  
+}
+```
+
+## Training Data Size
+
+Read in results from the stability analysis of U using different training data sizes 
+(U_stability.ipynb). We then look at the correlations between each U and the 
+'ground truth', eg. the U computed from the largest training test using the 
+[Mantel test] (https://tiagoolivoto.github.io/metan/reference/mantel_test.html).
+
+```{r read_u_stability_size}
+# Read .csv file
+u_stability.list <- lapply(list.files(u_stability.path, "results.csv", full.names=TRUE, 
+                                    recursive=TRUE), function(file){
+  k_name <- gsub("k_", "", str_split(file, "/")[[1]][8])
+  read_csv(file)[-1] %>% mutate(k=k_name)
+})
+
+# Read in segmentation SCE results
+u_stability_modules.files <- list.files(u_stability.path, "gene_modules.csv",
+                                        full.names=TRUE, recursive=TRUE)
+u_stability.modules <- lapply(u_stability_modules.files, read_U, type="size") %>% bind_rows()
+```
+
+```{r plot_u_stability_size,  fig.height = 8, fig.width = 18, fig.align = "center", include=FALSE}
+# Reshape correlation distances for plotting
+u_stability.long <- lapply(u_stability.list, function(stab){
+  stab %>%
+  melt(id.vars="k") %>%
+  dplyr::rename(train_size=variable, distance=value) %>%
+  mutate(train_size=strtoi(train_size))
+}) %>% bind_rows()
+  
+# Plot stability of U
+ggplot(u_stability.long, aes(train_size, distance)) +
+  geom_point(aes(color=k, fill=k)) +
+  geom_smooth(aes(color=k, fill=k), method="lm") +
+  theme_cowplot() +
+  scale_color_npg() +
+  labs(x="Training size", y="Correlation distance")
+```
+
+### Mantel Test for k=3 and k=1
+
+```{r plot_u_stability_size_mantel, fig.height = 8, fig.width = 18, fig.align = "center"}
+# Calculate mantel test for each U compared to 'ground truth' U of average U
+# using the full data set for all tested k
+u_stability.mantel <- lapply(unique(u_stability.modules$k), function(k_iter){
+  # Empty list to save correlation matrices
+  u_stability.cor <- list()
+  
+  # Go over every training size and replicate
+  for(s in unique(u_stability.modules$size)){
+    temp_list <-  list()
+    for(r in unique(u_stability.modules$rep)) {
+      res.temp <- u_stability.modules %>%
+        dplyr::filter(rep==r & k==k_iter & size==s) %>%
+        dplyr::select(-c("rep", "k", "size")) %>%
+        pivot_wider(names_from = variable, values_from = value) %>%
+        column_to_rownames(var="protein") %>%
+        as.matrix()
+      
+      # Calculate correlation matrix
+      temp_list[[length(temp_list)+1]] <- cor(t(res.temp))
+    }
+    
+    u_stability.cor[[length(u_stability.cor)+1]] <- temp_list
+  }
+  names(u_stability.cor) <- unique(u_stability.modules$size)
+  
+  # Ground truth
+  ground_truth <- Reduce('+', u_stability.cor[["162624"]]) / length(u_stability.cor[["162624"]])
+  
+  # Compute mantel test for every U
+  mantel_temp <- rapply(u_stability.cor, 
+                        function(x, gt) {mantel_test(x, gt)$mantel_r}, 
+                        how="list", gt=ground_truth)
+  mantel_temp <- as.data.frame(do.call(cbind, mantel_temp)) %>%
+    mutate(k=k_iter) %>%
+    mutate_all(unlist)
+
+  mantel_temp
+}) %>% bind_rows() %>%
+  melt(id.vars="k") %>%
+  dplyr::rename(size=variable,
+                mantel_cor=value) 
+
+u_stability.mantel <- u_stability.mantel %>%
+  mutate(size=strtoi(u_stability.mantel$size),
+         mantel_cor=1-mantel_cor)
+
+# Plot stability of U using mantel test results
+u_stability.mantelPlot <- ggplot(u_stability.mantel, aes(size, mantel_cor)) +
+  geom_point(aes(color=k, fill=k)) +
+  geom_smooth(aes(color=k, fill=k), method="lm") +
+  theme_cowplot() +
+  scale_color_npg() +
+  labs(x="Training size", y=expression(1 - cor["Mantel"]))
+u_stability.mantelPlot
+```
+
+## SMAF Parameters
+
+Read in results from the stability analysis of U computed using different parameters
+(U_stability.ipynb). We then look at the heatmap of U and the pairwise correlations 
+between U's using the Mantel test.
+
+### k (W sparsity)
+
+```{r read_u_stability_k}
+# Define path for results of different k's (sparsity)
+u_stability_k.path <- file.path(u_stability_par.path, "k")
+
+# Read in segmentation SCE results
+u_stability_modules_k.files <- list.files(u_stability_k.path, 'gene_modules.csv',
+                                         full.names=TRUE, recursive=TRUE)
+u_stability_k.modules <- lapply(u_stability_modules_k.files, read_U, type="par") %>% bind_rows()
+```
+
+#### Heatmap of U for different k's {.tabset}
+
+```{r plot_u_stability_k, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+# Plot U for different k's
+u_stability_k.cor <- plot_U(u_stability_k.modules, "k", "rep")
+```
+
+```{r plot_u_stability_k_dist,  fig.height = 8, fig.width = 18, fig.align = "center", include=FALSE}
+u_stability_k.boxplot <- plot_dist_boxplot(u_stability_k.cor, "k")
+u_stability_k.boxplot
+```
+
+#### Mantel test for different k's {.tabset}
+
+```{r plot_u_stability_k_mantel, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+plot_metan_mantel(u_stability_k.cor, "k")
+```
+
+The boxplot shows a summary of the above mantel test results, by only looking at the pairwise correlations between any two matrices for each k.
+
+```{r plot_u_stability_k_mantel_boxplot, fig.height = 8, fig.width = 18, fig.align = "center"}
+u_stability_k.mantelBoxplot <- plot_mantel_boxplot(u_stability_k.cor, "k")
+u_stability_k.mantelBoxplot
+```
+
+### maxItr (number of iterations to compute U)
+
+```{r read_u_stability_maxItr}
+# Define path for results of different k's (sparsity)
+u_stability_maxItr.path <- file.path(u_stability_par.path, "maxItr")
+
+# Read in segmentation SCE results
+u_stability_modules_maxItr.files <- list.files(u_stability_maxItr.path, 'gene_modules.csv',
+                                               full.names=TRUE, recursive=TRUE)
+u_stability_modules_maxItr.modules <- lapply(u_stability_modules_maxItr.files, read_U, type="par") %>% 
+  bind_rows() %>%
+  dplyr::rename(maxItr=k)
+```
+
+#### Heatmap of U for different maxItr {.tabset}
+
+```{r plot_u_stability_maxItr, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+# Plot U for different maxItr
+u_stability_maxItr.cor <- plot_U(u_stability_modules_maxItr.modules, "maxItr", "rep")
+```
+
+```{r plot_u_stability_maxItr_dist, fig.height = 8, fig.width = 18, fig.align = "center", include=FALSE}
+u_stability_maxItr.boxplot <- plot_dist_boxplot(u_stability_maxItr.cor, "maxItr")
+u_stability_maxItr.boxplot
+```
+
+#### Mantel test for different maxItr {.tabset}
+
+```{r plot_u_stability_maxItr_mantel, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+plot_metan_mantel(u_stability_maxItr.cor, "maxItr")
+```
+
+The boxplot shows a summary of the above mantel test results, by only looking at the pairwise correlations between any two matrices for each maxItr.
+
+```{r plot_u_stability_maxItr_mantel_boxplot, fig.height = 8, fig.width = 18, fig.align = "center"}
+u_stability_maxItr.mantelBoxplot <- plot_mantel_boxplot(u_stability_maxItr.cor, "maxItr")
+u_stability_maxItr.mantelBoxplot
+```
+
+## Different Datasets
+
+Next, we look at U using different training datasets. For this, we read in the 
+results from CISI training on the Tonsil th152 and the Immucan lung
+dataset (tonsil_vs_lung.py).
+
+```{r read_tonsil_and_lung}
+# Read in all results for tonsil and lung comparison into one dataframe
+tonsil_vs_lung.files <- list.files(analysis.path, 'simulation_results.txt',
+                                         full.names=TRUE, recursive=TRUE)
+# TODO: change this line if more files come along and need to exclude
+tonsil_vs_lung.files <- tonsil_vs_lung.files[grepl(
+  "tonsil_vs_lung|Tonsil_th152/training/full|Immucan_lung/training/subset", tonsil_vs_lung.files)]
+tonsil_vs_lung.res <- lapply(tonsil_vs_lung.files, read_results, type="u") %>% 
+  bind_rows() 
+
+# Get information about best U files
+tonsil_vs_lung.u_files <- tonsil_vs_lung.res %>% 
+  dplyr::filter(dataset==training) %>% 
+  dplyr::select(k, training, `Best crossvalidation fold`, datasize) %>% 
+  distinct()
+
+# Harmonize all dataset names
+patterns <- unique(unlist(lapply(tonsil_vs_lung.res$training, function(name){
+  if(length(str_split(name, "_")[[1]])==1){
+    name
+  }
+})))
+
+tonsil_vs_lung.res$training <- unlist(lapply(tonsil_vs_lung.res$training, function(pat){
+  patterns[str_detect(pat, fixed(patterns, ignore_case=TRUE))]
+}))
+tonsil_vs_lung.res$dataset <- unlist(lapply(tonsil_vs_lung.res$dataset, function(pat){
+  patterns[str_detect(pat, fixed(patterns, ignore_case=TRUE))]
+}))
+
+
+tonsil_vs_lung.u <- lapply(1:(nrow(tonsil_vs_lung.u_files)), function(i){
+  file <- file.path(analysis.path, tonsil_vs_lung.u_files[i, "training"], "training",
+                    tonsil_vs_lung.u_files[i, "datasize"], 
+                    paste0("k_", tonsil_vs_lung.u_files[i, "k"]),
+                    paste0("crossvalidation_", tonsil_vs_lung.u_files[i, "Best crossvalidation fold"]),
+                    "gene_modules.csv")
+  u_temp <- read_U(file, "training")
+}) %>% bind_rows() %>%
+  dplyr::rename(dataset=rep)
+```
+
+#### Results {.tabset}
+
+```{r plot_tonsil_vs_lung_results, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+# For each different measurement of training results, plot a barplot comparing
+# diff. k-sparsities, simulation types and training-test set combinations
+for (measure in names(tonsil_vs_lung.res)[2:10]) {
+  cat('##### ', measure, '\n')
+  
+  # Reorder dataframe for plotting
+  data_temp <- tonsil_vs_lung.res %>%
+    dplyr::select(dataset, training, simulation, k, !!measure) %>%
+    mutate(group=paste(training, dataset, sep="_"))
+  
+  # Create barplot
+  tonsil_vs_lung.barplot <- ggplot(data_temp, aes(x=group, y=!!sym(measure), fill=k, pattern=simulation)) +
+    geom_bar_pattern(stat="identity",
+                   position=position_dodge(preserve="single"),
+                   width=0.6,
+                   color="black", 
+                   pattern_fill="black",
+                   pattern_angle=45,
+                   pattern_density=0.3,
+                   pattern_spacing=0.01,
+                   pattern_key_scale_factor=0.6) +
+    scale_y_continuous(limits=c(0, 1)) +
+    scale_fill_npg() +
+    scale_pattern_manual(values=c(composite="stripe", noisy="none"), 
+                         labels=c("Composite", "Noisy")) +
+    labs(x="Training_Test Dataset", y=str_to_title(measure), pattern="Simulation Type") + 
+    guides(pattern=guide_legend(override.aes=list(fill="white")),
+           fill=guide_legend(override.aes=list(pattern="none"))) +
+    theme_cowplot()
+  
+  print(tonsil_vs_lung.barplot)
+  cat("\n\n")
+}
+```
+
+#### Heatmap of U for different datasets {.tabset}
+
+```{r plot_tonsil_vs_lung_U, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+tonsil_vs_lung.cor <- plot_U(tonsil_vs_lung.u, "k", "dataset")
+```
+
+```{r plot_tonsil_vs_lung_X, fig.height = 20, fig.width = 10, fig.align = "center"}
+# Specify X_test and X_simulated files to be read in
+tonsil_vs_lung_X.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
+# TODO: change this line if more files come along and need to exclude
+tonsil_vs_lung_X.files <- tonsil_vs_lung_X.files[grepl(
+  "tonsil_vs_lung|Tonsil_th152/training/full|Immucan_lung/training/subset", tonsil_vs_lung_X.files)]
+
+# Read in all sce experiments from saved anndata and save additional info in metadata
+# (e.g. which dataset is used in training and testing, which k was used and if it
+# is the ground truth or simulated X)
+tonsil_vs_lung_X.list <- lapply(tonsil_vs_lung_X.files, read_results, type="x")
+tonsil_vs_lung_X.list <- lapply(tonsil_vs_lung_X.list, function(sce.temp){
+  pat <- metadata(sce.temp)
+  metadata(sce.temp)$dataset <- patterns[str_detect(pat$dataset, 
+                                                    fixed(patterns, ignore_case=TRUE))]
+  metadata(sce.temp)$training <- patterns[str_detect(pat$training, 
+                                                     fixed(patterns, ignore_case=TRUE))]
+  
+  sce.temp
+})
+ # Keep in mind: keep(tonsil_vs_lung_X.list, function(x){metadata(x)$training=="lung"})
+
+# Read in masks for tonsil data
+masks.tonsil <- loadImages(masks_tonsil.path, as.is = TRUE)
+mcols(masks.tonsil) <- DataFrame(sample_id=names(masks.tonsil))
+
+
+plot_cells <- function(sce.list, masks.list, poi){
+  
+  colour.cells <- list(el=c(pal_npg("nrc")("8")[8], "#000000"))
+  names(colour.cells) <- poi
+
+  img.list <- list()
+  idx <- c()
+   for(el in sce.list){
+     p <- plotCells(mask=masks.tonsil, object=el,
+                    cell_id="ObjectNumber", img_id="sample_id", colour_by=poi,
+                    return_plot=TRUE,  image_title=list(cex=3),
+                    colour=colour.cells, display="single",
+                    scale_bar=list(cex=3, lwidth=5))
+     p.gg <- lapply(p$plot, function(x){ggdraw(x, clip="on")})
+     img.list <- append(img.list, p.gg)
+     idx <- c(idx, seq_along(p.gg))
+   }
+  
+  idx <- order(idx)
+  img.list[idx]
+}
+
+tonsil_vs_lung_X.plotList <- keep(tonsil_vs_lung_X.list, function(x){
+  metadata(x)$training=="tonsil" & metadata(x)$dataset=="tonsil" & metadata(x)$k=="1"})
+tonsil_vs_lung_X.plotListNames <- ifelse(lapply(tonsil_vs_lung_X.plotList, 
+                                                function(x){metadata(x)$ground_truth})==TRUE, 
+                                         "ground_truth", "simulated")
+tonsil_vs_lung_X.imgList <- plot_cells(tonsil_vs_lung_X.plotList, masks.tonsil, "GranzymeB")
+plot_grid(plotlist=tonsil_vs_lung_X.imgList, ncol=2, labels=tonsil_vs_lung_X.plotListNames,
+          label_size=25, hjust=c(-2.5, -1.8), vjust=1, scale=0.9)#, label_x=0, label_y=0, )
+```
+
+
+
