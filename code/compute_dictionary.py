@@ -35,7 +35,7 @@ inputs:
     doprint: Print correlations between predicted X and real X and some additional info
     normalization: How data is normalized before running smaf (default: paper_norm)
                    Options: paper_norm (normalization used in paper, protein-wise),
-                   min_max_norm (protein-wise), zscore_norm (protein-wise) or none
+                   min_max_norm (protein-wise) or none
     layer: Name of layer in anndata object to be used as X (default: None, =anndata.X)
     others: All other parameters belong to the fnc. call of lasso from spams and
             further information is available on the respective website
@@ -75,8 +75,8 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
             X = (X_mat-X_mat.min(axis=1, keepdims=True)) / (
                 X_mat.max(axis=1, keepdims=True)-X_mat.min(axis=1, keepdims=True)
                 )
-        case 'zscore_norm':
-            X = ((X_mat.T-np.mean(X_mat, axis=1)) / np.std(X_mat, axis=1)).T # zscore(X_mat, axis=1)
+        # case 'zscore_norm':
+        #     X = ((X_mat.T-np.mean(X_mat, axis=1)) / np.std(X_mat, axis=1)).T # zscore(X_mat, axis=1)
         case 'none':
             X = X_mat
         case _:

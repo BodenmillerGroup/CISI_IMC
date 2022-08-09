@@ -79,6 +79,7 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
         y = get_observations(X_test, phi, snr=5)
         w = sparse_decode(y, phi.dot(U), sparsity, method='lasso', numThreads=THREADS)
         x2 = U.dot(w)
+        x2[np.isnan(x2)] = 0
         x2_anndata = X_input
         x2_anndata.X = x2.T
         x2_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))

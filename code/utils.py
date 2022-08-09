@@ -40,7 +40,7 @@ Old functions (from original publication)
 '''
 
 # Fixing U, approximating W
-def sparse_decode(Y, D, k, numThreads, method='omp', worstFit=1., mink=0, nonneg=False):
+def sparse_decode(Y, D, k, numThreads, method='omp', worstFit=1., mink=0, nonneg=True):
     if method == 'omp':
         while k > mink:
             W = spams.omp(np.asfortranarray(Y), np.asfortranarray(D), L=k,
@@ -62,7 +62,7 @@ def sparse_decode(Y, D, k, numThreads, method='omp', worstFit=1., mink=0, nonneg
 
 # Fixing U, approximating W (in blocks)
 def sparse_decode_blocks(Y, D, lda=0.1, numThreads=20, method='omp', worstFit=1.,
-                         mink=0, nonneg=False, num_blocks=20):
+                         mink=0, nonneg=True, num_blocks=20):
 	W = np.zeros((D.shape[1], Y.shape[1]))
 	ynorm = np.linalg.norm(Y, axis=0)
 	xs = np.argsort(ynorm)
