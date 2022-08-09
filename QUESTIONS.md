@@ -13,3 +13,5 @@
 - [ ] Should we look at differences of markers, or even differences in pos/neg classes?
 - [ ] In simulated X, there are very neg values, does that make sense? Should we put them to 0?
 - [ ] What is a good marker to analyse resulting X?
+- [ ] Transfomation for plotting?
+- [ ] What kind of clipping max is done by default in plotCell()?
