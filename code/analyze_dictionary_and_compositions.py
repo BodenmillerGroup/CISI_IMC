@@ -76,20 +76,23 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
 
     for i in xs:
         phi = Phi[i]
+        
         y = get_observations(X_test, phi, snr=5)
-        w = sparse_decode(y, phi.dot(U), sparsity, method='lasso', numThreads=THREADS)
-        x2 = U.dot(w)
+        x2 = decompress(y, U, phi)
         x2[np.isnan(x2)] = 0
-        x2_anndata = X_input
-        x2_anndata.X = x2.T
-        x2_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
         results = compare_results(X_test, x2)
         f2.write('\t'.join([str(x) for x in [versions[i]]+results+[d_gene[i]]+[k]]) + '\n')
 
         y_comp = simulate_composite_measurements(X_test, phi)
         x2_comp = decompress(y_comp, U, phi)
+        x2_comp[np.isnan(x2_comp)] = 0
         results_comp = compare_results(X_test, x2_comp)
         f3.write('\t'.join([str(x) for x in [versions[i]]+results_comp+[d_gene[i]]+[k]]) + '\n')
+
+        # Write x_comp to anndata
+        x2_comp_anndata = X_input
+        x2_comp_anndata.X = x2.T
+        x2_comp_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
 
         # Add results to pandas df
         results_df.loc[len(results_df)] = [versions[i]]+results+[d_gene[i]] + [k]
