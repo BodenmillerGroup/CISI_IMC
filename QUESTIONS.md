@@ -9,7 +9,7 @@
 
 ## Small Team
 
-### 09.08.22
+### 10.08.22
 - [ ] Should we look at differences of markers, or even differences in pos/neg classes?
 - [ ] In simulated X, there are very neg values, does that make sense? Should we put them to 0?
 - [ ] What is a good marker to analyse resulting X?
