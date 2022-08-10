@@ -69,8 +69,8 @@ sce_lung = sce_lung[(np.random.choice(range(sce_lung.n_obs), sce_tonsil.n_obs,
 
 # Specify k-sparsity of dictionary used in training and name of final folder
 # for each dataset, where results will be saved
-k = 3
-folder_name = "k_3"
+k = 1
+folder_name = "k_1"
 
 # Train CISI
 (training_res_tonsil, training_res_comp_tonsil,
