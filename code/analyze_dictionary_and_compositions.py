@@ -91,7 +91,7 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
 
         # Write x_comp to anndata
         x2_comp_anndata = X_input
-        x2_comp_anndata.X = x2.T
+        x2_comp_anndata.X = x2_comp.T
         x2_comp_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
 
         # Add results to pandas df

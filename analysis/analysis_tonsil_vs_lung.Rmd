@@ -1,0 +1,374 @@
+---
+title: "Analysis of Tonsil th152 vs Immucan Lung"
+output: html_document
+date: '2022-08-12'
+---
+
+## Setup
+
+```{r setup, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+# Load libraries
+library(tidyverse)
+library(cowplot)
+library(ggplot2)
+library(ggpattern)
+library(ggsci)
+library(utils)
+library(reshape2)
+library(stringr)
+library(gridGraphics)
+library(zellkonverter)
+library(SingleCellExperiment)
+library(cytomapper)
+library(scater)
+library(ggpubr)
+library(scater)
+```
+
+```{r specify_paths}
+# Set general input paths to all analysis files
+analysis.path <- "/mnt/bb_dqbm_volume/analysis"
+
+# Set path to masks
+masks_tonsil.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell"
+#masks_lung.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell"
+```
+
+```{r helper_fnc}
+# Import helper fncs
+source("../analysis/helpers/helper_fnc.R")
+```
+
+## Different Datasets
+
+Next, we look at U using different training datasets. For this, we read in the 
+results from CISI training on the Tonsil th152 and the Immucan lung
+dataset (tonsil_vs_lung.py).
+
+```{r read_tonsil_and_lung}
+## Read results
+# Read in all results for tonsil and lung comparison into one dataframe
+tonsil_vs_lung.files <- list.files(analysis.path, 'simulation_results.txt',
+                                         full.names=TRUE, recursive=TRUE)
+# TODO: change this line if more files come along and need to exclude
+tonsil_vs_lung.files <- tonsil_vs_lung.files[grepl(
+  "tonsil_vs_lung|Tonsil_th152/training/full|Immucan_lung/training/subset", tonsil_vs_lung.files)]
+tonsil_vs_lung.res <- lapply(tonsil_vs_lung.files, read_results, type="u") %>% 
+  bind_rows() 
+
+# Get information about best U files
+tonsil_vs_lung.u_files <- tonsil_vs_lung.res %>% 
+  dplyr::filter(dataset==training) %>% 
+  dplyr::select(k, training, `Best crossvalidation fold`, datasize) %>% 
+  distinct()
+
+# Harmonize all dataset names
+patterns <- unique(unlist(lapply(tonsil_vs_lung.res$training, function(name){
+  if(length(str_split(name, "_")[[1]])==1){
+    name
+  }
+})))
+
+tonsil_vs_lung.res$training <- unlist(lapply(tonsil_vs_lung.res$training, function(pat){
+  patterns[str_detect(pat, fixed(patterns, ignore_case=TRUE))]
+}))
+tonsil_vs_lung.res$dataset <- unlist(lapply(tonsil_vs_lung.res$dataset, function(pat){
+  patterns[str_detect(pat, fixed(patterns, ignore_case=TRUE))]
+}))
+
+## Read U
+tonsil_vs_lung.u <- lapply(1:(nrow(tonsil_vs_lung.u_files)), function(i){
+  file <- file.path(analysis.path, tonsil_vs_lung.u_files[i, "training"], "training",
+                    tonsil_vs_lung.u_files[i, "datasize"], 
+                    paste0("k_", tonsil_vs_lung.u_files[i, "k"]),
+                    paste0("crossvalidation_", tonsil_vs_lung.u_files[i, "Best crossvalidation fold"]),
+                    "gene_modules.csv")
+  u_temp <- read_U(file, "training")
+}) %>% bind_rows() %>%
+  dplyr::rename(dataset=rep)
+
+## Read X_test and X_simulated
+# Specify X_test and X_simulated files to be read in
+tonsil_vs_lung_X.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
+# TODO: change this line if more files come along and need to exclude
+tonsil_vs_lung_X.files <- tonsil_vs_lung_X.files[grepl(
+  "tonsil_vs_lung|Tonsil_th152/training/full|Immucan_lung/training/subset", tonsil_vs_lung_X.files)]
+
+# Read in all sce experiments from saved anndata and save additional info in metadata
+# (e.g. which dataset is used in training and testing, which k was used and if it
+# is the ground truth or simulated X)
+# Remove neg. values and transform counts?
+tonsil_vs_lung_X.list <- lapply(tonsil_vs_lung_X.files, read_results, type="x")
+tonsil_vs_lung_X.list <- lapply(tonsil_vs_lung_X.list, function(sce.temp){
+  pat <- metadata(sce.temp)
+  metadata(sce.temp)$dataset <- patterns[str_detect(pat$dataset, 
+                                                    fixed(patterns, ignore_case=TRUE))]
+  metadata(sce.temp)$training <- patterns[str_detect(pat$training, 
+                                                     fixed(patterns, ignore_case=TRUE))]
+  # TODO: Remove negative values? Add transformed counts?
+  # counts(sce.temp) <- pmax(counts(sce.temp), 0)
+  assay.name <- names(assays(sce.temp))
+  for (a in assay.name[-1]) {
+    assay(sce.temp, a) <- NULL
+  }
+  assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
+  
+  sce.temp
+})
+
+# Add reduced dimensions
+set.seed(220225)
+tonsil_vs_lung_X.list <- lapply(tonsil_vs_lung_X.list, function(sce){
+  sce <- runUMAP(sce, exprs_values="exprs") 
+  sce <- runTSNE(sce, exprs_values="exprs")
+  sce
+})
+
+## Read masks
+# Read in masks for tonsil data
+masks.tonsil <- loadImages(masks_tonsil.path, as.is = TRUE)
+mcols(masks.tonsil) <- DataFrame(sample_id=names(masks.tonsil))
+```
+
+#### Results {.tabset}
+
+```{r plot_tonsil_vs_lung_results, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+# For each different measurement of training results, plot a barplot comparing
+# diff. k-sparsities, simulation types and training-test set combinations
+for (measure in names(tonsil_vs_lung.res)[2:10]) {
+  cat('##### ', measure, '\n')
+  
+  # Reorder dataframe for plotting
+  data_temp <- tonsil_vs_lung.res %>%
+    dplyr::select(dataset, training, simulation, k, !!measure) %>%
+    mutate(group=paste(training, dataset, sep="_"))
+  
+  # Create barplot
+  tonsil_vs_lung.barplot <- ggplot(data_temp, aes(x=group, y=!!sym(measure), fill=k, pattern=simulation)) +
+    geom_bar_pattern(stat="identity",
+                   position=position_dodge(preserve="single"),
+                   width=0.6,
+                   color="black", 
+                   pattern_fill="black",
+                   pattern_angle=45,
+                   pattern_density=0.3,
+                   pattern_spacing=0.01,
+                   pattern_key_scale_factor=0.6) +
+    scale_y_continuous(limits=c(0, 1)) +
+    scale_fill_npg() +
+    scale_pattern_manual(values=c(composite="stripe", noisy="none"), 
+                         labels=c("Composite", "Noisy")) +
+    labs(x="Training_Test Dataset", y=str_to_title(measure), pattern="Simulation Type") + 
+    guides(pattern=guide_legend(override.aes=list(fill="white")),
+           fill=guide_legend(override.aes=list(pattern="none"))) +
+    theme_cowplot()
+  
+  print(tonsil_vs_lung.barplot)
+  cat("\n\n")
+}
+```
+
+#### Heatmap of U for Different Datasets {.tabset}
+
+```{r plot_tonsil_vs_lung_U, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+tonsil_vs_lung.cor <- plot_U(tonsil_vs_lung.u, "k", "dataset")
+```
+
+#### Module Comparison for Different Datasets {.tabset}
+
+```{r plot_tonsil_vs_lung_module_comparison, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+plot_U_membership(tonsil_vs_lung.u, "k", "dataset")
+```
+
+#### Mantel Test between U for Different Datasets
+
+```{r tonsil_vs_lung_mantel, fig.height = 8, fig.width = 18, fig.align = "center"}
+# Calculate mantel test between U's of tonsil and lung for all k's
+tonsil_vs_lung.mantel <- lapply(tonsil_vs_lung.cor, function(l){
+  mantel_test(l[[1]], l[[2]])$mantel_r
+  }) %>%
+  as.data.frame(col.names=names(tonsil_vs_lung.cor), check.names=FALSE)
+
+knitr::kable(tonsil_vs_lung.mantel, digits=2,
+             col.names=paste0("k = ", names(tonsil_vs_lung.mantel)))
+```
+
+#### CD20 of Test Image (Tonsil th152)
+
+```{r plot_tonsil_vs_lung_X, fig.height = 10, fig.width = 10, fig.align = "center", fig.keep="last"}
+# Subset to training and test of tonsil data
+tonsil_vs_lung_X.plotList <- keep(tonsil_vs_lung_X.list, function(x){
+  metadata(x)$training=="tonsil" & metadata(x)$dataset=="tonsil" & metadata(x)$k=="1"})
+names(tonsil_vs_lung_X.plotList) <- lapply(tonsil_vs_lung_X.plotList, 
+                                           function(x){metadata(x)$ground_truth})
+# Call plot_cells to get individual plots for each roi for decomposed and true
+# results
+tonsil_vs_lung_X.imgList <- plot_cells(tonsil_vs_lung_X.plotList, masks.tonsil, 
+                                       "CD20")
+# Plot decomposed vs true results for test roi (002)
+tonsil_vs_lung_X.img <- plot_grid(plotlist=append(tonsil_vs_lung_X.imgList[grepl("20220520_TsH_th152_cisi1_002",
+                                                                                       names(tonsil_vs_lung_X.imgList))],
+                                                        tonsil_vs_lung_X.imgList[grepl("legend",
+                                                                                       names(tonsil_vs_lung_X.imgList))]),
+                                          ncol=2, labels=names(tonsil_vs_lung_X.plotList),
+                                          label_size=15, hjust=c(-2, -1.5), 
+                                          vjust=1, scale=0.9)
+tonsil_vs_lung_X.img
+```
+
+#### CD20 of Test Image Overlayed (Tonsil th152)
+
+```{r plot_tonsil_vs_lung_X_diff, fig.height = 7, fig.width = 10, fig.align = "center", fig.keep="last"}
+# Rename list of tonsil data for nicer titles in plotting
+tonsil_vs_lung_X.plotListRenamed <- lapply(names(tonsil_vs_lung_X.plotList), function(n){
+  rownames(tonsil_vs_lung_X.plotList[[n]]) <- paste(rownames(tonsil_vs_lung_X.plotList[[n]]),
+                                                    n, sep="\n")
+  reducedDim(tonsil_vs_lung_X.plotList[[n]], "UMAP") <- NULL
+  reducedDim(tonsil_vs_lung_X.plotList[[n]], "TSNE") <- NULL
+  tonsil_vs_lung_X.plotList[[n]]
+})
+names(tonsil_vs_lung_X.plotListRenamed) <- names(tonsil_vs_lung_X.plotList)
+# Add decomposed and true dataset of tonsil into one SCE
+tonsil_vs_lung_X.overlayed <- do.call("rbind", tonsil_vs_lung_X.plotListRenamed)
+
+# Define protein of interest
+pois <- c("CD20\nsimulated", "CD20\nground_truth")
+
+# Plot cells coloured according to decomposed and true poi values 
+# (if similar in both should have a mixture of colours, e.g. orange) 
+tonsil_vs_lung_X.imgDiff <- plotCells(mask=masks.tonsil[unique(colData(tonsil_vs_lung_X.overlayed)$sample_id)], 
+                                      object=tonsil_vs_lung_X.overlayed,
+                                      cell_id="ObjectNumber", img_id="sample_id", colour_by=pois,
+                                      return_plot=TRUE,  image_title=list(cex=1),
+                                      scale_bar=list(cex=1, lwidth=5),
+                                      legend=list(colour_by.title.cex=0.7, colour_by.labels.cex=0.7))
+
+ggdraw(tonsil_vs_lung_X.imgDiff$plot)
+```
+
+#### Scatterplots of asinh Transformed Counts
+
+Plot of asinh transformed counts coloured by defined celltype.
+
+```{r plot_tonsil_vs_lung_scatterplots, fig.height = 12, fig.width = 10, fig.align = "center"}
+# Subset to dataset trained and tested on the Immucan lung dataset
+tonsil_vs_lung_X.exprsList <- keep(tonsil_vs_lung_X.list, function(x){
+  metadata(x)$training=="lung" & metadata(x)$dataset=="lung" & metadata(x)$k=="1"})
+names(tonsil_vs_lung_X.exprsList) <- lapply(tonsil_vs_lung_X.exprsList,
+                                            function(x){metadata(x)$ground_truth})
+
+# Plot asinh transformed counts of proteins of interest of decomposed and true 
+# datasets coloured by different celltypes
+tonsil_vs_lung_X.Exprs <- plot_grid(plot_exprs(tonsil_vs_lung_X.exprsList, "B", "CD3", "CD20"),
+                                    plot_exprs(tonsil_vs_lung_X.exprsList, "BnT", "CD3", "CD20"),
+                                    plot_exprs(tonsil_vs_lung_X.exprsList, "Neutro", "MPO", "CD15"),
+                                    ncol=1)
+print(tonsil_vs_lung_X.Exprs)
+```
+
+#### Results per Protein for Different Datasets {.tabset}
+
+Results for k=1 and asinh transformed counts.
+
+```{r tonsil_vs_lung_results_per_protein, fig.height = 12, fig.width = 10, fig.align = "center", results="asis"}
+# Add all X_test counts together into dataframe for easier plotting
+aoi <- "exprs"
+tonsil_vs_lung_X.df <- lapply(tonsil_vs_lung_X.list, function(sce){
+  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  cell=variable) %>%
+    mutate(k=metadata(sce)$k,
+           dataset=paste(metadata(sce)$training, metadata(sce)$dataset, sep="_"))
+  
+}) %>% bind_rows() %>%
+  group_by(protein, cell, k, dataset) %>%
+  summarise_all(na.omit)
+
+# For each test/training dataset combination plot for each true vs decomposed
+# results in scatter plot and add diagonal and regression line, as well as
+# R (pearson correlation coefficient)
+for (i in unique(tonsil_vs_lung_X.df$dataset)) {
+  cat('#####', i, '\n')
+
+  tonsil_vs_lung.proteinPlot <- ggscatter(tonsil_vs_lung_X.df %>%
+                                         dplyr::filter(k=="1" & dataset==i), 
+                                         x="ground_truth", y="simulated",
+                                         add="reg.line",
+                                         color=pal_npg("nrc")("1"),
+                                         add.params=list(color=pal_npg("nrc")("4")[4],
+                                                         size=2)) +
+    facet_wrap(~ protein, scales="free", ncol=5) +
+    theme_cowplot(10) +
+    geom_abline(slope=1, linetype="dashed") +
+    stat_cor(size=2)
+  
+  print(tonsil_vs_lung.proteinPlot)
+  cat('\n\n')
+}
+```
+
+#### Correlations per Protein for Different Datasets {.tabset}
+
+Results for k=1 and asinh transformed counts.
+
+```{r tonsil_vs_lung_results_per_protein_cor, fig.height = 6, fig.width = 5, fig.align = "center", results="asis"}
+# Calculate correlations between ground truth and simulated data for each protein
+tonsil_vs_lung_X.cor <- tonsil_vs_lung_X.df %>%
+  group_by(k, dataset, protein) %>%
+  summarize(cor(ground_truth, simulated)) %>%
+  dplyr::rename(correlation=`cor(ground_truth, simulated)`)
+
+# Plot correlations for k=1 for each test/training dataset combination
+for (i in unique(tonsil_vs_lung_X.df$dataset)) {
+  cat('#####', i, '\n')
+
+  tonsil_vs_lung.proteinCorr <- ggplot(tonsil_vs_lung_X.cor %>% 
+                                         dplyr::filter(k=="1" & dataset==i),
+                                       aes(x=protein, y=correlation, fill=protein)) +
+    geom_bar(stat="identity") +
+    theme_cowplot() +
+    scale_fill_igv() +
+    guides(fill=FALSE) +
+    coord_flip()
+    
+  print(tonsil_vs_lung.proteinCorr)
+  cat('\n\n')
+}
+```
+
+#### Reduced Dimension of Immucan Lung Data
+
+```{r tonsil_vs_lung_clustering, fig.height = 12, fig.width = 10, fig.align = "center"}
+# Create empty list for plots
+tonsil_vs_lung_X.redDimlist <- list
+# Extract for simulated and true results for UMAP and TSNE and plot
+for(sce in tonsil_vs_lung_X.exprsList){
+  for(method in c("UMAP", "TSNE")){
+    tonsil_vs_lung_X.redDimlist <- append(tonsil_vs_lung_X.redDimlist, 
+                                          list(dittoDimPlot(sce, var="celltype", 
+                                                            reduction.use=method, size=0.2) +
+                                                 scale_color_igv() +
+                                                 theme_cowplot() +
+                                                 theme(legend.position="bottom") +
+                                                 guides(color=guide_legend(nrow=1)))) 
+  }
+}
+# Remove empty plot at the beginning and add legend to the end of the plot list
+tonsil_vs_lung_X.redDimlist <- c(lapply(tonsil_vs_lung_X.redDimlist[-1], function(p){
+  p + theme(legend.position="none")
+  }), list(get_legend(tonsil_vs_lung_X.redDimlist[2])))
+
+# Plot simulated and true reduced dim on top of each other
+tonsil_vs_lung_X.redDimPlot <- plot_grid(plotlist=tonsil_vs_lung_X.redDimlist,
+          ncol=2, labels=rep(names(tonsil_vs_lung_X.exprsList), each=2),
+          label_size=15, hjust=c(-2, -1.5), vjust=1, scale=0.9)
+
+print(tonsil_vs_lung_X.redDimPlot)
+```
+
+

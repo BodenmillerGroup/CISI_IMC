@@ -78,8 +78,8 @@ test_names_lung = tuple(np.random.choice(roi_names_lung,
 
 # Specify k-sparsity of dictionary used in training and name of final folder
 # for each dataset, where results will be saved
-k = 1
-folder_name = "k_1"
+k = 3
+folder_name = "k_3"
 
 # Train CISI
 (training_res_tonsil, training_res_comp_tonsil,
