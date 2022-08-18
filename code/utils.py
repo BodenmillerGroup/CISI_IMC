@@ -30,7 +30,28 @@ def check_file(file_path, extension):
 
 
 # Simulate composite measurements using composite matrix A assuming no noise
-def simulate_composite_measurements(X, phi):
+def get_observations_no_noise(X_input, phi, normalization='none'):
+    # Extract data matrix X from anndata object and apply selected normalization
+    match normalization:
+        case 'paper_norm':
+            # Normalize X? (otherwise spams.nmf underneath will estimate U to only contain
+            # 0s and smaf won't work)
+            # Normalizaiton: Every row in X_input is divided by the corresponding vector
+            # element in the rowwise norm (proteins are normalized accross all cells/pixels)
+            X = (X_input.T / np.linalg.norm(X_input, axis=1)).T
+        case 'min_max_norm':
+            X = (X_input-X_input.min(axis=1, keepdims=True)) / (
+                X_input.max(axis=1, keepdims=True)-X_input.min(axis=1, keepdims=True)
+                )
+        # case 'zscore_norm':
+        #     X = ((X_mat.T-np.mean(X_mat, axis=1)) / np.std(X_mat, axis=1)).T # zscore(X_mat, axis=1)
+        case 'none':
+            X = X_input
+        case _:
+            # In case no valid normalization is given, an error is thrown
+            raise ValueError(('The normalization {0} used by smaf is not valid.'.format(normalization) +
+                              'Please use one of the following: paper_norm, min_max_norm, ' +
+                              'or none.'))
     # Simulate composite measurements
     return phi.dot(X)
 
@@ -76,13 +97,35 @@ def sparse_decode_blocks(Y, D, lda=0.1, numThreads=20, method='omp', worstFit=1.
 
 
 # Simulate random composite observations Y from X
-def get_observations(X0, Phi, snr=5, return_noise=False):
-    noise = np.array([np.random.randn(X0.shape[1]) for _ in range(X0.shape[0])])
-    noise *= np.linalg.norm(X0)/np.linalg.norm(noise)/snr
+def get_observations(X0, Phi, snr=5, return_noise=False, normalization='none'):
+    # Extract data matrix X from anndata object and apply selected normalization
+    match normalization:
+        case 'paper_norm':
+            # Normalize X? (otherwise spams.nmf underneath will estimate U to only contain
+            # 0s and smaf won't work)
+            # Normalizaiton: Every row in X_input is divided by the corresponding vector
+            # element in the rowwise norm (proteins are normalized accross all cells/pixels)
+            X = (X0.T / np.linalg.norm(X0, axis=1)).T
+        case 'min_max_norm':
+            X = (X0-X0.min(axis=1, keepdims=True)) / (
+                X0.max(axis=1, keepdims=True)-X0.min(axis=1, keepdims=True)
+                )
+        # case 'zscore_norm':
+        #     X = ((X_mat.T-np.mean(X_mat, axis=1)) / np.std(X_mat, axis=1)).T # zscore(X_mat, axis=1)
+        case 'none':
+            X = X0
+        case _:
+            # In case no valid normalization is given, an error is thrown
+            raise ValueError(('The normalization {0} used by smaf is not valid.'.format(normalization) +
+                              'Please use one of the following: paper_norm, min_max_norm, ' +
+                              'or none.'))
+
+    noise = np.array([np.random.randn(X.shape[1]) for _ in range(X.shape[0])])
+    noise *= np.linalg.norm(X)/np.linalg.norm(noise)/snr
     if return_noise:
-        return Phi.dot(X0 + noise), noise
+        return Phi.dot(X + noise), noise
     else:
-        return Phi.dot(X0 + noise)
+        return Phi.dot(X + noise)
 
 
 # Compare X to predicted X by correlations and distances between them

@@ -79,7 +79,8 @@ test_names_lung = tuple(np.random.choice(roi_names_lung,
 # Specify k-sparsity of dictionary used in training and name of final folder
 # for each dataset, where results will be saved
 k = 3
-folder_name = "k_3"
+folder_name = 'k_3'
+normalization = 'paper_norm'
 
 # Train CISI
 (training_res_tonsil, training_res_comp_tonsil,
@@ -89,7 +90,7 @@ folder_name = "k_3"
                                                        'Tonsil_th152/training/full', folder_name),
                                           split_by='percentage', k_cv=4,
                                           test_set=test_names_tonsil,
-                                          lda1=k)
+                                          lda1=k, normalization=normalization)
 (training_res_lung, training_res_comp_lung,
  U_best_lung, Phi_best_lung,
  X_test_lung) = train_U_and_A(sce_lung,
@@ -97,7 +98,7 @@ folder_name = "k_3"
                                                      'Immucan_lung/training/subset', folder_name),
                                         split_by='percentage', k_cv=4,
                                         test_set=test_names_lung,
-                                        lda1=k)
+                                        lda1=k, normalization=normalization)
 
 
 # Test training results on the opposite dataset
@@ -106,10 +107,11 @@ training_res_lung, training_res_comp_lung = analyze_U_and_A(sce_lung[sce_lung.ob
                                                             [Phi_best_tonsil], ["none"],
                                                             os.path.join(out_path,
                                                                          'tonsil_vs_lung/test_lung', folder_name),
-                                                            "none")
+                                                            "none", norm=normalization)
 training_res_tonsil, training_res_comp_tonsil = analyze_U_and_A(sce_tonsil[sce_tonsil.obs.index.isin(X_test_tonsil), ],
                                                                 U_best_lung,
                                                                 [Phi_best_lung], ["none"],
                                                                 os.path.join(out_path,
                                                                              'tonsil_vs_lung/test_tonsil',
-                                                                             folder_name), "none")
+                                                                             folder_name),
+                                                                "none", norm=normalization)

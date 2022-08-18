@@ -73,6 +73,8 @@ inputs:
                   (if split_by='roi', then test_set must be set and test_size
                   can't be used)
         test_size: size of test set (eg. 0.2)
+        normalization: which normalization used before simulating decomposition
+                       measurements (same as in smaf)
 
     For fnc. make_cond_prob():
         threshold_cond_prob: Threshold to stratify if particular protein in particular
@@ -128,8 +130,8 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
             bar()
 
             # Compute A
-            Phi, pearson_cor, versions = compute_A(X_validate, U, nmeasurements, maxcomposition, 
-                                                  mode_phi, lasso_sparsity, 
+            Phi, pearson_cor, versions = compute_A(X_validate, U, nmeasurements, maxcomposition,
+                                                  mode_phi, lasso_sparsity,
                                                   os.path.join(outpath, 'crossvalidation_'+str(k)),
                                                   THREADS_A, layer, num_phi, binary)
             # Mark step for progressbar
@@ -152,9 +154,10 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
 
     # Analize training
     training_res, training_res_comp = analyze_U_and_A(X_test, U_best, [Phi_best],
-                                                      [version_best], outpath, k_best, 
+                                                      [version_best], outpath, k_best,
                                                       lasso_sparsity,
-                                                      THREADS_A_and_U)
+                                                      THREADS_A_and_U,
+                                                      norm=normalization)
 
     # Calculate pairwise protein correlations
     cor = make_cor(X, outpath)

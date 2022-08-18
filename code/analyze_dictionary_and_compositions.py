@@ -3,7 +3,7 @@ import numpy as np
 from analyze_predictions import *
 
 # Import libraries (additionaly added)
-from utils import sparse_decode, compare_results, get_observations, simulate_composite_measurements
+from utils import sparse_decode, compare_results, get_observations, get_observations_no_noise
 from decompress import decompress
 from pathlib import Path
 import sys
@@ -28,6 +28,8 @@ inputs:
              compositions_A folder
     k: Which crossvalidation led to best results
     versions: list containing versions of phi's in Phi
+    layer: which layer in anndata object to use (default: X)
+    norm: which normalization used before simulating decomposition measurements
 
 outputs:
     results_df: All performance analyis in one pandas df
@@ -35,7 +37,7 @@ outputs:
 '''
 
 def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
-                    THREADS=20, layer=None):
+                    THREADS=20, layer=None, norm='none'):
     # Select layer of anndata object that should be used and transpose it
     # to proteins x cells/channels
     if layer is not None:
@@ -76,14 +78,14 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
 
     for i in xs:
         phi = Phi[i]
-        
-        y = get_observations(X_test, phi, snr=5)
+
+        y = get_observations(X_test, phi, snr=5, normalization=norm)
         x2 = decompress(y, U, phi)
         x2[np.isnan(x2)] = 0
         results = compare_results(X_test, x2)
         f2.write('\t'.join([str(x) for x in [versions[i]]+results+[d_gene[i]]+[k]]) + '\n')
 
-        y_comp = simulate_composite_measurements(X_test, phi)
+        y_comp = get_observations_no_noise(X_test, phi, normalization=norm)
         x2_comp = decompress(y_comp, U, phi)
         x2_comp[np.isnan(x2_comp)] = 0
         results_comp = compare_results(X_test, x2_comp)
