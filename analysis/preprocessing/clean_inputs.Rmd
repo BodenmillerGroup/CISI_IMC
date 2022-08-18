@@ -33,7 +33,6 @@ library(EBImage)
 library(scuttle)
 library(mclust)
 library(zellkonverter)
-
 library(CATALYST)
 library(BiocParallel)
 library(tiff)
@@ -50,6 +49,7 @@ all the results of this preprocessing script.
 steinbock.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock"
 images.path <- paste0(steinbock.path, "/img")
 masks.path <- paste0(steinbock.path, "/masks_deepcell")
+sm.path <- "/mnt/bb_dqbm_volume/data/sm.rds"
 
 # Specify output path
 out.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/preprocessed_data"
@@ -98,12 +98,12 @@ dittoRidgePlot(spe, var = "CD3", group.by = "ROI", assay = "log_exprs") +
 # rowData(spe)$use_channel <- !grepl("DNA|Histone", rownames(spe))
 rowData(spe)$use_channel <- rep(TRUE, length(rownames(spe)))
 ```
-TODO: Add spillover correction as soon as spillover slide is prepared.
-Next, we read in the spillover matrix from (Single-cell information extracted from IMC example data)[https://zenodo.org/record/6810879] and do spillover correction.
+
+Next, we read in the spillover matrix and do spillover correction.
 
 ```{r spillover_correction}
 # Read in spillover matrix 
-sm <- metadata(readRDS(file.path(steinbock.path, "spe_ms.rds")))$spillover_matrix
+sm <- readRDS(sm.path)
 # Read in isotope_list from CATALYST needed for spillover correction
 isotope_list <- CATALYST::isotope_list
 isotope_list$Ar <- 80
@@ -116,11 +116,11 @@ rowData(spe)$channel_name <- paste0(rowData(spe)$channel, "Di")
 adapted_sm <- adaptSpillmat(sm, rowData(spe)$channel_name, 
                             isotope_list=isotope_list)
 # Add to our SPE
-spe$spillover_matrix <- adapted_sm
+metadata(spe)$spillover_matrix <- adapted_sm
 
 # Perform spillover correction for counts and asinh transformed counts
 spe <- compCytof(spe, adapted_sm, transform=FALSE, isotope_list=isotope_list, 
-                 overwrite=FALSE)
+                 overwrite=FALSE, cofactor=1)
 spe <- compCytof(spe, adapted_sm, transform=TRUE, cofactor=1,
                  isotope_list=isotope_list, overwrite=FALSE)
 ```
@@ -168,7 +168,8 @@ ROI <- str_extract_all(names(images), "00[1-5]", simplify = TRUE)
 mcols(images) <- mcols(masks) <- DataFrame(sample_id = names(images),
                                            ROI = ROI)
 ```
-TODO: Add spillover correction as soon as spillover slide is prepared.
+
+Next, we compute spillover correction on images.
 
 ```{r spillover_correction_img}
 # Change channel names to match CATALYST 
@@ -179,16 +180,18 @@ images_comp <- compImage(images, adapted_sm, BPPARAM=MulticoreParam())
 # Rename channels to original names
 channelNames(images_comp) <- rownames(spe)
 ```
-TODO: Save spillover corrected images.
+
+And we save the corrected images in the "comp_img" folder.
+
 ```{r save_objects_img}
 # Create output directory for images
 dir.create(file.path(out.path, "comp_img"))
 
 # Save spillover corrected images to above defined output directory
 lapply(names(images_comp), function(x){
-  writeImage(as.array(images_comp[[x]])/(2^32 - 1), 
+  writeImage(as.array(images_comp[[x]])/(2^16 - 1), 
              paste0(out.path, "/comp_img/", x, ".tiff"),
-             bits.per.sample=32)
+             bits.per.sample=16)
 })
 ```
 

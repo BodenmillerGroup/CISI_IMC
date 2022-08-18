@@ -387,7 +387,10 @@ library(ggrepel)
 library(EBImage)
 library(scuttle)
 library(mclust)
-library(zellkonverter)</code></pre>
+library(zellkonverter)
+library(CATALYST)
+library(BiocParallel)
+library(tiff)</code></pre>
 </div>
 <div id="inputs" class="section level2">
 <h2>Inputs</h2>
@@ -398,6 +401,7 @@ the output paths for all the results of this preprocessing script.</p>
 steinbock.path &lt;- &quot;/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock&quot;
 images.path &lt;- paste0(steinbock.path, &quot;/img&quot;)
 masks.path &lt;- paste0(steinbock.path, &quot;/masks_deepcell&quot;)
+sm.path &lt;- &quot;/mnt/bb_dqbm_volume/data/sm.rds&quot;
 
 # Specify output path
 out.path &lt;- &quot;/mnt/bb_dqbm_volume/data/Tonsil_th152/preprocessed_data&quot;
@@ -457,8 +461,35 @@ dittoRidgePlot(spe, var = &quot;CD3&quot;, group.by = &quot;ROI&quot;, assay = &
 <pre class="r"><code># Define channels of interest (so far all channels are kept)
 # rowData(spe)$use_channel &lt;- !grepl(&quot;DNA|Histone&quot;, rownames(spe))
 rowData(spe)$use_channel &lt;- rep(TRUE, length(rownames(spe)))</code></pre>
-<p>TODO: Add spillover correction as soon as spillover slide is
-prepared.</p>
+<p>Next, we read in the spillover matrix and do spillover
+correction.</p>
+<pre class="r"><code># Read in spillover matrix 
+sm &lt;- readRDS(sm.path)
+# Read in isotope_list from CATALYST needed for spillover correction
+isotope_list &lt;- CATALYST::isotope_list
+isotope_list$Ar &lt;- 80
+
+# Create column in rowData named channel name carrying channel names according to
+# CATALYST standards
+rowData(spe)$channel_name &lt;- paste0(rowData(spe)$channel, &quot;Di&quot;)
+
+# Adapt spillover matrix to only contain isotopes used in our experiment
+adapted_sm &lt;- adaptSpillmat(sm, rowData(spe)$channel_name, 
+                            isotope_list=isotope_list)</code></pre>
+<pre><code>## Compensation is likely to be inaccurate.
+## Spill values for the following interactions
+## have not been estimated:</code></pre>
+<pre><code>## La139Di -&gt; Gd155Di</code></pre>
+<pre><code>## Ir191Di -&gt; Ir193Di</code></pre>
+<pre><code>## Ir193Di -&gt; Ir191Di, Bi209Di</code></pre>
+<pre class="r"><code># Add to our SPE
+metadata(spe)$spillover_matrix &lt;- adapted_sm
+
+# Perform spillover correction for counts and asinh transformed counts
+spe &lt;- compCytof(spe, adapted_sm, transform=FALSE, isotope_list=isotope_list, 
+                 overwrite=FALSE, cofactor=1)
+spe &lt;- compCytof(spe, adapted_sm, transform=TRUE, cofactor=1,
+                 isotope_list=isotope_list, overwrite=FALSE)</code></pre>
 <p>Before we continue with the image preprocessing, we save the
 SpatialExperiment as a python Anndata object (.h5ad).</p>
 <pre class="r"><code># Save RDS files
@@ -469,7 +500,9 @@ SpatialExperiment as a python Anndata object (.h5ad).</p>
 # Write SpatialExperiment to Anndata for use in python
 writeH5AD(SingleCellExperiment(list(counts=assay(spe, &quot;counts&quot;),
                                     exprs=assay(spe, &quot;exprs&quot;),
-                                    log_exprs=assay(spe, &quot;log_exprs&quot;)),
+                                    log_exprs=assay(spe, &quot;log_exprs&quot;),
+                                    compcounts=assay(spe, &quot;compcounts&quot;),
+                                    compexprs=assay(spe, &quot;compexprs&quot;)),
     colData=colData(spe),
     rowData=rowData(spe)), file=file.path(out.path, &quot;spe.h5ad&quot;))</code></pre>
 <pre><code>## ℹ Using the &#39;counts&#39; assay as the X matrix</code></pre>
@@ -499,21 +532,31 @@ assert(&quot;Check that images and masks have the same name and are in the same 
 ROI &lt;- str_extract_all(names(images), &quot;00[1-5]&quot;, simplify = TRUE)
 mcols(images) &lt;- mcols(masks) &lt;- DataFrame(sample_id = names(images),
                                            ROI = ROI)</code></pre>
-<p>TODO: Add spillover correction as soon as spillover slide is
-prepared.</p>
-<p>TODO: Save spillover corrected images.</p>
-<pre class="r"><code># Save RDS files
-# saveRDS(spe, file.path(out.path, &quot;spe.rds&quot;))
-# saveRDS(images, file.path(out.path, &quot;images.rds&quot;))
-# saveRDS(masks, file.path(out.path, &quot;masks.rds&quot;))
+<p>Next, we compute spillover correction on images.</p>
+<pre class="r"><code># Change channel names to match CATALYST 
+channelNames(images) &lt;- rowData(spe)$channel_name
 
-# Write SpatialExperiment to Anndata for use in python
-writeH5AD(SingleCellExperiment(list(counts=assay(spe, &quot;counts&quot;),
-                                    exprs=assay(spe, &quot;exprs&quot;),
-                                    log_exprs=assay(spe, &quot;log_exprs&quot;)),
-    colData=colData(spe),
-    rowData=rowData(spe)), file=file.path(out.path, &quot;spe.h5ad&quot;))</code></pre>
-<pre><code>## ℹ Using the &#39;counts&#39; assay as the X matrix</code></pre>
+# Compute channel spillover on images
+images_comp &lt;- compImage(images, adapted_sm, BPPARAM=MulticoreParam())
+# Rename channels to original names
+channelNames(images_comp) &lt;- rownames(spe)</code></pre>
+<p>And we save the corrected images in the “comp_img” folder.</p>
+<pre><code>## Warning in dir.create(file.path(out.path, &quot;comp_img&quot;)): &#39;/mnt/bb_dqbm_volume/
+## data/Tonsil_th152/preprocessed_data/comp_img&#39; already exists</code></pre>
+<pre><code>## [[1]]
+## [1] &quot;/mnt/bb_dqbm_volume/data/Tonsil_th152/preprocessed_data/comp_img/20220520_TsH_th152_cisi1_001.tiff&quot;
+## 
+## [[2]]
+## [1] &quot;/mnt/bb_dqbm_volume/data/Tonsil_th152/preprocessed_data/comp_img/20220520_TsH_th152_cisi1_002.tiff&quot;
+## 
+## [[3]]
+## [1] &quot;/mnt/bb_dqbm_volume/data/Tonsil_th152/preprocessed_data/comp_img/20220520_TsH_th152_cisi1_003.tiff&quot;
+## 
+## [[4]]
+## [1] &quot;/mnt/bb_dqbm_volume/data/Tonsil_th152/preprocessed_data/comp_img/20220520_TsH_th152_cisi1_004.tiff&quot;
+## 
+## [[5]]
+## [1] &quot;/mnt/bb_dqbm_volume/data/Tonsil_th152/preprocessed_data/comp_img/20220520_TsH_th152_cisi1_005.tiff&quot;</code></pre>
 </div>
 </div>
 <div id="quality-control-code-not-run-in-html" class="section level2">
