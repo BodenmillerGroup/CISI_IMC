@@ -1,0 +1,118 @@
+---
+title: "Analysis of Tonsil th152"
+output: html_document
+date: '2022-08-18'
+---
+
+## Setup
+
+```{r setup, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+# Load libraries
+# library(tidyverse)
+# library(cowplot)
+# library(ggplot2)
+# library(ggpattern)
+# library(ggsci)
+# library(utils)
+# library(reshape2)
+# library(stringr)
+# library(gridGraphics)
+# library(zellkonverter)
+# library(SingleCellExperiment)
+# library(cytomapper)
+# library(scater)
+# library(ggpubr)
+# library(scater)
+```
+
+```{r specify_paths}
+# Set general input paths to all analysis files
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152/training/full/corrected"
+
+# Set path to masks
+masks_tonsil.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell"
+```
+
+```{r helper_fnc}
+# Import helper fncs
+source("../analysis/helpers/helper_fnc.R")
+```
+
+## Read Inputs
+
+```{r read_tonsil}
+## Read results
+# Read in all results for tonsil and lung comparison into one dataframe
+tonsil.files <- list.files(analysis.path, 'simulation_results.txt',
+                                         full.names=TRUE, recursive=TRUE)
+tonsil.res <- lapply(tonsil.files, read_results, type="res", voi="corrected") %>% 
+  bind_rows() 
+
+# Harmonize all dataset names
+patterns <- unique(unlist(lapply(tonsil.res$training, function(name){
+  if(length(str_split(name, "_")[[1]])==1){
+    name
+  }
+})))
+
+tonsil.res$training <- unlist(lapply(tonsil.res$training, function(pat){
+  patterns[str_detect(pat, fixed(patterns, ignore_case=TRUE))]
+}))
+tonsil.res$dataset <- unlist(lapply(tonsil.res$dataset, function(pat){
+  patterns[str_detect(pat, fixed(patterns, ignore_case=TRUE))]
+}))
+
+
+## Read X_test and X_simulated
+# Specify X_test and X_simulated files to be read in
+tonsil_X.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
+
+# Read in all sce experiments from saved anndata and save additional info in metadata
+# (e.g. which dataset is used in training and testing, if spillover correction was used 
+# and if it is the ground truth or simulated X)
+tonsil_X.list <- lapply(tonsil_X.files, read_results, type="x", voi="corrected")
+tonsil_X.list <- lapply(tonsil_X.list, function(sce.temp){
+  pat <- metadata(sce.temp)
+  metadata(sce.temp)$dataset <- patterns[str_detect(pat$dataset, 
+                                                    fixed(patterns, ignore_case=TRUE))]
+  metadata(sce.temp)$training <- patterns[str_detect(pat$training, 
+                                                     fixed(patterns, ignore_case=TRUE))]
+  assay.name <- names(assays(sce.temp))
+  for (a in assay.name[-1]) {
+    assay(sce.temp, a) <- NULL
+  }
+  assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
+  
+  sce.temp
+})
+
+
+## Read masks
+# Read in masks for tonsil data
+masks.tonsil <- loadImages(masks_tonsil.path, as.is = TRUE)
+mcols(masks.tonsil) <- DataFrame(sample_id=names(masks.tonsil))
+```
+
+## Scatterplot of Neighbouring channels (k=1, argsinh)
+
+The following plots show some neighboring channels for Tonsil th152 data trained
+on spillover corrected and non-spillover corrected data.
+
+```{r plot_tonsil_corrections, fig.height = 8, fig.width = 18, fig.align = "center"}
+# Subset to dataset trained and tested on the Immucan lung dataset with k=1
+# with and without normalization for the decomposed counts
+tonsil_vs_lung_X.correctedList <- keep(tonsil_vs_lung_X.list, function(x){
+  metadata(x)$ground_truth=="simulated"})
+names(tonsil_vs_lung_X.correctedList) <- lapply(tonsil_vs_lung_X.correctedList,
+                                                function(x){metadata(x)$corrected})
+
+# Plot asinh transformed counts of proteins of interest of decomposed data trained
+# with and without normalization
+tonsil_X.spillover <- plot_grid(plot_exprs(tonsil_vs_lung_X.correctedList, "", "CD8a", "Tim-3"),
+                                plot_exprs(tonsil_vs_lung_X.correctedList, "", "CD68", "CD20"),
+                                ncol=1)
+print(tonsil_X.spillover)
+```

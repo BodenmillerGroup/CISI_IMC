@@ -58,32 +58,32 @@ read_U <- function(file, type){
 
 # Function that reads in results .csv file and adjust its just that all results
 # file for the comparison of lung and tonsil can be put into one dataframe
-read_results <- function(file, type){
+read_results <- function(file, type, voi="k"){
   if(grepl("training", file)){
     dataset_name <- str_split(file, "/")[[1]][5]
     training_name <- dataset_name
-    k_name <- gsub("k_", "", str_split(file, "/")[[1]][8])
+    k_name <- gsub("*._", "", str_split(file, "/")[[1]][8])
     
-    if(type=="u"){
-      datasize_name <- gsub("k_", "", str_split(file, "/")[[1]][7])
+    if(type=="res"){
+      datasize_name <- gsub("*._", "", str_split(file, "/")[[1]][7])
     }
   } else {
     dataset_name <- gsub(".*_", "", str_split(file, "/")[[1]][6])
     training_name <- stringi::stri_replace_all_regex(str_split(file, "/")[[1]][5],
                                                      pattern=c(dataset_name, "_vs_"),
                                                      replacement=c("", ""), vectorize=FALSE)
-    k_name <- gsub("k_", "", str_split(file, "/")[[1]][7])
-    if(type=="u"){
+    k_name <- gsub("*._", "", str_split(file, "/")[[1]][7])
+    if(type=="res"){
       datasize_name <- NA
     }
   }
   
-  if(type=="u"){
+  if(type=="res"){
     res <- read_tsv(file, show_col_types=FALSE) %>%
       mutate(dataset=dataset_name,
              training=training_name,
              simulation=ifelse(grepl("composite", file), "composite", "noisy"),
-             k=k_name,
+             !!as.symbol(voi):=k_name,
              datasize=datasize_name)
     res[which(res=="none")] <- NA
     
@@ -114,6 +114,22 @@ compute_module_membership <- function(m.col, thresh=0.9){
 # instead)
 compare_cor <- function(A, B){
   sum(abs(A - B))
+}
+
+
+# Compute confusion matrix using pre-trained RF classifier for a list of SCE
+compute_confusionMatrix <- function(sce, rffit){
+  cur_mat <- t(assay(sce, "exprs"))
+  # Predict cell phenotypes in test data
+  cur_pred <- predict(rffit, 
+                      newdata=cur_mat)
+  # cur_pred <- as.character(predict.train(rffit.lung,
+  #                                        newdata=cur_mat,
+  #                                        type="raw"))
+  cm <- confusionMatrix(data=cur_pred,
+                        reference=factor(sce$cell_labels),
+                        mode="everything")
+  cm
 }
 
 
@@ -363,7 +379,9 @@ plot_cells <- function(sce.list, masks.list, poi, layer="none"){
 plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="exprs"){
   col_cells <- rep("grey", length(unique(colData(sce.list[[1]])$celltype)))
   names(col_cells) <- unique(colData(sce.list[[1]])$celltype)
-  col_cells[celltype_col] <- "red"
+  if(celltype_col!=""){
+    col_cells[celltype_col] <- "red"
+  }
   
   alpha_cells <- rep(0.2, length(unique(colData(sce.list[[1]])$celltype)))
   names(alpha_cells) <- unique(colData(sce.list[[1]])$celltype)
