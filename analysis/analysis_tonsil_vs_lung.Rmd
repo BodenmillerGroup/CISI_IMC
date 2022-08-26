@@ -12,6 +12,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 # Load libraries
 library(caret)
+library(ggchromatic)
 library(tidyverse)
 library(cowplot)
 library(ggplot2)
@@ -359,13 +360,22 @@ asinh transformed counts.
 
 ```{r results_per_protein_cor, fig.height = 6, fig.width = 5, fig.align = "center", results="asis"}
 # Calculate correlations between ground truth and simulated data for each protein
-X.cor <- X.df %>%
+X.cor <- lapply(X.list, function(sce){
+  counts.long <- as.data.frame(assays(sce)[["counts"]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  cell=variable) %>%
+    mutate(k=metadata(sce)$k,
+           dataset=paste(metadata(sce)$training, metadata(sce)$dataset, sep="_"))
+  
+}) %>% bind_rows() %>%
+  group_by(protein, cell, k, dataset) %>%
+  summarise_all(na.omit) %>%
   group_by(k, dataset, protein) %>%
   summarize(correlation=cor(ground_truth, simulated),
             median=median(ground_truth),
-            max=max(ground_truth),
-            var=var(ground_truth),
-            high=sum(ground_truth)) 
+            coef_of_var=var(ground_truth)/mean(ground_truth)) 
 
 # Plot correlations for k=1 for each test/training dataset combination
 for (i in unique(X.df$dataset)) {
@@ -385,45 +395,15 @@ for (i in unique(X.df$dataset)) {
 }
 ```
 
-
-```{r test, fig.height = 7, fig.width = 10, fig.align = "center", fig.keep="last"}
-# # Add all X_test counts together into dataframe for easier plotting
-# # Calculate correlations between ground truth and simulated data for each protein
-# X.corCell <- X.df %>%
-#   group_by(k, dataset, cell) %>%
-#   summarize(correlation=cor(ground_truth, simulated),
-#             n_zeros=sum(ground_truth==0))
-# 
-# # Plot correlations for k=1 for each test/training dataset combination
-# for (i in c("n_zeros")) {
-#   cat('#####', i, '\n')
-#   
-#   proteinChar <- ggscatter(X.corCell %>%
-#                              dplyr::filter(k=="1"), 
-#                            x="correlation", y=i,
-#                            add="reg.line",
-#                            color=pal_npg("nrc")("1"),
-#                            add.params=list(color=pal_npg("nrc")("4")[4],
-#                                            size=2)) +
-#     facet_wrap(~ dataset, scales="free", ncol=2) +
-#     theme_cowplot(10) +
-#     stat_cor(size=2)
-#   
-#   print(proteinChar)
-#   cat('\n\n')
-# }
-```
-
-
 #### Correlations per Protein vs Protein Characteristics (k=1, arcsinh) {.tabset}
 
 Correlation between ground truth and decomposed results per protein for k=1 and 
-asinh transformed counts compared to protein characteristics of gorund truth:
+asinh transformed counts compared to protein characteristics of ground truth:
 Median, max and variance.
 
 ```{r protein_cor_vs_char, fig.height = 8, fig.width = 10, fig.align = "center", results="asis"}
-# Define charachteristics of interest
-coi <- c("median", "max", "var", "high")
+# Define characteristics of interest
+coi <- c("median", "coef_of_var")
 
 # Plot correlations for k=1 for each test/training dataset combination
 for (i in coi) {
@@ -431,7 +411,7 @@ for (i in coi) {
   
   proteinChar <- ggscatter(X.cor %>%
                              dplyr::filter(k=="1"), 
-                           x="correlation", y=i,
+                           x=i, y="correlation",
                            add="reg.line",
                            color=pal_npg("nrc")("1"),
                            add.params=list(color=pal_npg("nrc")("4")[4],
@@ -445,33 +425,43 @@ for (i in coi) {
 }
 ```
 
-#### Reduced Dimension Plots (k==1, Immucan_lung, arcsinh)
+#### Reduced Dimension Plots (k=1, Immucan_lung, arcsinh)
 
 Below the UMAP and TSNE of the arcsinh counts for the Immucan lung dataset are 
 shown using k=1. Red indicates that the cell is highly correlated to at least one
 other cell in the ground truth. 
 
 ```{r clustering, fig.height = 12, fig.width = 10, fig.align = "center"}
-# Calculate correlations between all ground truth cells and for each cell retain
-# its max correlation to another cell
-# If max >= 0.995, then the cell is marked as having a highly correlated cell in
-# ground truth
-sce.maxCor <- counts(X.exprsList[[2]]) %>%
-  cor %>%
-  as.data.frame %>%
-  rownames_to_column(var='cell_i') %>%
-  gather(key="cell_j", value="cor", -cell_i) %>%
-  dplyr::filter(!(cell_i==cell_j)) %>%
-  group_by(cell_i) %>%
-  summarise(max_cor=max(cor, na.rm=TRUE)) %>%
-  dplyr::filter(max_cor>=0.995)
+# Find highly correlated proteins that become more correlated afterwards
+X.corProtein <- lapply(X.list, function(sce){
+  counts.long <- as.data.frame(cor(t(assays(sce)[[aoi]]))) %>%
+    mutate(proteinA=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  proteinB=variable) %>%
+    mutate(k=metadata(sce)$k,
+           dataset=paste(metadata(sce)$training, metadata(sce)$dataset, sep="_")) %>%
+    filter(!(proteinA==proteinB)) %>%
+    mutate(combProtein=str_c(pmin(as.character(proteinA), 
+                                  as.character(proteinB)),
+                                  pmax(as.character(proteinA), 
+                                       as.character(proteinB))),
+           proteinB=as.character(proteinB)) %>%
+    filter(!duplicated(combProtein)) %>%
+    dplyr::select(-combProtein) %>%
+    filter(grepl("lung", dataset) & k==1)
+  
+}) %>% bind_rows() %>%
+  group_by(proteinA, proteinB, k, dataset) %>%
+  summarise_all(na.omit) %>%
+  mutate(diff=simulated-ground_truth) %>%
+  group_by(k, dataset) %>%
+  dplyr::filter(grepl("lung", dataset) & !grepl("tonsil", dataset)) %>%
+  dplyr::filter(ground_truth>0.6 & diff>0) %>%
+  arrange(desc(diff))
 
-# Add above information to sce experiments
-colData(X.exprsList[[1]])$high_cor <- ifelse(
-  colData(X.exprsList[[1]])$cell_id %in% sce.maxCor$cell_i, 
-  "high", 
-  "low")
-colData(X.exprsList[[2]])$high_cor <- colData(X.exprsList[[1]])$high_cor
+
+aoi <- "exprs"
 
 # Create empty list for plots
 X.redDimlist <- list
@@ -479,15 +469,28 @@ X.redDimlist <- list
 # colour highly correlated ground truth cells
 for(sce in X.exprsList){
   for(method in c("UMAP", "TSNE")){
+    sce.temp <- reducedDims(sce)[[method]] %>%
+      as.data.frame() %>%
+      mutate(!!X.corProtein$proteinA[1] :=assays(sce)[[aoi]][X.corProtein$proteinA[1],],
+             !!X.corProtein$proteinB[1] :=assays(sce)[[aoi]][X.corProtein$proteinB[1],])
+    
     X.redDimlist <- append(X.redDimlist, 
-                           list(dittoDimPlot(sce, var="high_cor", 
-                                             reduction.use=method, size=0.2) +
-                                  scale_color_manual(values=c("high"="red", "low"="grey"),
-                                                     name="Highly Correlated to Another Cell",
-                                                     labels=c("high"="true", "low"="false")) +
-                                  theme_cowplot() +
-                                  theme(legend.position="bottom") +
-                                  guides(color=guide_legend(nrow=1)))) 
+                           list(ggplot(sce.temp, aes(V1, V2, colour=cmy_spec(!!sym(X.corProtein$proteinA[1]), 
+                                                                             !!sym(X.corProtein$proteinB[1])))) +
+                                  geom_point(size=0.3) + 
+                                  theme_cowplot(7)))
+    
+    # X.redDimlist <- append(X.redDimlist, 
+    #                        list(dittoDimPlot(sce.temp,
+    #                                          var="col",
+    #                                          reduction.use=method, 
+    #                                          size=0.2,
+    #                                          min.color="grey",
+    #                                          max.color=pal_npg(("nrc"))("1")) +
+    #                               #scale_color_igv() +
+    #                               theme_cowplot() +
+    #                               theme(legend.position="bottom") +
+    #                               guides(color=guide_legend(nrow=1)))) 
   }
 }
 # Remove empty plot at the beginning and add legend to the end of the plot list
@@ -511,33 +514,33 @@ We then compare these results to the 'ground truth' celltypes (celltypes predict
 ground truth data) by calculating the precision, sensitivity and specififity.
 
 ```{r rffit}
-# TODO: test this
-# Subset to dataset trained and tested on the Immucan lung dataset
-lungSim.list <- keep(X.list, function(x){
-  metadata(x)$dataset=="lung" & metadata(x)$k=="1" & metadata(x)$ground_truth=="simulated"})
-names(lungSim.list) <- lapply(lungSim.list,
-                              function(x){metadata(x)$training})
-
-# Predict cell type using pretrained classifier on decomposed results and
-# compute confusion matrix using celltypes of true data
-lungSim.exprs <- lapply(lungSim.list, compute_confusionMatrix, rffit=rffit.lung)
-
-# Plot prediction results/confusion matrix as shown in IMCDataAnalysis script
-for (l in lungSim.exprs){
-  pred.plot <- data.frame(cm$byClass) %>%
-    mutate(class=sub("Class: ", "", rownames(cm$byClass))) %>%
-    ggplot() + 
-    geom_point(aes(1 - Specificity, Sensitivity, 
-                   size=Detection.Rate,
-                   fill=class),
-               shape=21) + 
-    scale_fill_igv() +
-    theme_cowplot(10) + 
-    ylab("Sensitivity (TPR)") +
-    xlab("1 - Specificity (FPR)")
-  
-  print(pred.plot)
-}
+# # TODO: test this
+# # Subset to dataset trained and tested on the Immucan lung dataset
+# lungSim.list <- keep(X.list, function(x){
+#   metadata(x)$dataset=="lung" & metadata(x)$k=="1" & metadata(x)$ground_truth=="simulated"})
+# names(lungSim.list) <- lapply(lungSim.list,
+#                               function(x){metadata(x)$training})
+# 
+# # Predict cell type using pretrained classifier on decomposed results and
+# # compute confusion matrix using celltypes of true data
+# lungSim.exprs <- lapply(lungSim.list, compute_confusionMatrix, rffit=rffit.lung)
+# 
+# # Plot prediction results/confusion matrix as shown in IMCDataAnalysis script
+# for (l in lungSim.exprs){
+#   pred.plot <- data.frame(cm$byClass) %>%
+#     mutate(class=sub("Class: ", "", rownames(cm$byClass))) %>%
+#     ggplot() + 
+#     geom_point(aes(1 - Specificity, Sensitivity, 
+#                    size=Detection.Rate,
+#                    fill=class),
+#                shape=21) + 
+#     scale_fill_igv() +
+#     theme_cowplot(10) + 
+#     ylab("Sensitivity (TPR)") +
+#     xlab("1 - Specificity (FPR)")
+#   
+#   print(pred.plot)
+# }
 
 
 ```
