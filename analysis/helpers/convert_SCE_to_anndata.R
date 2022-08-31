@@ -14,7 +14,10 @@ sce_to_anndata <- function(input.path, out.path){
 }
 
 
-# input.path <- "/mnt/bb_dqbm_volume/data/MatchedMet_Tcell_LS/MatchedMet_Tcell_sce.rds"
+input.path <- "/mnt/bb_dqbm_volume/data/Immucan_lung/Lung_sce.rds"
+out.path <- "/mnt/bb_dqbm_volume/data/Immucan_lung/Lung_sce_original.h5ad"
+sce_to_anndata(input.path, out.path)
+
 # sce <- readRDS(input.path)
 # 
 # steinbock.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock"

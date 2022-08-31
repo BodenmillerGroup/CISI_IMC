@@ -89,8 +89,9 @@ read_results <- function(file, type, voi="k"){
     
   } else if(type=="x") {
     res <- readH5AD(file)
-    metadata(res) <- list(dataset=dataset_name, training=training_name, k=k_name, 
+    metadata(res) <- list(dataset=dataset_name, training=training_name,  
                           ground_truth=ifelse(grepl("X_test", file), "ground_truth", "simulated"))
+    metadata(res)[[voi]] <- k_name
   }
   
   res
@@ -120,6 +121,13 @@ compare_cor <- function(A, B){
 # Compute confusion matrix using pre-trained RF classifier for a list of SCE
 compute_confusionMatrix <- function(sce, rffit){
   cur_mat <- t(assay(sce, "exprs"))
+  cur_mat <- cbind(as.data.frame(colData(sce)) %>%
+                     dplyr::select(cell_id, subbatch) %>%
+                     mutate(dummy=1,
+                            subbatch=paste0("subbatch", subbatch)) %>%
+                     dcast(cell_id~subbatch, value.var="dummy", fill=0) %>%
+                     dplyr::select(-cell_id))
+                     
   # Predict cell phenotypes in test data
   cur_pred <- predict(rffit, 
                       newdata=cur_mat)
@@ -147,6 +155,7 @@ plot_U <- function(df, iter_var, repetition){
     
     # Create empty HeatmapList and add all repetitions as individual heatmaps
     ht_list = NULL
+    names.repetition <- c()
     for(r in unique(df[[repetition]])) {
       res.temp <- df %>%
         dplyr::filter(!!as.symbol(repetition)==r & !!as.symbol(iter_var)==i) %>%
@@ -155,22 +164,25 @@ plot_U <- function(df, iter_var, repetition){
         column_to_rownames(var="protein") %>%
         as.matrix()
       
-      # Calculate correlation matrix
-      temp_list[[length(temp_list)+1]] <- cor(t(res.temp))
-      
-      res.temp <- apply(res.temp, 2, compute_module_membership)
-      
-      ht_list = ht_list + Heatmap(res.temp, column_title = paste0(str_to_title(repetition), 
-                                                                  " ", r, 
-                                                                  "\n(dictionary size: ", 
-                                                                  ncol(res.temp), ")"),
-                                  col=structure(c("grey", pal_npg("nrc")("1")[1]), 
-                                                names=c("0", "1")), 
-                                  show_heatmap_legend=FALSE, 
-                                  show_row_dend=FALSE, row_names_gp=gpar(fontsize = 8),
-                                  column_names_gp=gpar(fontsize=8),
-                                  column_title_gp=gpar(fontsize=10),
-                                  rect_gp=gpar(col="white", lwd=1))
+      if (nrow(res.temp)!=0){
+        # Calculate correlation matrix
+        temp_list[[length(temp_list)+1]] <- cor(t(res.temp))
+        
+        res.temp <- apply(res.temp, 2, compute_module_membership)
+        
+        ht_list = ht_list + Heatmap(res.temp, column_title = paste0(str_to_title(repetition), 
+                                                                    " ", r, 
+                                                                    "\n(dictionary size: ", 
+                                                                    ncol(res.temp), ")"),
+                                    col=structure(c("grey", pal_npg("nrc")("1")[1]), 
+                                                  names=c("0", "1")), 
+                                    show_heatmap_legend=FALSE, 
+                                    show_row_dend=FALSE, row_names_gp=gpar(fontsize = 8),
+                                    column_names_gp=gpar(fontsize=8),
+                                    column_title_gp=gpar(fontsize=10),
+                                    rect_gp=gpar(col="white", lwd=1))
+        names.repetition <- c(names.repetition, r)
+      }
     }
     
     # Draw all heatmaps together
@@ -181,7 +193,7 @@ plot_U <- function(df, iter_var, repetition){
                                                   at=c("0", "1"))),
          column_title=paste0(iter_var, " = ", i))
     
-    names(temp_list) <- unique(df[[repetition]])
+    names(temp_list) <- names.repetition
     df.cor[[length(df.cor)+1]] <- temp_list
     cat('\n\n')
   }
@@ -377,34 +389,62 @@ plot_cells <- function(sce.list, masks.list, poi, layer="none"){
 # Function that plots exprs (asinh counts) of protein_x vs protein_y for both
 # ground truth and decomposed data coloured by celltype
 plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="exprs"){
-  col_cells <- rep("grey", length(unique(colData(sce.list[[1]])$celltype)))
-  names(col_cells) <- unique(colData(sce.list[[1]])$celltype)
-  if(celltype_col!=""){
-    col_cells[celltype_col] <- "red"
+  # Remove special characters in protein names to make plotting of such proteins
+  # possible
+  sce.list <- lapply(sce.list, function(sce){
+    rownames(sce) <- gsub("/|-", "_", rownames(sce))
+    sce
+    })
+  protein_x <- gsub("/|-", "_", protein_x)
+  protein_y <- gsub("/|-", "_", protein_y)
+
+  if ("celltype" %in% names(colData(sce.list[[2]]))){
+    col_cells <- rep("grey", length(unique(colData(sce.list[[1]])$celltype)))
+    names(col_cells) <- unique(colData(sce.list[[1]])$celltype)
+    if(celltype_col!=""){
+      col_cells[celltype_col] <- "red"
+    }
+    
+    alpha_cells <- rep(0.2, length(unique(colData(sce.list[[1]])$celltype)))
+    names(alpha_cells) <- unique(colData(sce.list[[1]])$celltype)
+    alpha_cells[celltype_col] <- 1
+    
+    plot.sim <- ggcells(sce.list[[1]], 
+                        aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y), 
+                            colour=celltype, alpha=celltype), 
+                        exprs_values=layer) +
+      geom_point(size=0.3) +
+      theme_cowplot(10) +
+      scale_color_manual(values=col_cells) +
+      guides(color=FALSE) +
+      scale_alpha_manual(guide='none', values=alpha_cells)
+    
+    plot.true <- ggcells(sce.list[[2]], 
+                         aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y), 
+                             colour=celltype, alpha=celltype), 
+                         exprs_values=layer) +
+      geom_point(size=0.4) +
+      theme_cowplot(10) +
+      scale_color_manual(values=col_cells) +
+      scale_alpha_manual(guide='none', values=alpha_cells)
+  } else {
+    plot.sim <- ggcells(sce.list[[1]], 
+                        aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y)), 
+                        exprs_values=layer) +
+      geom_point(size=0.3) +
+      theme_cowplot(10) +
+      scale_color_manual(values=col_cells) +
+      guides(color=FALSE) +
+      scale_alpha_manual(guide='none', values=alpha_cells)
+    
+    plot.true <- ggcells(sce.list[[2]], 
+                         aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y)), 
+                         exprs_values=layer) +
+      geom_point(size=0.4) +
+      theme_cowplot(10) +
+      scale_color_manual(values=col_cells) +
+      scale_alpha_manual(guide='none', values=alpha_cells)
   }
-  
-  alpha_cells <- rep(0.2, length(unique(colData(sce.list[[1]])$celltype)))
-  names(alpha_cells) <- unique(colData(sce.list[[1]])$celltype)
-  alpha_cells[celltype_col] <- 1
-  
-  plot.sim <- ggcells(sce.list[[1]], 
-                      aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y), 
-                          colour=celltype, alpha=celltype), 
-                      exprs_values=layer) +
-    geom_point(size=0.3) +
-    theme_cowplot(10) +
-    scale_color_manual(values=col_cells) +
-    guides(color=FALSE) +
-    scale_alpha_manual(guide='none', values=alpha_cells)
-  
-  plot.true <- ggcells(sce.list[[2]], 
-                       aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y), 
-                           colour=celltype, alpha=celltype), 
-                       exprs_values=layer) +
-    geom_point(size=0.4) +
-    theme_cowplot(10) +
-    scale_color_manual(values=col_cells) +
-    scale_alpha_manual(guide='none', values=alpha_cells)
   
   plot_grid(plot.sim, plot.true, 
             labels=names(sce.list), 

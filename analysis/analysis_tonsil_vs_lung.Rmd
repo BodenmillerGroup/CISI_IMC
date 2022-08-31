@@ -177,7 +177,7 @@ for (measure in names(res)[2:10]) {
     scale_y_continuous(limits=c(0, 1)) +
     scale_fill_npg() +
     scale_pattern_manual(values=c(composite="stripe", noisy="none"), 
-                         labels=c("Composite", "Noisy")) +
+                         labels=c("No noise", "Noisy (SNR=5)")) +
     labs(x="Training_Test Dataset", y=str_to_title(measure), pattern="Simulation Type") + 
     guides(pattern=guide_legend(override.aes=list(fill="white")),
            fill=guide_legend(override.aes=list(pattern="none"))) +
@@ -282,31 +282,6 @@ X.Exprs <- plot_grid(plot_exprs(X.exprsList, "B", "CD3", "CD20"),
                      plot_exprs(X.exprsList, "Neutro", "MPO", "CD15"),
                      ncol=1)
 print(X.Exprs)
-```
-
-#### Scatterplot Results with and without Normalization in Training 
-#### (Immucan Lung, k=1, arcsinh)
-
-Next, we have a look of normalization in training.
-
-```{r plot_normalizations, fig.height = 8, fig.width = 18, fig.align = "center"}
-# # TODO: Check that this works and figure out what exactly we want to look at here
-# 
-# # Subset to dataset trained and tested on the Immucan lung dataset with k=1
-# # with and without normalization for the decomposed counts
-# X.normList <- keep(X.list, function(x){
-#   metadata(x)$training=="lung" & metadata(x)$dataset=="lung" &
-#     (metadata(x)$k=="1" | metadata(x)$k=="norm") &
-#     metadata(x)$ground_truth=="simulated"})
-# names(X.normList) <- lapply(X.normList,
-#                             function(x){metadata(x)$k})
-# 
-# # Plot asinh transformed counts of proteins of interest of decomposed data trained
-# # with and without normalization
-# X.Norms <- plot_grid(plot_exprs(X.exprsList, "", "CD3", "CD20"),
-#                      plot_exprs(X.exprsList, "", "CD3", "VISTA"),
-#                      ncol=1)
-# print(X.Norms)
 ```
 
 #### Results per Protein (k=1, arcsinh) {.tabset}
@@ -506,41 +481,3 @@ X.redDimPlot <- plot_grid(plotlist=X.redDimlist,
 print(X.redDimPlot)
 ```
 
-#### Cell Phenotyping (k=1, Immucan_lung as test set, arcsinh)
-
-Next, we use a pre-trained random forest classifier to predict celltypes of decomposed
-Immucan lung test datasets using k=1 and the arcsinh transformed decomposed counts.
-We then compare these results to the 'ground truth' celltypes (celltypes predicted from
-ground truth data) by calculating the precision, sensitivity and specififity.
-
-```{r rffit}
-# # TODO: test this
-# # Subset to dataset trained and tested on the Immucan lung dataset
-# lungSim.list <- keep(X.list, function(x){
-#   metadata(x)$dataset=="lung" & metadata(x)$k=="1" & metadata(x)$ground_truth=="simulated"})
-# names(lungSim.list) <- lapply(lungSim.list,
-#                               function(x){metadata(x)$training})
-# 
-# # Predict cell type using pretrained classifier on decomposed results and
-# # compute confusion matrix using celltypes of true data
-# lungSim.exprs <- lapply(lungSim.list, compute_confusionMatrix, rffit=rffit.lung)
-# 
-# # Plot prediction results/confusion matrix as shown in IMCDataAnalysis script
-# for (l in lungSim.exprs){
-#   pred.plot <- data.frame(cm$byClass) %>%
-#     mutate(class=sub("Class: ", "", rownames(cm$byClass))) %>%
-#     ggplot() + 
-#     geom_point(aes(1 - Specificity, Sensitivity, 
-#                    size=Detection.Rate,
-#                    fill=class),
-#                shape=21) + 
-#     scale_fill_igv() +
-#     theme_cowplot(10) + 
-#     ylab("Sensitivity (TPR)") +
-#     xlab("1 - Specificity (FPR)")
-#   
-#   print(pred.plot)
-# }
-
-
-```

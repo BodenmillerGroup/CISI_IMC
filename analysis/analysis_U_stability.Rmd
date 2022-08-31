@@ -1,7 +1,14 @@
 ---
 title: "Analysis of U stability"
-output: html_document
-date: '2022-06-10'
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+    pandoc_args: [ 
+      "--output=analysis_U_stability_Tonsil_th152.html" 
+    ]
+date: "2022-08-31"
 ---
 
 ## Setup
@@ -27,10 +34,11 @@ library(cytomapper)
 
 ```{r specify_paths}
 # Set general input paths to all analysis files
-analysis.path <- "/mnt/bb_dqbm_volume/analysis"
+# analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152"
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Immucan_lung"
 
-u_stability.path <- file.path(analysis.path, "Tonsil_th152/tests/test_U_stability")
-u_stability_par.path <- file.path(analysis.path, "Tonsil_th152/tests/test_U_stability_par")
+u_stability.path <- file.path(analysis.path, "tests/test_U_stability")
+u_stability_par.path <- file.path(analysis.path, "tests/test_U_stability_par")
 ```
 
 ```{r helper_fnc}
@@ -77,7 +85,7 @@ ggplot(u_stability.long, aes(train_size, distance)) +
   labs(x="Training size", y="Correlation distance")
 ```
 
-### Mantel Test for k=3 and k=1
+### Mantel Test for k=3 and k=1 *(d=80, iter=10, paper_norm)*
 
 ```{r plot_u_stability_size_mantel, fig.height = 8, fig.width = 18, fig.align = "center"}
 # Calculate mantel test for each U compared to 'ground truth' U of average U
@@ -106,7 +114,9 @@ u_stability.mantel <- lapply(unique(u_stability.modules$k), function(k_iter){
   names(u_stability.cor) <- unique(u_stability.modules$size)
   
   # Ground truth
-  ground_truth <- Reduce('+', u_stability.cor[["162624"]]) / length(u_stability.cor[["162624"]])
+  ground_truth.size <- as.character(max(as.integer(names(u_stability.cor))))
+  ground_truth <- Reduce('+', u_stability.cor[[ground_truth.size]]) /
+    length(u_stability.cor[[ground_truth.size]])
   
   # Compute mantel test for every U
   mantel_temp <- rapply(u_stability.cor, 
@@ -142,7 +152,7 @@ Read in results from the stability analysis of U computed using different parame
 (U_stability.ipynb). We then look at the heatmap of U and the pairwise correlations 
 between U's using the Mantel test.
 
-### k (W sparsity)
+### k (W sparsity) *(d=80, iter=10, paper_norm)*
 
 ```{r read_u_stability_k}
 # Define path for results of different k's (sparsity)
@@ -181,7 +191,7 @@ u_stability_k.mantelBoxplot <- plot_mantel_boxplot(u_stability_k.cor, "k")
 print(u_stability_k.mantelBoxplot)
 ```
 
-### maxItr (number of iterations to compute U)
+### maxItr (number of iterations to compute U) *(k=3, d=80, paper_norm)*
 
 ```{r read_u_stability_maxItr}
 # Define path for results of different k's (sparsity)
@@ -222,7 +232,7 @@ u_stability_maxItr.mantelBoxplot <- plot_mantel_boxplot(u_stability_maxItr.cor, 
 print(u_stability_maxItr.mantelBoxplot)
 ```
 
-### Transformation of X (before SMAF training)
+### Transformation of X (before SMAF training) *(k=1, d=80, iter=10)*
 
 ```{r read_u_stability_xform}
 # Define path for results of different k's (sparsity)
@@ -252,15 +262,58 @@ u_stability_xform.boxplot
 #### Mantel test for different transformations {.tabset}
 
 ```{r plot_u_stability_xform_mantel, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
-plot_metan_mantel(u_stability_xform.cor, "transformation")
+plot_metan_mantel(u_stability_xform.cor[names(u_stability_xform.cor)!="scaled"], "transformation")
 ```
 
 #### {-}
 
-The boxplot shows a summary of the above mantel test results, by only looking at the pairwise correlations between any two matrices for each k.
+The boxplot shows a summary of the above mantel test results, by only looking at the pairwise correlations between any two matrices for each transformation.
 
 ```{r plot_u_stability_xform_mantel_boxplot, fig.height = 8, fig.width = 18, fig.align = "center"}
 u_stability_xform.mantelBoxplot <- plot_mantel_boxplot(u_stability_xform.cor, "transformation", 
                                                        to_int=FALSE)
 print(u_stability_xform.mantelBoxplot)
+```
+
+### Dictionary size of U (number of modules in U) *(k=1, iter=10, paper_norm)*
+
+```{r read_u_stability_dict}
+# Define path for results of different k's (sparsity)
+u_stability_dict.path <- file.path(u_stability_par.path, "dictSize")
+
+# Read in segmentation SCE results
+u_stability_modules_dict.files <- list.files(u_stability_dict.path, 'gene_modules.csv',
+                                              full.names=TRUE, recursive=TRUE)
+u_stability_dict.modules <- lapply(u_stability_modules_dict.files, read_U, type="par") %>% 
+  bind_rows() %>%
+  dplyr::rename(dictionary_size=k)
+```
+
+#### Heatmap of U for different dictionary sizes {.tabset}
+
+```{r plot_u_stability_dict, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+# Plot U for different k's
+u_stability_dict.cor <- plot_U(u_stability_dict.modules, "dictionary_size", "rep")
+```
+
+```{r plot_u_stability_dict_dist,  fig.height = 8, fig.width = 18, fig.align = "center", include=FALSE}
+u_stability_dict.boxplot <- plot_dist_boxplot(u_stability_dict.cor, "dictionary_size", 
+                                               to_int=FALSE)
+u_stability_dict.boxplot
+```
+
+#### Mantel test for different dictionary sizes {.tabset}
+
+```{r plot_u_stability_dict_mantel, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+plot_metan_mantel(u_stability_dict.cor, "dictionary_size")
+```
+
+#### {-}
+
+The boxplot shows a summary of the above mantel test results, by only looking at the pairwise correlations between any two matrices for each dictionary size.
+
+```{r plot_u_stability_dict_mantel_boxplot, fig.height = 8, fig.width = 18, fig.align = "center"}
+u_stability_dict.mantelBoxplot <- plot_mantel_boxplot(u_stability_dict.cor, "dictionary_size", 
+                                                       to_int=TRUE)
+print(u_stability_dict.mantelBoxplot)
 ```
