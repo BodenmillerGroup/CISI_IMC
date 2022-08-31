@@ -30,6 +30,10 @@ inputs:
     versions: list containing versions of phi's in Phi
     layer: which layer in anndata object to use (default: X)
     norm: which normalization used before simulating decomposition measurements
+    save: Which decomposed X is saved.
+          Either the X decomposed from noisy simulated data or simulated data
+          without noise (default: no_noise)
+    snr: Signal to noise ratio used to simulate noisy composite data
 
 outputs:
     results_df: All performance analyis in one pandas df
@@ -37,7 +41,7 @@ outputs:
 '''
 
 def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
-                    THREADS=20, layer=None, norm='none'):
+                    THREADS=20, layer=None, norm='none', save='no_noise', snr=5):
     # Select layer of anndata object that should be used and transpose it
     # to proteins x cells/channels
     if layer is not None:
@@ -74,33 +78,47 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
 
     # Create empty pandas df to return all analysis
     results_df = pd.DataFrame(columns=colnames)
-    results_comp_df = pd.DataFrame(columns=colnames)
+    results_noNoise_df = pd.DataFrame(columns=colnames)
 
     for i in xs:
         phi = Phi[i]
 
-        y = get_observations(X_test, phi, snr=5, normalization=norm)
+        y = get_observations(X_test, phi, snr, normalization=norm)
         x2 = decompress(y, U, phi)
         x2[np.isnan(x2)] = 0
         results = compare_results(X_test, x2)
         f2.write('\t'.join([str(x) for x in [versions[i]]+results+[d_gene[i]]+[k]]) + '\n')
 
-        y_comp = get_observations_no_noise(X_test, phi, normalization=norm)
-        x2_comp = decompress(y_comp, U, phi)
-        x2_comp[np.isnan(x2_comp)] = 0
-        results_comp = compare_results(X_test, x2_comp)
-        f3.write('\t'.join([str(x) for x in [versions[i]]+results_comp+[d_gene[i]]+[k]]) + '\n')
+        y_noNoise = get_observations_no_noise(X_test, phi, normalization=norm)
+        x2_noNoise = decompress(y_noNoise, U, phi)
+        x2_noNoise[np.isnan(x2_noNoise)] = 0
+        results_noNoise = compare_results(X_test, x2_noNoise)
+        f3.write('\t'.join([str(x) for x in [versions[i]]+results_noNoise+[d_gene[i]]+[k]]) + '\n')
 
-        # Write x_comp to anndata
-        x2_comp_anndata = X_input
-        x2_comp_anndata.X = x2_comp.T
-        x2_comp_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
+        # Either safe the decomposed results X computed from noisy simulated data
+        # or simulated data without noise
+        if save=='no_noise':
+            # Write x_noNoise to anndata
+            x2_noNoise_anndata = X_input
+            x2_noNoise_anndata.X = x2_noNoise.T
+            x2_noNoise_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
+        elif save=='noise':
+            # Write x_noNoise to anndata
+            x2_anndata = X_input
+            x2_anndata.X = x2.T
+            x2_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
+        else:
+            # In case no valid type of simulated data to save is given, an error is thrown
+            raise ValueError(('The simulation type of data used to decompose the test '
+                              'data {0} is not valid.'.format(save)' +
+                              'Please use one of the following: no_noise or noise'))
+
 
         # Add results to pandas df
         results_df.loc[len(results_df)] = [versions[i]]+results+[d_gene[i]] + [k]
-        results_comp_df.loc[len(results_comp_df)] = [versions[i]]+results_comp+[d_gene[i]] + [k]
+        results_noNoise_df.loc[len(results_noNoise_df)] = [versions[i]]+results_noNoise+[d_gene[i]] + [k]
 
     f2.close()
     f3.close()
 
-    return results_df, results_comp_df
+    return results_df, results_noNoise_df

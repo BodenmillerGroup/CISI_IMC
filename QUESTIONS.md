@@ -3,10 +3,12 @@
 ## Overall
 - [ ] Why do the normalization on X before training?
 - [ ] In W decode, why is k-sparsity not enforced (instead lda2/10 is used)?
-- [ ] In decode() fncs., why lda2 * matrix norm for lambda1?
+- [ ] In decode() fncs., why is the error tolerance in spams.lasso() set to lambda1=lda2*Xnorm,
+      depending on the norm of X (Xnorm = np.linalg.norm(X)**2 / X.shape[1])?
 - [ ] Why is training not evaluated on binarised phi/A ?
 - [ ] Observed problem: Covariance before is heightened (e.g. also for segmentation errors)
 - [ ] Observed problem: Rare events/rarely expressed proteins are not captured accuratelly
+
 
 
 ## Small Team

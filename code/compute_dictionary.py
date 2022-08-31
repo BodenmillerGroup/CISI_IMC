@@ -89,7 +89,7 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
     # this tends to happen more on the full vs subsampled matrices
     if UW == None:
         # Initialze U, W randomly
-        U, W = spams.nmf(np.asfortranarray(X), return_lasso=True, K = d, numThreads=THREADS)
+        U, W = spams.nmf(np.asfortranarray(X), return_lasso=True, K=d, numThreads=THREADS)
         W = np.asarray(W.todense())
     else:
         U, W = UW
@@ -148,7 +148,7 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
         if activity_size < activity_lower:
             lda2 /= 2.
 
-    # Remove empty columns (proteins that are never chosen?)
+    # Remove empty columns (modules containing no proteins)
     U = U[:, (U.sum(0) > 0)]
 
     # If an outpath is given

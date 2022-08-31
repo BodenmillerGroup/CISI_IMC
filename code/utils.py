@@ -134,3 +134,37 @@ def compare_results(A, B):
     results += list(compare_distances(A, B))
     results += list(compare_distances(A.T, B.T))
     return results
+
+
+# Find genes that are comeasured but are not coexpressed (correlation<threshold)
+# and correct their expressions
+def select_and_correct_comeasured(x, xc, phi, phi_corr, training_corr,
+                                  phi_thresh=0.6, train_thresh=0.1):
+	# find comeasured genes that are not coexpressed
+	comeasured = []
+	for i in range(phi_corr.shape[0]):
+		xs = np.argsort(-phi_corr[i])
+		for j in xs:
+			if phi_corr[i, j] < phi_thresh:
+				break
+			comeasured.append((phi_corr[i, j], i, j))
+	corrected_pairs = []
+	for c in sorted(comeasured, reverse=True):
+		if training_corr[c[1], c[2]] < train_thresh:
+			x, both_nz = correct_coexpression(x, xc, phi, c[1], c[2])
+			corrected_pairs.append((c[1], c[2], both_nz))
+	return x, corrected_pairs
+
+
+# Set closest not coexpressed genes to 0?
+def correct_coexpression(x, xc, phi, i, j):
+	# pick the gene with nearest expression pattern in scRNA
+	thresh_i = np.percentile(x[i], 99.9) / 100
+	thresh_j = np.percentile(x[j], 99.9) / 100
+	both_nz = (x[i] > thresh_i)*(x[j] > thresh_j)
+	dist = distance.cdist([phi[:, i], phi[:, j]], xc[:, both_nz].T, 'correlation')
+	i_closer = np.where(both_nz)[0][dist[0] < dist[1]]
+	j_closer = np.where(both_nz)[0][dist[0] > dist[1]]
+	x[i, j_closer] = 0
+	x[j, i_closer] = 0
+	return x, both_nz

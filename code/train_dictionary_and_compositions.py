@@ -61,6 +61,10 @@ inputs:
 
     For fnc analyze_U_and_A():
         THREADS_A_and_U: # Number of threads used (default=20)
+        save: Which decomposed X is saved.
+              Either the X decomposed from noisy simulated data or simulated data
+              without noise (default: no_noise)
+        snr: Signal to noise ratio used to simulate noisy composite data
 
     For fnc train_validate_test_split():
         split_by: either split by 'roi' or 'percentage' (default: 'roi')
@@ -97,7 +101,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
                   THREADS_smaf=4, nmeasurements = 10, maxcomposition = 3, mode_phi='G',
                   lasso_sparsity=0.2, THREADS_A=20, num_phi=1, binary=False,
                   THREADS_A_and_U=20, split_by='roi', k_cv=4, test_set=(), test_size=None,
-                  threshold_cond_prob=10.0):
+                  threshold_cond_prob=10.0, save='no_noise', snr=5):
 
     # Add a seed to use by numpy for reproducibility
     np.random.seed(11)
@@ -155,9 +159,8 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
     # Analize training
     training_res, training_res_comp = analyze_U_and_A(X_test, U_best, [Phi_best],
                                                       [version_best], outpath, k_best,
-                                                      lasso_sparsity,
-                                                      THREADS_A_and_U,
-                                                      norm=normalization)
+                                                      lasso_sparsity, THREADS_A_and_U,
+                                                      layer, normalization, save, snr)
 
     # Calculate pairwise protein correlations
     cor = make_cor(X, outpath)
