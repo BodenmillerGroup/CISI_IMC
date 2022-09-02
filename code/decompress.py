@@ -29,7 +29,7 @@ outputs:
     Estimated X (proteins x cells/pixels)
 '''
 
-def decompress(y, U, phi, sparsity=0.1, method='lyasso', numThreads=20,
+def decompress(y, U, phi, sparsity=0.1, method='lasso', numThreads=20,
                worstFit=1., mink=0, nonneg=True, num_blocks=20,
                correct_comeasured=False, phi_corr=None, train_corr=None):
     # Call fnc sparse_decode to compute W
