@@ -34,8 +34,8 @@ library(cytomapper)
 
 ```{r specify_paths}
 # Set general input paths to all analysis files
-# analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152"
-analysis.path <- "/mnt/bb_dqbm_volume/analysis/Immucan_lung"
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152"
+# analysis.path <- "/mnt/bb_dqbm_volume/analysis/Immucan_lung"
 
 u_stability.path <- file.path(analysis.path, "tests/test_U_stability")
 u_stability_par.path <- file.path(analysis.path, "tests/test_U_stability_par")
@@ -262,7 +262,7 @@ u_stability_xform.boxplot
 #### Mantel test for different transformations {.tabset}
 
 ```{r plot_u_stability_xform_mantel, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
-plot_metan_mantel(u_stability_xform.cor[names(u_stability_xform.cor)!="scaled"], "transformation")
+plot_metan_mantel(u_stability_xform.cor, "transformation")
 ```
 
 #### {-}

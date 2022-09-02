@@ -22,13 +22,17 @@ library(utils)
 library(reshape2)
 library(stringr)
 library(gridGraphics)
-library(zellkonverter)
+# library(zellkonverter)
 library(SingleCellExperiment)
 library(cytomapper)
 library(scater)
 library(ggpubr)
 library(dittoSeq)
-library(randomForest)
+library(Rphenograph)
+library(igraph)
+library(aricode)
+library(viridis)
+library(ComplexHeatmap)
 ```
 
 ```{r specify_paths}
@@ -58,7 +62,7 @@ files <- list.files(analysis.path, 'simulation_results.txt',
                     full.names=TRUE, recursive=TRUE)
 # TODO: change this line if more files come along and need to exclude
 files <- files[grepl(
-  "tonsil_vs_lung|Tonsil_th152/training/full|Immucan_lung/training/subset", files)]
+  "tonsil_vs_lung|Tonsil_th152/training/full/k_|Immucan_lung/training/subset", files)]
 res <- lapply(files, read_results, type="res") %>% 
   bind_rows() 
 
@@ -98,8 +102,12 @@ u <- lapply(1:(nrow(u_files)), function(i){
 X.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
 # TODO: change this line if more files come along and need to exclude
 X.files <- X.files[grepl(
-  "tonsil_vs_lung|Tonsil_th152/training/full|Immucan_lung/training/subset", X.files)]
+  "tonsil_vs_lung|Tonsil_th152/training/full/k_|Immucan_lung/training/subset", X.files)]
 X.files <- X.files[!grepl("_processed", X.files)]
+
+# Read processed SCE to avoid computing UMAP, TSNE, ... all the time since it is computationally
+# expensive
+# X.files <- X.files[grepl("_processed", X.files)]
 
 # Read in all sce experiments from saved anndata and save additional info in metadata
 # (e.g. which dataset is used in training and testing, which k was used and if it
@@ -133,8 +141,7 @@ X.list <- lapply(X.list, function(sce){
 # expensive
 # lapply(1:(length(X.list)), function(i){saveRDS(X.list[i], 
 #                                                paste0(gsub("\\..*", "", X.files[i]),
-#                                                       "_processed.",
-#                                                       gsub(".*\\.", "", basename(X.files[i]))))})
+#                                                       "_processed.rds"))})
 
 ## Read masks
 # Read in masks for tonsil data
@@ -456,16 +463,16 @@ for(sce in X.exprsList){
                                   theme_cowplot(7)))
     
     # X.redDimlist <- append(X.redDimlist, 
-    #                        list(dittoDimPlot(sce.temp,
-    #                                          var="col",
-    #                                          reduction.use=method, 
-    #                                          size=0.2,
-    #                                          min.color="grey",
-    #                                          max.color=pal_npg(("nrc"))("1")) +
-    #                               #scale_color_igv() +
-    #                               theme_cowplot() +
-    #                               theme(legend.position="bottom") +
-    #                               guides(color=guide_legend(nrow=1)))) 
+                           # list(dittoDimPlot(sce.temp,
+                           #                   var="col",
+                           #                   reduction.use=method,
+                           #                   size=0.2,
+                           #                   min.color="grey",
+                           #                   max.color=pal_npg(("nrc"))("1")) +
+                           #        #scale_color_igv() +
+                           #        theme_cowplot() +
+                           #        theme(legend.position="bottom") +
+                           #        guides(color=guide_legend(nrow=1))))
   }
 }
 # Remove empty plot at the beginning and add legend to the end of the plot list
@@ -479,5 +486,52 @@ X.redDimPlot <- plot_grid(plotlist=X.redDimlist,
                           label_size=15, hjust=c(-2, -1.5), vjust=1, scale=0.9)
 
 print(X.redDimPlot)
+```
+```{r clustering2, fig.height = 8, fig.width = 10, fig.align = "center"}
+
+
+all.clusters <- lapply(X.list, function(sce){
+  mat <- t(assay(sce, "exprs"))
+  out <- Rphenograph(mat, k=45)
+  clusters <- factor(membership(out[[2]])) %>%
+    as.data.frame() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=".") %>%
+    mutate(dataset=paste(metadata(sce)$training, metadata(sce)$dataset, sep="_"),
+           k=metadata(sce)$k) 
+}) %>% bind_rows() %>%
+  group_by(k, dataset) %>%
+  summarise_all(na.omit)
+
+for (i in unique(all.clusters$k)){
+  ht_list <- NULL
+  for (d in unique(all.clusters$dataset)){
+    temp.matrix <- table(paste("sim", all.clusters %>% 
+                                 dplyr::filter(k==i & dataset==d) %>% 
+                                 pull(simulated)), 
+                         paste("gt", all.clusters %>% 
+                                 dplyr::filter(k==i & dataset==d) %>% 
+                                 pull(ground_truth))) %>% 
+      as.matrix()
+    temp.matrix <- log10(temp.matrix + 10)
+    
+    ht_list <- append(ht_list, list(grid.grabExpr(draw(Heatmap(temp.matrix,
+                                                               col=magma(100),
+                                                               column_title=d)))))
+  }
+  print(plot_grid(plotlist=ht_list, nrow=1))
+}
+
+ari.plot <- ggplot(all.clusters %>%
+                     group_by(dataset, k) %>%
+                     summarize(RI=RI(simulated, ground_truth)),
+                   aes(x=dataset, y=RI, fill=k)) +
+  geom_bar(position="dodge", stat="identity") +
+  theme_cowplot() +
+  scale_fill_npg() +
+  coord_flip() +
+  ylim(0, 1)
+
+print(ari.plot)
+
 ```
 
