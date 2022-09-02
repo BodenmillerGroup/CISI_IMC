@@ -84,21 +84,21 @@ def sparse_decode(Y, D, k, numThreads, method='omp', worstFit=1., mink=0, nonneg
 # Fixing U, approximating W (in blocks)
 def sparse_decode_blocks(Y, D, lda=0.1, numThreads=20, method='omp', worstFit=1.,
                          mink=0, nonneg=True, num_blocks=20):
-	W = np.zeros((D.shape[1], Y.shape[1]))
-	ynorm = np.linalg.norm(Y, axis=0)
-	xs = np.argsort(ynorm)
-	block_size = int(len(xs) / num_blocks)
+        W = np.zeros((D.shape[1], Y.shape[1]))
+        ynorm = np.linalg.norm(Y, axis=0)
+        xs = np.argsort(ynorm)
+        block_size = int(len(xs) / num_blocks)
 
-    if (block_size!=0):
-    	for i in range(0, len(xs), block_size):
-    		idx = xs[i:i+block_size]
-    		w = sparse_decode(Y[:, idx], D, lda, numThreads, method, worstFit,
-                        mink, nonneg)
-    		W[:, idx] = w
-    else:
-        W = sparse_decode(Y, D, lda, numThreads, method, worstFit,
-                          mink, nonneg)
-	return W
+        if (block_size!=0):
+                for i in range(0, len(xs), block_size):
+                        idx = xs[i:i+block_size]
+                        w = sparse_decode(Y[:, idx], D, lda, numThreads, method, worstFit,
+                                          mink, nonneg)
+                        W[:, idx] = w
+        else:
+                W = sparse_decode(Y, D, lda, numThreads, method, worstFit,
+                                  mink, nonneg)
+        return W
 
 
 # Simulate random composite observations Y from X

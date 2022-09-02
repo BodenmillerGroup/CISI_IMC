@@ -1,6 +1,6 @@
 # Import libraries
 import numpy as np
-from utils import sparse_decode_blocks, select_and_correct_comeasured, threshold_genes
+from utils import sparse_decode_blocks, select_and_correct_comeasured
 
 
 '''
