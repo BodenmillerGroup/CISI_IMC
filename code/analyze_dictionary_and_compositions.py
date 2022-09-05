@@ -64,6 +64,10 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
     path.mkdir(parents=True, exist_ok=True)
 
     # Write x_test to file for analysis
+    if layer is not None:
+        X_input.X = X_input.layers[layer]
+    for k in X_input.layers.keys():
+        del X_input.layers[k]
     X_input.write(os.path.join(path, 'X_test.h5ad'))
 
     # Write output to file
@@ -100,11 +104,15 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
         if save=='no_noise':
             # Write x_noNoise to anndata
             x2_noNoise_anndata = X_input
+            for k in x2_noNoise_anndata.layers.keys():
+                del x2_noNoise_anndata.layers[k]
             x2_noNoise_anndata.X = x2_noNoise.T
             x2_noNoise_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
         elif save=='noise':
             # Write x_noNoise to anndata
             x2_anndata = X_input
+            for k in x2_anndata.layers.keys():
+                del x2_anndata.layers[k]
             x2_anndata.X = x2.T
             x2_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
         else:

@@ -128,16 +128,15 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
             # Compute U
             U, W = smaf(X_training, d, lda1, lda2, maxItr, UW, posW, posU, use_chol,
                         module_lower, activity_lower, donorm, mode_smaf, mink, U0, U0_delta,
-                        doprint, THREADS_smaf, os.path.join(outpath, 'crossvalidation_'+str(k)),
-                        normalization, layer)
+                        doprint, THREADS_smaf, None, normalization, layer)
             # Mark step for progressbar
             bar()
 
             # Compute A
             Phi, pearson_cor, versions = compute_A(X_validate, U, nmeasurements, maxcomposition,
                                                   mode_phi, lasso_sparsity,
-                                                  os.path.join(outpath, 'crossvalidation_'+str(k)),
-                                                  THREADS_A, layer, num_phi, binary)
+                                                  None, THREADS_A, layer, num_phi,
+                                                  binary)
             # Mark step for progressbar
             bar()
 
@@ -155,6 +154,26 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
     # Print training correlations
     print(('Cross-fold validations done.\n' +
           'The pearson correlations are: {0}'.format(all_pearson_cor)))
+
+    # Save best U and A/Phi form training if outpath is given
+    # If an outpath is given
+    if outpath!=None:
+        path = Path(outpath)
+        path.mkdir(parents=True, exist_ok=True)
+        # Save U
+        pd.DataFrame(U_best, columns=list(range(1, U_best.shape[1]+1)),
+                     index=X_test.var_names).to_csv(os.path.join(path, 'gene_modules.csv'))
+        # Save A/Phi
+        f1 = open(os.path.join(path, 'version_%d.txt' % version_best), 'w')
+        # Add protein names
+        f1.write('\t'.join(X_test.var_names) + '\n')
+
+        for j in range(nmeasurements):
+            genes = ['channel %d' % j]
+            for k in range(X.shape[0]):
+                genes.append(str(Phi_best[j, k]))
+            f1.write('\t'.join(genes) + '\n')
+        f1.close()
 
     # Analize training
     training_res, training_res_comp = analyze_U_and_A(X_test, U_best, [Phi_best],
