@@ -118,7 +118,7 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
         else:
             # In case no valid type of simulated data to save is given, an error is thrown
             raise ValueError(('The simulation type of data used to decompose the test '
-                              'data {0} is not valid.'.format(save)' +
+                              'data {0} is not valid.'.format(save) +
                               'Please use one of the following: no_noise or noise'))
 
 
