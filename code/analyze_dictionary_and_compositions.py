@@ -83,8 +83,7 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
 
     # Write x_test to file for analysis
     X_save = X_input.copy()
-    if layer is not None:
-        X_save.X = X_save.layers[layer]
+    X_save.X = X_test
     for k in X_save.layers.keys():
         del X_save.layers[k]
     X_save.write(os.path.join(path, 'X_test.h5ad'))
