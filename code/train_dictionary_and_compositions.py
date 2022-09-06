@@ -22,6 +22,9 @@ inputs:
            (used in all fnc)
     lasso_sparsity: error tolerance applied to l1 sparsity constraint (default: 0.2)
                     (used in compute_A and analyze_U_and_A)
+    analysis_normalization: If true then normalization is used before simulating
+                            decomposed data and is compared to true data normalized
+                            the same way (default: True)
 
     For fnc smaf():
         d: the number of features (columns) in the dictionary U
@@ -101,7 +104,8 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
                   THREADS_smaf=4, nmeasurements = 10, maxcomposition = 3, mode_phi='G',
                   lasso_sparsity=0.2, THREADS_A=20, num_phi=1, binary=False,
                   THREADS_A_and_U=20, split_by='roi', k_cv=4, test_set=(), test_size=None,
-                  threshold_cond_prob=10.0, save='no_noise', snr=5):
+                  threshold_cond_prob=10.0, save='no_noise', snr=5,
+                  analysis_normalization=True):
 
     # Add a seed to use by numpy for reproducibility
     np.random.seed(11)
@@ -174,6 +178,12 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
                 genes.append(str(Phi_best[j, k]))
             f1.write('\t'.join(genes) + '\n')
         f1.close()
+
+    # If analysis_normalization is true then layer or normalization is used for
+    # simulating decomposed data and is compared to in results
+    if not analysis_normalization:
+        layer = None
+        normalization = "none"
 
     # Analize training
     training_res, training_res_comp = analyze_U_and_A(X_test, U_best, [Phi_best],

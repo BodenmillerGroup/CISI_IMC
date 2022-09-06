@@ -49,6 +49,24 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
     else:
         X_test = (X_input.X).T
 
+    # Extract data matrix X from anndata object and apply selected normalization
+    match norm:
+        case 'paper_norm':
+            # Normalize X? (otherwise spams.nmf underneath will estimate U to only contain
+            # 0s and smaf won't work)
+            # Normalizaiton: Every row in X_input is divided by the corresponding vector
+            # element in the rowwise norm (proteins are normalized accross all cells/pixels)
+            X_test = (X_test.T / np.linalg.norm(X_test, axis=1)).T
+        case 'min_max_norm':
+            X_test = (X_test-X_test.min(axis=1, keepdims=True)) / (
+                X_test.max(axis=1, keepdims=True)-X_test.min(axis=1, keepdims=True)
+                )
+        case _:
+            # In case no valid normalization is given, an error is thrown
+            raise ValueError(('The normalization {0} used by smaf is not valid.'.format(norm) +
+                              'Please use one of the following: paper_norm, min_max_norm, ' +
+                              'or none.'))
+
     # Empirical observation: using a sparsity constraint that is softer than
     # that used during training slightly improves results
     sparsity = lasso_sparsity / 10
