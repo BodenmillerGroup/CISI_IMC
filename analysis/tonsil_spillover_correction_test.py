@@ -61,6 +61,7 @@ test_names_tonsil = ('20220520_TsH_th152_cisi1_002',)
 k = 1
 folder_name_cor = 'sm_corrected'
 folder_name_uncor = 'sm_uncorrected'
+folder_name_combi = 'sm_combi'
 normalization = 'paper_norm'
 
 # Train CISI
@@ -79,3 +80,11 @@ normalization = 'paper_norm'
                                split_by='percentage', k_cv=4,
                                test_set=test_names_tonsil,
                                lda1=k, normalization=normalization)
+
+# Test spillover corrected results not spillover corrected data for simulation and analysis
+training_res_combi, training_res_noisy_combi = analyze_U_and_A(sce_tonsil[sce_tonsil.obs.index.isin(test_names_tonsil), ],
+                                                               U_best_cor,
+                                                               [Phi_best_cor], ['none'],
+                                                               os.path.join(out_path, folder_name_combi),
+                                                               None, norm='none')
+

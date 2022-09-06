@@ -107,11 +107,11 @@ training_res_lung, training_res_comp_lung = analyze_U_and_A(sce_lung[sce_lung.ob
                                                             [Phi_best_tonsil], ["none"],
                                                             os.path.join(out_path,
                                                                          'tonsil_vs_lung/test_lung', folder_name),
-                                                            "none", norm=normalization)
+                                                            None, norm=normalization)
 training_res_tonsil, training_res_comp_tonsil = analyze_U_and_A(sce_tonsil[sce_tonsil.obs.index.isin(X_test_tonsil), ],
                                                                 U_best_lung,
                                                                 [Phi_best_lung], ["none"],
                                                                 os.path.join(out_path,
                                                                              'tonsil_vs_lung/test_tonsil',
                                                                              folder_name),
-                                                                "none", norm=normalization)
+                                                                None, norm=normalization)

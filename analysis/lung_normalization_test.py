@@ -65,6 +65,7 @@ test_names_lung = tuple(np.random.choice(roi_names_lung,
 k = 1
 folder_name_norm = 'normalized'
 folder_name_unnorm = 'unnormalized'
+folder_name_combi = 'normalized_combi'
 
 # Train CISI
 (training_res_norm, training_res_comp_norm,
@@ -81,3 +82,10 @@ folder_name_unnorm = 'unnormalized'
                                split_by='percentage', k_cv=4,
                                test_set=test_names_lung,
                                lda1=k, normalization='none')
+
+# Test normalized results for unnormalized data for simulation and analysis
+training_res_combi, training_res_noisy_combi = analyze_U_and_A(sce_lung[sce_lung.obs.index.isin(test_names_lung), ],
+                                                               U_best_norm,
+                                                               [Phi_best_norm], ['none'],
+                                                               os.path.join(out_path, folder_name_combi),
+                                                               None, norm='none')
