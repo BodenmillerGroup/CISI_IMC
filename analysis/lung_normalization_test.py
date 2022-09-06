@@ -56,7 +56,7 @@ sce_lung = sce_lung[:, ~sce_lung.var.index.str.contains('Histone|Ir[0-9]|DNA',
 # Get all roi names for indexing
 roi_names_lung = sce_lung.obs['sample_id'].unique().to_list()
 test_names_lung = tuple(np.random.choice(roi_names_lung,
-                                           int(0.2*len(roi_names_lung)),
+                                           int(0.95*len(roi_names_lung)),
                                            replace=False))
 
 

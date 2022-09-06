@@ -13,6 +13,7 @@ library(zellkonverter)
 library(SingleCellExperiment)
 library(cytomapper)
 library(jaccard)
+library(ggpattern)
 
 
 ## General helper fnc.
@@ -348,6 +349,35 @@ plot_mantel_boxplot <- function(df, var_name, to_int=TRUE){
 }
 
 
+# Plot results from CISI for data: grouped by group on x-axis, measure is used as
+# y-value and fill variable is used for colouring, results are striped according to
+# noisy and no-noise results
+plot_cisi_results <- function(df, group, measure, fill){
+  # Create barplot
+  barplot <- ggplot(df, aes(x=!!sym(group), y=!!sym(measure),
+                            fill=!!sym(fill), pattern=simulation)) +
+    geom_bar_pattern(stat="identity",
+                     position=position_dodge(preserve="single"),
+                     width=0.6,
+                     color="black", 
+                     pattern_fill="black",
+                     pattern_angle=45,
+                     pattern_density=0.3,
+                     pattern_spacing=0.01,
+                     pattern_key_scale_factor=0.6) +
+    scale_y_continuous(limits=c(0, 1)) +
+    scale_fill_npg() +
+    scale_pattern_manual(values=c(composite="stripe", noisy="none"), 
+                         labels=c("No noise", "Noisy (SNR=5)")) +
+    labs(x=str_to_title(group), y=str_to_title(measure), pattern="Simulation type") + 
+    guides(pattern=guide_legend(override.aes=list(fill="white")),
+           fill=guide_legend(override.aes=list(pattern="none"))) +
+    theme_cowplot()
+  
+  barplot
+}
+
+
 # Plot results of CISI vs ground truth for protein of interest poi and show for
 # cell segmentation
 plot_cells <- function(sce.list, masks.list, poi, layer="none"){
@@ -432,18 +462,13 @@ plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="expr
                         aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y)), 
                         exprs_values=layer) +
       geom_point(size=0.3) +
-      theme_cowplot(10) +
-      scale_color_manual(values=col_cells) +
-      guides(color=FALSE) +
-      scale_alpha_manual(guide='none', values=alpha_cells)
+      theme_cowplot(10)  
     
     plot.true <- ggcells(sce.list[[2]], 
                          aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y)), 
                          exprs_values=layer) +
       geom_point(size=0.4) +
-      theme_cowplot(10) +
-      scale_color_manual(values=col_cells) +
-      scale_alpha_manual(guide='none', values=alpha_cells)
+      theme_cowplot(10) 
   }
   
   plot_grid(plot.sim, plot.true, 
