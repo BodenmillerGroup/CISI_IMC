@@ -7,6 +7,8 @@ import numpy as np
 import os
 from make_correlations import make_cor
 from make_conditional_probability import make_cond_prob
+from pathlib import Path
+import pandas as pd
 
 
 '''

@@ -82,11 +82,12 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
     path.mkdir(parents=True, exist_ok=True)
 
     # Write x_test to file for analysis
+    X_save = X_input.copy()
     if layer is not None:
-        X_input.X = X_input.layers[layer]
-    for k in X_input.layers.keys():
-        del X_input.layers[k]
-    X_input.write(os.path.join(path, 'X_test.h5ad'))
+        X_save.X = X_save.layers[layer]
+    for k in X_save.layers.keys():
+        del X_save.layers[k]
+    X_save.write(os.path.join(path, 'X_test.h5ad'))
 
     # Write output to file
     f2 = open(os.path.join(path, 'simulation_results.txt'), 'w')
@@ -121,14 +122,14 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
         # or simulated data without noise
         if save=='no_noise':
             # Write x_noNoise to anndata
-            x2_noNoise_anndata = X_input
+            x2_noNoise_anndata = X_input.copy()
             for k in x2_noNoise_anndata.layers.keys():
                 del x2_noNoise_anndata.layers[k]
             x2_noNoise_anndata.X = x2_noNoise.T
             x2_noNoise_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
         elif save=='noise':
             # Write x_noNoise to anndata
-            x2_anndata = X_input
+            x2_anndata = X_input.copy()
             for k in x2_anndata.layers.keys():
                 del x2_anndata.layers[k]
             x2_anndata.X = x2.T
