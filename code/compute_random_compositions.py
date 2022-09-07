@@ -33,6 +33,7 @@ inputs:
     binary: boolean variable that specifies if Phi is binary or not (default: False)
             If True, then Phi will be binarized directly after computation and the
             best Phi is chosen according to the results of its binarized version
+    maxItr: Number of iterations to test random A/Phi's (default: 2000)
 
 outputs:
     Phi/A: composition matrix (composite channels (measurements) x proteins,
@@ -43,7 +44,7 @@ outputs:
 
 
 def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsity=0.2,
-              outpath=None, THREADS=20, layer=None, num_phi=1, binary=False):
+              outpath=None, THREADS=20, layer=None, num_phi=1, binary=False, maxItr=2000):
     # Raise error if unsupported mode is given
     if (mode != 'M') and (mode != 'G'):
         raise AssertionError("Unsupported mode 'mode' given!", mode)
@@ -70,7 +71,7 @@ def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsit
     best = np.zeros(50)
     Phi = [None for _ in best]
 
-    for _ in range(2000):
+    for _ in range(maxItr):
         # Initialze random A with constraints
         while True:
             if mode == 'M':
