@@ -65,6 +65,8 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
             X_test = (X_test-X_test.min(axis=1, keepdims=True)) / (
                 X_test.max(axis=1, keepdims=True)-X_test.min(axis=1, keepdims=True)
                 )
+        case 'none':
+            X_test = X_test
         case _:
             # In case no valid normalization is given, an error is thrown
             raise ValueError(('The normalization {0} used by smaf is not valid.'.format(norm) +
@@ -110,13 +112,14 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
         phi = Phi[i]
 
         y = get_observations(X_test, phi, snr, normalization=norm)
-        x2 = decompress(y, U, phi, correct_comeasured, train_corr)
+        x2 = decompress(y, U, phi, correct_comeasured=correct_comeasured, train_corr=train_corr)
         x2[np.isnan(x2)] = 0
         results = compare_results(X_test, x2)
         f2.write('\t'.join([str(x) for x in [versions[i]]+results+[d_gene[i]]+[k]]) + '\n')
 
         y_noNoise = get_observations_no_noise(X_test, phi, normalization=norm)
-        x2_noNoise = decompress(y_noNoise, U, phi, correct_comeasured, train_corr)
+        x2_noNoise = decompress(y_noNoise, U, phi, correct_comeasured=correct_comeasured,
+                                train_corr=train_corr)
         x2_noNoise[np.isnan(x2_noNoise)] = 0
         results_noNoise = compare_results(X_test, x2_noNoise)
         f3.write('\t'.join([str(x) for x in [versions[i]]+results_noNoise+[d_gene[i]]+[k]]) + '\n')
