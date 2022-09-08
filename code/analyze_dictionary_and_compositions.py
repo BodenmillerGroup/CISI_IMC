@@ -87,8 +87,13 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
 
     # Write x_test to file for analysis
     X_save = X_input.copy()
+<<<<<<< HEAD
     X_save.X = X_test
     for k in list(X_save.layers.keys()):
+=======
+    X_save.X = X_test.T
+    for k in X_save.layers.keys():
+>>>>>>> 84f01bca079638c002a353002d1294920fa8def1
         del X_save.layers[k]
     X_save.write(os.path.join(path, 'X_test.h5ad'))
 
