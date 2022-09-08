@@ -34,6 +34,9 @@ inputs:
           Either the X decomposed from noisy simulated data or simulated data
           without noise (default: no_noise)
     snr: Signal to noise ratio used to simulate noisy composite data
+    correct_comeasured: Correct comeasured genes that are not coexpressed (default: False)
+    train_corr: Correlations between genes in training data X (genes that are coexpressed)
+                used in correct_comeasured (default: None)
 
 outputs:
     results_df: All performance analyis in one pandas df
@@ -41,7 +44,8 @@ outputs:
 '''
 
 def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
-                    THREADS=20, layer=None, norm='none', save='no_noise', snr=5):
+                    THREADS=20, layer=None, norm='none', save='no_noise', snr=5,
+                    correct_comeasured=False, train_corr=None):
     # Select layer of anndata object that should be used and transpose it
     # to proteins x cells/channels
     if layer is not None:
@@ -84,7 +88,7 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
     # Write x_test to file for analysis
     X_save = X_input.copy()
     X_save.X = X_test
-    for k in X_save.layers.keys():
+    for k in list(X_save.layers.keys()):
         del X_save.layers[k]
     X_save.write(os.path.join(path, 'X_test.h5ad'))
 
@@ -106,13 +110,13 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
         phi = Phi[i]
 
         y = get_observations(X_test, phi, snr, normalization=norm)
-        x2 = decompress(y, U, phi)
+        x2 = decompress(y, U, phi, correct_comeasured, train_corr)
         x2[np.isnan(x2)] = 0
         results = compare_results(X_test, x2)
         f2.write('\t'.join([str(x) for x in [versions[i]]+results+[d_gene[i]]+[k]]) + '\n')
 
         y_noNoise = get_observations_no_noise(X_test, phi, normalization=norm)
-        x2_noNoise = decompress(y_noNoise, U, phi)
+        x2_noNoise = decompress(y_noNoise, U, phi, correct_comeasured, train_corr)
         x2_noNoise[np.isnan(x2_noNoise)] = 0
         results_noNoise = compare_results(X_test, x2_noNoise)
         f3.write('\t'.join([str(x) for x in [versions[i]]+results_noNoise+[d_gene[i]]+[k]]) + '\n')
@@ -122,14 +126,14 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
         if save=='no_noise':
             # Write x_noNoise to anndata
             x2_noNoise_anndata = X_input.copy()
-            for k in x2_noNoise_anndata.layers.keys():
+            for k in list(x2_noNoise_anndata.layers.keys()):
                 del x2_noNoise_anndata.layers[k]
             x2_noNoise_anndata.X = x2_noNoise.T
             x2_noNoise_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
         elif save=='noise':
             # Write x_noNoise to anndata
             x2_anndata = X_input.copy()
-            for k in x2_anndata.layers.keys():
+            for k in list(x2_anndata.layers.keys()):
                 del x2_anndata.layers[k]
             x2_anndata.X = x2.T
             x2_anndata.write(os.path.join(path, 'X_simulated_'+str(i)+'.h5ad'))
