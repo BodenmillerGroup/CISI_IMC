@@ -44,7 +44,7 @@ def decompress(y, U, phi, sparsity=0.1, method='lasso', numThreads=20,
     if correct_comeasured:
         # Correlations between genes in Phi/A (genes that are comeasured) used
         # in correct_comeasured
-    	phi_corr = (np.einsum('ij,ik->jk', phi, phi)/phi.sum(0)).T - np.eye(phi.shape[1])
+        phi_corr = (np.einsum('ij,ik->jk', phi, phi)/phi.sum(0)).T - np.eye(phi.shape[1])
         # Correct X
         x2, cp = select_and_correct_comeasured(x2, y, phi, phi_corr, train_corr)
 
