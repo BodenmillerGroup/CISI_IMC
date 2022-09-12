@@ -96,7 +96,7 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
 
     # Write output to file
     f2 = open(os.path.join(path, 'simulation_results.txt'), 'w')
-    f3 = open(os.path.join(path, 'composite_simulation_results.txt'), 'w')
+    f3 = open(os.path.join(path, 'no_noise_simulation_results.txt'), 'w')
     colnames = ['version', 'Overall pearson', 'Overall spearman', 'Gene average',
                 'Sample average', 'Sample dist pearson', 'Sample dist spearman',
                 'Gene dist pearson', 'Gene dist spearman',
