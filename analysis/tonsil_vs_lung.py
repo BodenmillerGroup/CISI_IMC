@@ -78,8 +78,8 @@ test_names_lung = tuple(np.random.choice(roi_names_lung,
 
 # Specify k-sparsity of dictionary used in training and name of final folder
 # for each dataset, where results will be saved
-k = 3
-folder_name = 'k_3'
+k = 1
+folder_name = 'k_1'
 normalization = 'paper_norm'
 
 # Train CISI
@@ -104,13 +104,13 @@ normalization = 'paper_norm'
 # Test training results on the opposite dataset
 training_res_lung, training_res_comp_lung = analyze_U_and_A(sce_lung[sce_lung.obs.index.isin(X_test_lung), ],
                                                             U_best_tonsil,
-                                                            [Phi_best_tonsil], ["none"],
+                                                            [Phi_best_tonsil], ['none'],
                                                             os.path.join(out_path,
                                                                          'tonsil_vs_lung/test_lung', folder_name),
                                                             None, norm=normalization)
 training_res_tonsil, training_res_comp_tonsil = analyze_U_and_A(sce_tonsil[sce_tonsil.obs.index.isin(X_test_tonsil), ],
                                                                 U_best_lung,
-                                                                [Phi_best_lung], ["none"],
+                                                                [Phi_best_lung], ['none'],
                                                                 os.path.join(out_path,
                                                                              'tonsil_vs_lung/test_tonsil',
                                                                              folder_name),

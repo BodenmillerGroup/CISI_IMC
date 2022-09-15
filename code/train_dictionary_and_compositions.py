@@ -221,7 +221,7 @@ def train_validate_test_split(X, split_by='roi', k_cv=4, test_set=(), test_size=
                               'in test_set.'))
 
         # Get all roi names for indexing
-        roi_names = X.obs['sample_id'].unique().to_list()
+        roi_names = X.obs['sample_id'].unique().tolist()
 
         # Get all roi names not used for testing and assert that k_cv is smaller
         # and a multiple of the number of remaining rois
@@ -244,7 +244,7 @@ def train_validate_test_split(X, split_by='roi', k_cv=4, test_set=(), test_size=
         # testing (test_size will not be used)
         if test_set:
             # Get all roi names for indexing
-            roi_names = X.obs['sample_id'].unique().to_list()
+            roi_names = X.obs['sample_id'].unique().tolist()
 
             # Index test set and remaining sets
             i_remaining = list(set(roi_names) - set(test_set))

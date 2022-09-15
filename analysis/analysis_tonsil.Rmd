@@ -1,7 +1,11 @@
 ---
 title: "Analysis of Tonsil th152"
-output: html_document
-date: '2022-08-18'
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
 ## Setup
@@ -11,21 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 
 # Load libraries
-# library(tidyverse)
-# library(cowplot)
-# library(ggplot2)
-# library(ggpattern)
-# library(ggsci)
-# library(utils)
-# library(reshape2)
-# library(stringr)
-# library(gridGraphics)
-# library(zellkonverter)
-# library(SingleCellExperiment)
-# library(cytomapper)
-# library(scater)
-# library(ggpubr)
-# library(scater)
+library(scater)
 ```
 
 ```{r specify_paths}
@@ -48,7 +38,7 @@ source("../analysis/helpers/helper_fnc.R")
 # Read in all results for tonsil and lung comparison into one dataframe
 results.files <- list.files(analysis.path, 'simulation_results.txt',
                             full.names=TRUE, recursive=TRUE)
-results.files <- results.files[grepl("corrected", results.files) & grepl("sm_", results.files)]
+results.files <- results.files[grepl("sm_", results.files) & grepl("no_norm", results.files)]
 
 results.df <- lapply(results.files, read_results, type="res", voi="corrected") %>% 
   bind_rows() %>%
@@ -58,7 +48,7 @@ results.df <- lapply(results.files, read_results, type="res", voi="corrected") %
 ## Read X_test and X_simulated
 # Specify X_test and X_simulated files to be read in
 X.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
-X.files <- X.files[grepl("corrected", X.files) & grepl("sm_", X.files)]
+X.files <- X.files[grepl("sm_", X.files) & grepl("no_norm", X.files)]
 
 # Read in all sce experiments from saved anndata and save additional info in metadata
 # (e.g. which dataset is used in training and testing, if spillover correction was used 
@@ -66,10 +56,6 @@ X.files <- X.files[grepl("corrected", X.files) & grepl("sm_", X.files)]
 X.list <- lapply(X.files, read_results, type="x", voi="sm")
 X.list <- lapply(X.list, function(sce.temp){
   metadata(sce.temp)$sm <- gsub("s", "", metadata(sce.temp)$sm)
-  assay.name <- names(assays(sce.temp))
-  for (a in assay.name[-1]) {
-    assay(sce.temp, a) <- NULL
-  }
   assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
   
   sce.temp
@@ -82,7 +68,7 @@ masks <- loadImages(masks.path, as.is = TRUE)
 mcols(masks) <- DataFrame(sample_id=names(masks))
 ```
 
-## Barplot of Results (k=1, argsinh)
+## Barplot of Results *(k=1, argsinh)*
 
 For each different measurement used to test training results, a barplot is shown 
 comparing spillover corrected and uncorrected results for Tonsil th152 data.
@@ -93,49 +79,39 @@ comparing spillover corrected and uncorrected results for Tonsil th152 data.
 
 # Melt dataframe for plotting
 data_temp <- results.df %>%
-  dplyr::select(-c("dataset", "training", "datasize", "version")) %>%
+  dplyr::select(-c("dataset", "training", "datasize", "version", "Best crossvalidation fold")) %>%
   pivot_longer(!c("corrected", "simulation"), names_to="measure", values_to="value")
 
 # Create barplot
-barplot <- ggplot(data_temp, aes(x=measure, y=value, fill=corrected, pattern=simulation)) +
-  geom_bar_pattern(stat="identity",
-                   position=position_dodge(preserve="single"),
-                   width=0.6,
-                   color="black", 
-                   pattern_fill="black",
-                   pattern_angle=45,
-                   pattern_density=0.3,
-                   pattern_spacing=0.01,
-                   pattern_key_scale_factor=0.6) +
-  scale_y_continuous(limits=c(0, 1)) +
-  scale_fill_npg() +
-  scale_pattern_manual(values=c(composite="stripe", noisy="none"), 
-                       labels=c("No noise", "Noisy")) +
-  labs(x="Measure Type", y="Value", pattern="Simulation Type") + 
-  guides(pattern=guide_legend(override.aes=list(fill="white")),
-         fill=guide_legend(override.aes=list(pattern="none"))) +
-  theme_cowplot()
-
-print(barplot)
+results.barplot <- plot_cisi_results(data_temp, "measure", "value", "corrected")
+print(results.barplot)
 ```
 
-## Scatterplot of Neighbouring channels (k=1, argsinh)
+## Scatterplot of Neighbouring channels *(k=1, argsinh)* {.tabset}
 
 The following plots show some neighboring channels for Tonsil th152 data trained
 on spillover corrected and non-spillover corrected data.
 
-```{r plot_corrections, fig.height = 8, fig.width = 10, fig.align = "center"}
+```{r plot_corrections, fig.height = 12, fig.width = 10, fig.align = "center", results="asis"}
+# Add names and reorder list
 names(X.list) <- lapply(X.list, function(x){metadata(x)$ground_truth})
+X.list <- append(X.list[-c(1:2)], X.list[1:2])
 
-# Plot asinh transformed counts of proteins of interest of decomposed data trained
-# with and without normalization
-X.spillover <- plot_grid(plot_exprs(X.list[1:2], "", "CD8a", "Tim-3"),
-                         plot_exprs(X.list[3:4], "", "CD8a", "Tim-3"),
-                         plot_exprs(X.list[1:2], "", "CD68", "CD20"),
-                         plot_exprs(X.list[3:4], "", "CD68", "CD20"),
-                         ncol=1, labels=rep(unique(lapply(X.list, function(sce){
-                           metadata(sce)$sm})), 2),
-                         label_size=15, hjust=c(-2, -1.5), vjust=2)
-print(X.spillover)
-
+# List of combinations of proteins of interest
+poi <- list(c("CD8a", "Tim-3"), c("CD68", "CD20"))
+for (p_vec in poi) {
+  cat("###", p_vec[1], "vs", p_vec[2], "\n")
+  
+  # Plot asinh transformed counts of proteins of interest of decomposed data trained
+  # with and without normalization
+  X.spillover <- plot_grid(plot_exprs(X.list[1:2], "", p_vec[1], p_vec[2]),
+                           plot_exprs(X.list[3:4], "", p_vec[1], p_vec[2]),
+                           plot_exprs(X.list[5:6], "", p_vec[1], p_vec[2]),
+                           ncol=1, labels=unique(unlist(lapply(X.list, function(sce){
+                             metadata(sce)$sm}))),
+                           label_size=15, hjust=c(-5.5, -4, -8.5), vjust=0.9, scale = 0.9)
+  
+  print(X.spillover)
+  cat("\n\n")
+}
 ```

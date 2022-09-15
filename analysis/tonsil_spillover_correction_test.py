@@ -59,10 +59,10 @@ test_names_tonsil = ('20220520_TsH_th152_cisi1_002',)
 # Specify k-sparsity of dictionary used in training and name of final folder
 # for each dataset, where results will be saved
 k = 1
-folder_name_cor = 'sm_corrected'
-folder_name_uncor = 'sm_uncorrected'
-folder_name_combi = 'sm_combi'
-normalization = 'paper_norm'
+folder_name_cor = 'sm_corrected/no_norm'
+folder_name_uncor = 'sm_uncorrected/no_norm'
+folder_name_combi = 'sm_combi/no_norm'
+normalization = 'none'
 
 # Train CISI
 (training_res_cor, training_res_comp_cor,
@@ -82,9 +82,9 @@ normalization = 'paper_norm'
                                lda1=k, normalization=normalization)
 
 # Test spillover corrected results not spillover corrected data for simulation and analysis
-training_res_combi, training_res_noisy_combi = analyze_U_and_A(sce_tonsil[sce_tonsil.obs.index.isin(test_names_tonsil), ],
+training_res_combi, training_res_noisy_combi = analyze_U_and_A(sce_tonsil[sce_tonsil.obs.index.isin(X_test_cor), ],
                                                                U_best_cor,
                                                                [Phi_best_cor], ['none'],
                                                                os.path.join(out_path, folder_name_combi),
-                                                               None, norm='none')
+                                                               None, norm=normalization)
 
