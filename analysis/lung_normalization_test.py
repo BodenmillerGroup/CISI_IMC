@@ -84,7 +84,7 @@ folder_name_combi = 'normalized_combi'
                                lda1=k, normalization='none')
 
 # Test normalized results for unnormalized data for simulation and analysis
-training_res_combi, training_res_noisy_combi = analyze_U_and_A(sce_lung[sce_lung.obs.index.isin(test_names_lung), ],
+training_res_combi, training_res_noisy_combi = analyze_U_and_A(sce_lung[sce_lung.obs.index.isin(X_test_norm), ],
                                                                U_best_norm,
                                                                [Phi_best_norm], ['none'],
                                                                os.path.join(out_path, folder_name_combi),
