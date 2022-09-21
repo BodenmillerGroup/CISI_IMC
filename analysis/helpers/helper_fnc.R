@@ -1,4 +1,5 @@
 # Load libraries
+library(caret)
 library(tidyverse)
 library(cowplot)
 library(ggplot2)
@@ -14,6 +15,7 @@ library(SingleCellExperiment)
 library(cytomapper)
 library(jaccard)
 library(ggpattern)
+library(scater)
 
 
 ## General helper fnc.
@@ -83,7 +85,8 @@ read_results <- function(file, type, voi="k"){
     res <- read_tsv(file, show_col_types=FALSE) %>%
       mutate(dataset=dataset_name,
              training=training_name,
-             simulation=ifelse(grepl("composite", file), "composite", "noisy"),
+             simulation=ifelse((grepl("composite", file) | grepl("no_noise", file)), 
+                               "no_noise", "noisy"),
              !!as.symbol(voi):=k_name,
              datasize=datasize_name)
     res[which(res=="none")] <- NA
@@ -119,15 +122,62 @@ compare_cor <- function(A, B){
 }
 
 
-# Compute confusion matrix using pre-trained RF classifier for a list of SCE
-compute_confusionMatrix <- function(sce, rffit){
+train_rf <- function(sce, rffit.original){
   cur_mat <- t(assay(sce, "exprs"))
-  cur_mat <- cbind(as.data.frame(colData(sce)) %>%
+  cur_mat <- cbind(cur_mat,
+                   as.data.frame(colData(sce)) %>%
                      dplyr::select(cell_id, subbatch) %>%
                      mutate(dummy=1,
                             subbatch=paste0("subbatch", subbatch)) %>%
                      dcast(cell_id~subbatch, value.var="dummy", fill=0) %>%
-                     dplyr::select(-cell_id))
+                     dplyr::select(-cell_id)) %>%
+    dplyr::filter(rownames(.) %in% rownames(rffit.original$trainingData))
+  cur_mat <- cur_mat[colnames(cur_mat) %in% colnames(rffit.original$trainingData)] %>%
+    merge(rffit.original$trainingData %>%
+            dplyr::select(".outcome"), by=0, all.x=TRUE)
+  rownames(cur_mat) <- cur_mat$Row.names
+  cur_mat <- cur_mat %>%
+    dplyr::select(-Row.names)
+  
+  # Randomly split into train and test data
+  # set.seed(220510)
+  # trainIndex <- createDataPartition(factor(cur_mat$.outcome), p = 0.75)
+  # train_mat <- cur_mat[trainIndex$Resample1, ]
+  # test_mat <- cur_mat[-trainIndex$Resample1, ]
+  train_mat <- cur_mat
+  
+  # scecify train parameters for 5-fold cross validation
+  fitControl <- trainControl(method="cv",
+                             number=5)
+  
+  # Train a random forest model for predicting cell labels
+  # This call also performs parameter tuning
+  rffit <- train(x=train_mat %>%
+                   dplyr::select(-".outcome"), 
+                 y=factor(train_mat$.outcome),
+                 method="rf", ntree=1000,
+                 tuneLength=5,
+                 trControl=fitControl)
+  
+  rffit
+}
+
+# Compute confusion matrix using pre-trained RF classifier for a list of SCE
+compute_confusionMatrix <- function(sce, rffit){
+  # Train classifier using gating labels from original classifier
+  # rffit <- train_rf(sce, rffit.original)
+  
+  cur_mat <- t(assay(sce, "exprs"))
+  cur_mat <- cbind(cur_mat,
+                   as.data.frame(colData(sce)) %>%
+                     dplyr::select(cell_id, subbatch) %>%
+                     mutate(dummy=1,
+                            subbatch=paste0("subbatch", subbatch)) %>%
+                     dcast(cell_id~subbatch, value.var="dummy", fill=0) %>%
+                     dplyr::select(-cell_id)) %>%
+    dplyr::filter(!(rownames(.) %in% rownames(rffit$trainingData)) &
+                  !(rownames(.) %in% rownames(colData(sce)[colData(sce)$celltype=="uncertain",])))
+  cur_mat <- cur_mat[colnames(cur_mat) %in% colnames(rffit$trainingData)]
                      
   # Predict cell phenotypes in test data
   cur_pred <- predict(rffit, 
@@ -135,8 +185,16 @@ compute_confusionMatrix <- function(sce, rffit){
   # cur_pred <- as.character(predict.train(rffit.lung,
   #                                        newdata=cur_mat,
   #                                        type="raw"))
+  
+  gt_labels <- colData(sce) %>%
+    as.data.frame() %>%
+    dplyr::filter(!(rownames(.) %in% rownames(rffit$trainingData)) &
+                 (celltype!="uncertain"))
+  gt_labels <- gt_labels[match(rownames(cur_mat), rownames(gt_labels)), ] %>%
+    dplyr::pull(celltype)
+  
   cm <- confusionMatrix(data=cur_pred,
-                        reference=factor(sce$cell_labels),
+                        reference=gt_labels,
                         mode="everything")
   cm
 }
@@ -353,6 +411,8 @@ plot_mantel_boxplot <- function(df, var_name, to_int=TRUE){
 # y-value and fill variable is used for colouring, results are striped according to
 # noisy and no-noise results
 plot_cisi_results <- function(df, group, measure, fill){
+  df <- df %>%
+    mutate(simulation=ifelse(simulation=="composite", "no_noise", simulation))
   # Create barplot
   barplot <- ggplot(df, aes(x=!!sym(group), y=!!sym(measure),
                             fill=!!sym(fill), pattern=simulation)) +
@@ -367,7 +427,7 @@ plot_cisi_results <- function(df, group, measure, fill){
                      pattern_key_scale_factor=0.6) +
     scale_y_continuous(limits=c(0, 1)) +
     scale_fill_npg() +
-    scale_pattern_manual(values=c(composite="stripe", noisy="none"), 
+    scale_pattern_manual(values=c(no_noise="stripe", noisy="none"), 
                          labels=c("No noise", "Noisy (SNR=5)")) +
     labs(x=str_to_title(group), y=str_to_title(measure), pattern="Simulation type") + 
     guides(pattern=guide_legend(override.aes=list(fill="white")),
@@ -419,7 +479,7 @@ plot_cells <- function(sce.list, masks.list, poi, layer="none"){
 # Function that plots exprs (asinh counts) of protein_x vs protein_y for both
 # ground truth and decomposed data coloured by celltype
 plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="exprs"){
-  # Remove special characters in protein names to make plotting of such proteins
+  # Remove scecial characters in protein names to make plotting of such proteins
   # possible
   sce.list <- lapply(sce.list, function(sce){
     rownames(sce) <- gsub("/|-", "_", rownames(sce))

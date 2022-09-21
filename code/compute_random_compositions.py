@@ -6,7 +6,7 @@ from scipy.spatial import distance
 import os
 
 # Import libraries (additionaly added)
-from utils import sparse_decode, compare_results, get_observations
+from utils import sparse_decode_blocks, compare_results, get_observations
 from pathlib import Path
 
 
@@ -34,6 +34,8 @@ inputs:
             If True, then Phi will be binarized directly after computation and the
             best Phi is chosen according to the results of its binarized version
     maxItr: Number of iterations to test random A/Phi's (default: 2000)
+    num_blocks: number of blocks used to calculate W (should be bigger for pixel-wise?)
+                (default: 20)
 
 outputs:
     Phi/A: composition matrix (composite channels (measurements) x proteins,
@@ -44,7 +46,8 @@ outputs:
 
 
 def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsity=0.2,
-              outpath=None, THREADS=20, layer=None, num_phi=1, binary=False, maxItr=2000):
+              outpath=None, THREADS=20, layer=None, num_phi=1, binary=False, maxItr=2000,
+              num_blocks=20):
     # Raise error if unsupported mode is given
     if (mode != 'M') and (mode != 'G'):
         raise AssertionError("Unsupported mode 'mode' given!", mode)
@@ -92,7 +95,8 @@ def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsit
         # Initialze composite oservations Y using X and noise
         y = get_observations(X, phi, snr=5)
         # Compute W given Y, A and U
-        w = sparse_decode(y, phi.dot(U), sparsity, method='lasso', numThreads=THREADS)
+        w = sparse_decode_blocks(y, phi.dot(U), sparsity, method='lasso', numThreads=THREADS,
+                                 num_blocks=num_blocks)
         x2 = U.dot(w)
         # Compare X to predicted X
         r = compare_results(X, x2)

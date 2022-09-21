@@ -37,6 +37,8 @@ inputs:
                    Options: paper_norm (normalization used in paper, protein-wise),
                    min_max_norm (protein-wise) or none
     layer: Name of layer in anndata object to be used as X (default: None, =anndata.X)
+    num_blocks: number of blocks used to calculate W (should be bigger for pixel-wise?)
+                (default: 20)
     others: All other parameters belong to the fnc. call of lasso from spams and
             further information is available on the respective website
 
@@ -54,7 +56,7 @@ Example:
 def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
          use_chol=False, module_lower=1, activity_lower=1, donorm=False,
          mode=1, mink=0, U0=[], U0_delta=0.1, doprint=False, THREADS=4,
-         outpath=None, normalization='paper_norm', layer=None):
+         outpath=None, normalization='paper_norm', layer=None, num_blocks=20):
 
     # Select layer of anndata object that should be used in SMAF and transpose it
     # to proteins x cells/channels

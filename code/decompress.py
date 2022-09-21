@@ -22,6 +22,8 @@ inputs:
     correct_comeasured: Correct comeasured genes that are not coexpressed (default: False)
     train_corr: Correlations between genes in training data X (genes that are coexpressed)
                 used in correct_comeasured (default: None)
+    num_blocks: number of blocks used to calculate W (should be bigger for pixel-wise?)
+                (default: 20)
 
 outputs:
     Estimated X (proteins x cells/pixels)

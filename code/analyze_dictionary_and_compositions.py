@@ -37,6 +37,8 @@ inputs:
     correct_comeasured: Correct comeasured genes that are not coexpressed (default: False)
     train_corr: Correlations between genes in training data X (genes that are coexpressed)
                 used in correct_comeasured (default: None)
+    num_blocks: number of blocks used to calculate W (should be bigger for pixel-wise?)
+                (default: 20)
 
 outputs:
     results_df: All performance analyis in one pandas df
@@ -45,7 +47,7 @@ outputs:
 
 def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
                     THREADS=20, layer=None, norm='none', save='no_noise', snr=5,
-                    correct_comeasured=False, train_corr=None):
+                    correct_comeasured=False, train_corr=None, num_blocks=20):
     # Select layer of anndata object that should be used and transpose it
     # to proteins x cells/channels
     if layer is not None:
@@ -112,14 +114,15 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
         phi = Phi[i]
 
         y = get_observations(X_test, phi, snr, normalization=norm)
-        x2 = decompress(y, U, phi, correct_comeasured=correct_comeasured, train_corr=train_corr)
+        x2 = decompress(y, U, phi, correct_comeasured=correct_comeasured, train_corr=train_corr,
+                        num_blocks=num_blocks)
         x2[np.isnan(x2)] = 0
         results = compare_results(X_test, x2)
         f2.write('\t'.join([str(x) for x in [versions[i]]+results+[d_gene[i]]+[k]]) + '\n')
 
         y_noNoise = get_observations_no_noise(X_test, phi, normalization=norm)
         x2_noNoise = decompress(y_noNoise, U, phi, correct_comeasured=correct_comeasured,
-                                train_corr=train_corr)
+                                train_corr=train_corr, num_blocks=num_blocks)
         x2_noNoise[np.isnan(x2_noNoise)] = 0
         results_noNoise = compare_results(X_test, x2_noNoise)
         f3.write('\t'.join([str(x) for x in [versions[i]]+results_noNoise+[d_gene[i]]+[k]]) + '\n')

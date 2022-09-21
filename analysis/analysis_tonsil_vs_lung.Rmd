@@ -24,6 +24,7 @@ library(Rphenograph)
 library(aricode)
 library(viridis)
 library(ggrepel)
+library(LaplacesDemon)
 ```
 
 ```{r specify_paths}
@@ -508,12 +509,19 @@ we show the overlap of clusters computed using Rphenograph (run with k=47 cluste
 individually and compare which clusters overlap using a heatmap.
 
 ```{r clustering2, fig.height = 10, fig.width = 20, fig.align = "center", results="asis"}
+# Subset to data tested on lung
+lung.list <- keep(X.list, function(x){
+  metadata(x)$dataset=="lung"})
+names(lung.list) <- lapply(lung.list, function(sce){
+  paste(metadata(sce)$training, metadata(sce)$dataset,
+        metadata(sce)$k, metadata(sce)$ground_truth, sep="_")
+})
+
 # Compute clusters for each dataset using Rphenograph
-all.clusters <- lapply(keep(X.list, function(x){
-  metadata(x)$dataset=="lung"}), 
+all.clusters <- lapply(lung.list, 
   function(sce){
   mat <- t(assay(sce, "exprs"))
-  out1 <- Rphenograph(mat, k=80)
+  out1 <- Rphenograph(mat, k=100)
   clusters <- as.vector(membership(out1[[2]])) %>%
     as.data.frame() %>%
     dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=".") %>%
@@ -537,7 +545,7 @@ all.clusters <- lapply(keep(X.list, function(x){
   #   left_join(cluster_celltypes)
   
   if(metadata(sce)$ground_truth=="simulated"){
-    out2 <- Rphenograph(mat, k=80)
+    out2 <- Rphenograph(mat, k=100)
     max_ari <- ARI(factor(membership(out1[[2]])), factor(membership(out2[[2]])))
     clusters <- clusters %>%
       mutate(max_ari=max_ari)
@@ -549,6 +557,41 @@ all.clusters <- lapply(keep(X.list, function(x){
   summarise_all(na.omit) %>%
   ungroup 
 
+# Define celltype colours used by the rest of the script
+celltypes_col <- pal_igv("default")("20")[1:length(unique(all.clusters$celltype))]
+names(celltypes_col) <- unique(all.clusters$celltype)
+celltypes_col <-  celltypes_col[all.clusters %>% dplyr::pull(celltype) %>% levels]
+
+
+# Define functions to get overview of celltypes per cluster as row and column annotations
+get_anno_clusters <- function(clusters, i, d, direction="reverse", which_sim="row"){
+  col_anno <- HeatmapAnnotation(celltypes=anno_barplot(table(paste("gt", clusters %>% 
+                                                                     dplyr::filter(k==i & dataset==d) %>% 
+                                                                     pull(ground_truth)), 
+                                                             clusters %>% 
+                                                               dplyr::filter(k==i & dataset==d) %>% 
+                                                               pull(celltype)), 
+                                                       gp=gpar(fill=celltypes_col), 
+                                                       bar_width = 1, 
+                                                       height = unit(5, "cm")),
+                                show_annotation_name=FALSE)
+  row_anno <- HeatmapAnnotation(celltypes=anno_barplot(table(paste("sim", clusters %>% 
+                                                                     dplyr::filter(k==i & dataset==d) %>% 
+                                                                     pull(simulated)), 
+                                                             clusters %>% 
+                                                               dplyr::filter(k==i & dataset==d) %>% 
+                                                               pull(celltype)), 
+                                                       gp=gpar(fill=celltypes_col), 
+                                                       bar_width=1, 
+                                                       width=unit(5, "cm"),
+                                                       axis_param=list(direction=direction)),
+                                show_annotation_name=FALSE,
+                                which=which_sim)
+  
+  list(col_anno, row_anno)
+}
+
+
 # Plot heatmaps showing overlap of clusters for each dataset and k
 for (i in unique(all.clusters$k)){
   cat("##### k =", i, "\n")
@@ -556,6 +599,8 @@ for (i in unique(all.clusters$k)){
   plot.new()
   ht_list <- NULL
   for (d in unique(all.clusters$dataset)){
+    # Get table of number of cells being in simulated cluster i and ground truth
+    # cluster j
     temp.matrix <- table(paste("sim", all.clusters %>% 
                                  dplyr::filter(k==i & dataset==d) %>% 
                                  pull(simulated)), 
@@ -565,50 +610,193 @@ for (i in unique(all.clusters$k)){
       as.matrix()
     temp.matrix <- log10(temp.matrix + 10)
     
-    celltypes_col <- pal_igv("default")("20")[1:length(unique(all.clusters$celltype))]
-    names(celltypes_col) <- unique(all.clusters$celltype)
+    # Get barplot annotations of celltypes
+    anno.list <- get_anno_clusters(all.clusters, i, d)
+    col_anno <- anno.list[[1]]
+    row_anno <- anno.list[[2]]
     
-    col_anno <- columnAnnotation(celltypes=anno_barplot(table(all.clusters %>% 
-                                                                dplyr::filter(k==i & dataset==d) %>% 
-                                                                pull(ground_truth), 
-                                                              all.clusters %>% 
-                                                                dplyr::filter(k==i & dataset==d) %>% 
-                                                                pull(celltype)), 
-                                                        gp=gpar(fill=celltypes_col), 
-                                                        bar_width = 1, 
-                                                        height = unit(5, "cm")))
-    row_anno <- rowAnnotation(celltypes=anno_barplot(table(all.clusters %>% 
-                                                             dplyr::filter(k==i & dataset==d) %>% 
-                                                             pull(simulated), 
-                                                           all.clusters %>% 
-                                                             dplyr::filter(k==i & dataset==d) %>% 
-                                                             pull(celltype)), 
-                                                     gp=gpar(fill=celltypes_col), 
-                                                     bar_width=1, 
-                                                     width=unit(5, "cm"),
-                                                     axis_param=list(direction="reverse")))
+    # Create heatmap
+    cluster.overlap <- Heatmap(temp.matrix,
+                               show_row_dend=FALSE,
+                               show_column_dend=FALSE,
+                               top_annotation=col_anno,
+                               left_annotation=row_anno,
+                               col=magma(100),
+                               column_title=d,
+                               row_names_gp=gpar(fontsize = 8),
+                               column_names_gp=gpar(fontsize=8),
+                               column_title_gp=gpar(fontsize=10),
+                               rect_gp=gpar(col="white", lwd=1)) 
     
+    # Add heatmap to list
     ht_list <- append(ht_list, 
-                      list(grid.grabExpr(draw(Heatmap(temp.matrix,
-                                                      show_row_dend=FALSE,
-                                                      show_column_dend=FALSE,
-                                                      top_annotation=col_anno,
-                                                      left_annotation=row_anno,
-                                                      col=magma(100),
-                                                      column_title=d,
-                                                      row_names_gp=gpar(fontsize = 8),
-                                                      column_names_gp=gpar(fontsize=8),
-                                                      column_title_gp=gpar(fontsize=10),
-                                                      rect_gp=gpar(col="white", lwd=1)),
-                                              heatmap_legend_list=list(Legend(labels=names(celltypes_col), 
-                                                                              title="Celltypes", 
-                                                                              legend_gp=gpar(fill=celltypes_col)))))))
+                      list(grid.grabExpr(draw(cluster.overlap,
+                                              heatmap_legend_list=list(
+                                                Legend(labels=names(celltypes_col), 
+                                                       title="Celltypes",
+                                                       legend_gp=gpar(fill=celltypes_col)))))))
   }
   
   print(plot_grid(plotlist=ht_list, nrow=1))
   cat("\n\n")
 }
 ```
+
+#### Kullback-Leibner divergence of clusters *(arcsinh)* {.tabset}
+
+We also compare the clusters of the ground truth data to the clsuters of the simulated
+data using the Kullback-Leibner divergence of the celltypes.
+
+```{r clustering3, fig.height = 10, fig.width = 20, fig.align = "center", results="asis"}
+# Plot heatmaps showing overlap of clusters for each dataset and k
+for (i in unique(all.clusters$k)){
+  cat("##### k =", i, "\n")
+  
+  plot.new()
+  ht_list.kl <- NULL
+  for (d in unique(all.clusters$dataset)){
+    clusters.filtered <- all.clusters %>%
+      dplyr::filter(k==i & dataset==d) %>%
+      dplyr::select(-c("k", "dataset", "max_ari"))
+    clusters_sim.kl <- table(clusters.filtered %>% 
+                               dplyr::pull(celltype), 
+                             paste0("sim_", clusters.filtered %>% 
+                               dplyr::pull(simulated))) %>%
+      scale(center=FALSE, scale=colSums(.))
+    clusters_gt.kl <- table(clusters.filtered %>% 
+                               dplyr::pull(celltype), 
+                             paste0("gt_", clusters.filtered %>% 
+                               dplyr::pull(ground_truth))) %>%
+      scale(center=FALSE, scale=colSums(.))
+    
+    clusters.kl <- apply(clusters_sim.kl, 2, function(x){
+      apply(clusters_gt.kl, 2, function(y){
+        KLD(x, y)$sum.KLD.py.px})
+    })
+    
+    # Get barplot annotations of celltypes
+    anno.list <- get_anno_clusters(all.clusters, i, d)
+    col_anno <- anno.list[[1]]
+    row_anno <- anno.list[[2]]
+
+    # Create heatmap
+    clusters.klPlot <- Heatmap(t(clusters.kl),
+                           show_row_dend=FALSE,
+                           show_column_dend=FALSE,
+                           top_annotation=col_anno,
+                           left_annotation=row_anno,
+                           col=rev(magma(100)),
+                           column_title=d,
+                           row_names_gp=gpar(fontsize = 8),
+                           column_names_gp=gpar(fontsize=8),
+                           column_title_gp=gpar(fontsize=10),
+                           rect_gp=gpar(col="white", lwd=1)) 
+    
+    # Add heatmap to list
+    ht_list.kl <- append(ht_list.kl, 
+                         list(grid.grabExpr(draw(clusters.klPlot))))
+  }
+  
+  print(plot_grid(plotlist=ht_list.kl, nrow=1))
+  cat("\n\n")
+}
+```
+
+#### Cluster vs mean expression *(arcsinh)* {.tabset}
+
+Next, we assess clustering by looking at the median marker expression of each protein
+in each cluster and the compare it to the celltypes of each cluster. Ideally,
+each cluster has a median protein expression pattern that fits its main celltype.
+
+```{r clustering_exprs, fig.height = 10, fig.width = 20, fig.align = "center", results="asis"}
+for (i in unique(all.clusters$k)){
+  cat("##### k =", i, "\n")
+  
+  plot.new()
+  ht_list.exprs <- NULL
+  for (d in unique(all.clusters$dataset)){
+    cluster_gt.exprs <- assay(lung.list[grepl(i, names(lung.list)) &
+                                       grepl(d, names(lung.list)) &
+                                       grepl("ground_truth", names(lung.list))][[1]], "exprs") %>%
+      as.data.frame %>%
+      mutate(protein=rownames(.)) %>%
+      melt() %>%
+      dplyr::rename(cell=variable, expr=value)
+    cluster_gt.exprs <- all.clusters %>% 
+      dplyr::filter(k==i & dataset==d) %>%
+      merge(cluster_gt.exprs) %>%
+      dplyr::select(-c("k", "max_ari", "dataset", "celltype"))
+    cluster_gt.exprs <- cluster_gt.exprs %>%
+      mutate(ground_truth=paste("gt", ground_truth)) %>%
+      group_by(ground_truth, protein) %>%
+      summarise(mean_expr=mean(expr)) %>%
+      pivot_wider(names_from=ground_truth, values_from=mean_expr) %>%
+      column_to_rownames("protein") %>%
+      as.matrix
+    
+    cluster_sim.exprs <- assay(lung.list[grepl(i, names(lung.list)) &
+                                       grepl(d, names(lung.list)) &
+                                       grepl("simulated", names(lung.list))][[1]], "exprs") %>%
+      as.data.frame %>%
+      mutate(protein=rownames(.)) %>%
+      melt() %>%
+      dplyr::rename(cell=variable, expr=value)
+    cluster_sim.exprs <- all.clusters %>% 
+      dplyr::filter(k==i & dataset==d) %>%
+      merge(cluster_sim.exprs) %>%
+      dplyr::select(-c("k", "max_ari", "dataset", "celltype"))
+    cluster_sim.exprs <- cluster_sim.exprs %>%
+      mutate(simulated=paste("sim", simulated)) %>%
+      group_by(simulated, protein) %>%
+      summarise(mean_expr=mean(expr)) %>%
+      pivot_wider(names_from=simulated, values_from=mean_expr) %>%
+      column_to_rownames("protein") %>%
+      as.matrix
+    
+    # Get barplot annotations of celltypes
+    anno.list <- get_anno_clusters(all.clusters, i, d, direction="normal", which_sim="column")
+    col_anno <- anno.list[[1]]
+    row_anno <- anno.list[[2]]
+    
+    # Create heatmap
+    cluster.exprsPlotGt <- Heatmap(cluster_gt.exprs,
+                                 show_row_dend=FALSE,
+                                 show_column_dend=FALSE,
+                                 top_annotation=col_anno,
+                                 col=magma(100),
+                                 column_title="Ground truth",
+                                 row_names_gp=gpar(fontsize = 8),
+                                 column_names_gp=gpar(fontsize=8),
+                                 column_title_gp=gpar(fontsize=10),
+                                 rect_gp=gpar(col="white", lwd=1),
+                                 heatmap_legend_param=list(title="Ground truth"))
+    cluster.exprsPlotSim <- Heatmap(cluster_sim.exprs,
+                                 show_row_dend=FALSE,
+                                 show_column_dend=FALSE,
+                                 top_annotation=row_anno,
+                                 col=magma(100),
+                                 column_title="Simulated",
+                                 row_names_gp=gpar(fontsize = 8),
+                                 column_names_gp=gpar(fontsize=8),
+                                 column_title_gp=gpar(fontsize=10),
+                                 rect_gp=gpar(col="white", lwd=1),
+                                 heatmap_legend_param=list(title="Simulated"))
+    
+    # Add heatmap to list
+    ht_list.exprs <- append(ht_list.exprs, 
+                            list(grid.grabExpr(draw(cluster.exprsPlotGt + cluster.exprsPlotSim,
+                                                    heatmap_legend_list=list(
+                                                Legend(labels=names(celltypes_col), 
+                                                       title="Celltypes",
+                                                       legend_gp=gpar(fill=celltypes_col))),
+                                                column_title=d))))
+  }
+  
+  print(plot_grid(plotlist=ht_list.exprs, nrow=1))
+  cat("\n\n")
+}
+```
+
 
 #### Adjusted random index (ARI) between clusters *(arcsinh)*
 

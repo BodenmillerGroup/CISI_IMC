@@ -27,6 +27,8 @@ inputs:
     analysis_normalization: If true then normalization is used before simulating
                             decomposed data and is compared to true data normalized
                             the same way (default: True)
+    num_blocks: number of blocks used to calculate W (should be bigger for pixel-wise?)
+                (default: 20)
 
     For fnc smaf():
         d: the number of features (columns) in the dictionary U
@@ -108,7 +110,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
                   lasso_sparsity=0.2, THREADS_A=20, num_phi=1, binary=False,
                   THREADS_A_and_U=20, split_by='roi', k_cv=4, test_set=(), test_size=None,
                   threshold_cond_prob=10.0, save='no_noise', snr=5,
-                  analysis_normalization=True, maxItr_A=2000):
+                  analysis_normalization=True, maxItr_A=2000, num_blocks=20):
 
     # Add a seed to use by numpy for reproducibility
     np.random.seed(11)
@@ -135,7 +137,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
             # Compute U
             U, W = smaf(X_training, d, lda1, lda2, maxItr, UW, posW, posU, use_chol,
                         module_lower, activity_lower, donorm, mode_smaf, mink, U0, U0_delta,
-                        doprint, THREADS_smaf, None, normalization, layer)
+                        doprint, THREADS_smaf, None, normalization, layer, num_blocks)
             # Mark step for progressbar
             bar()
 
@@ -143,7 +145,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
             Phi, pearson_cor, versions = compute_A(X_validate, U, nmeasurements, maxcomposition,
                                                   mode_phi, lasso_sparsity,
                                                   None, THREADS_A, layer, num_phi,
-                                                  binary, maxItr_A)
+                                                  binary, maxItr_A, num_blocks)
             # Mark step for progressbar
             bar()
 
@@ -192,7 +194,8 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
     training_res, training_res_comp = analyze_U_and_A(X_test, U_best, [Phi_best],
                                                       [version_best], outpath, k_best,
                                                       lasso_sparsity, THREADS_A_and_U,
-                                                      layer, normalization, save, snr)
+                                                      layer, normalization, save, snr, 
+                                                      num_blocks)
 
     # Calculate pairwise protein correlations
     cor = make_cor(X, outpath)
