@@ -10,9 +10,9 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 
 ## Setup
 
-```{r setup, message = FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 
 # Load libraries
 # library(ggchromatic)
@@ -25,6 +25,7 @@ library(aricode)
 library(viridis)
 library(ggrepel)
 library(LaplacesDemon)
+library(DescTools)
 ```
 
 ```{r specify_paths}
@@ -144,11 +145,11 @@ X.list <- lapply(X.list, function(sce){
 
 ## Read masks
 # Read in masks for tonsil data
-masks.tonsil <- loadImages(file.path(tonsil.path, "steinbock/masks_deepcell"), as.is = TRUE)
+masks.tonsil <- loadImages(file.path(tonsil.path, "steinbock/masks_deepcell"), as.is=TRUE)
 mcols(masks.tonsil) <- DataFrame(sample_id=names(masks.tonsil))
 
 # Read in masks for lung data
-masks.lung <- loadImages(file.path(lung.path, "masks"), as.is = TRUE)
+masks.lung <- loadImages(file.path(lung.path, "masks"), as.is=TRUE)
 mcols(masks.lung) <- DataFrame(sample_id=names(masks.lung))
 ```
 
@@ -156,7 +157,7 @@ mcols(masks.lung) <- DataFrame(sample_id=names(masks.lung))
 
 #### Results {.tabset}
 
-```{r plot_results, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+```{r plot_results, results="asis", fig.height=8, fig.width=18, fig.align="center"}
 # For each different measurement of training results, plot a barplot comparing
 # diff. k-sparsities, simulation types and training-test set combinations
 for (measure in names(res)[2:10]) {
@@ -179,19 +180,19 @@ for (measure in names(res)[2:10]) {
 
 #### Heatmaps of U {.tabset}
 
-```{r plot_U, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+```{r plot_U, results="asis", fig.height=8, fig.width=18, fig.align="center"}
 cor <- plot_U(u, "k", "dataset")
 ```
 
 #### Module Comparisons {.tabset}
 
-```{r plot_module_comparison, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+```{r plot_module_comparison, results="asis", fig.height=8, fig.width=18, fig.align="center"}
 plot_U_membership(u, "k", "dataset")
 ```
 
 #### Mantel Test between U's
 
-```{r mantel, fig.height = 8, fig.width = 18, fig.align = "center"}
+```{r mantel, fig.height=8, fig.width=18, fig.align="center"}
 # Calculate mantel test between U's of tonsil and lung for all k's
 mantel <- lapply(cor, function(l){
   mantel_test(l[[1]], l[[2]])$mantel_r
@@ -199,14 +200,14 @@ mantel <- lapply(cor, function(l){
   as.data.frame(col.names=names(cor), check.names=FALSE)
 
 knitr::kable(mantel, digits=2,
-             col.names=paste0("k = ", names(mantel)))
+             col.names=paste0("k=", names(mantel)))
 ```
 
 ## Image results
 
 #### CD20 of Test Image *(Tonsil th152, k=1)*
 
-```{r plot_X, fig.height = 10, fig.width = 10, fig.align = "center", fig.keep="last"}
+```{r plot_X, fig.height=10, fig.width=10, fig.align="center", fig.keep="last"}
 # Subset to training and test of tonsil data
 X.plotList <- keep(X.list, function(x){
   metadata(x)$training=="tonsil" & metadata(x)$dataset=="tonsil" & metadata(x)$k=="1"})
@@ -229,7 +230,7 @@ X.img
 
 #### CD20 of Test Image Overlayed (Tonsil th152, k=1)
 
-```{r plot_X_diff, fig.height = 7, fig.width = 10, fig.align = "center", fig.keep="last"}
+```{r plot_X_diff, fig.height=7, fig.width=10, fig.align="center", fig.keep="last"}
 # Rename list of tonsil data for nicer titles in plotting
 X.plotListRenamed <- lapply(names(X.plotList), function(n){
   rownames(X.plotList[[n]]) <- paste(rownames(X.plotList[[n]]),
@@ -262,7 +263,7 @@ ggdraw(X.imgDiff$plot)
 
 Plot of arcsinh transformed counts coloured by defined celltype.
 
-```{r plot_scatterplots, fig.height = 12, fig.width = 10, fig.align = "center", results="asis"}
+```{r plot_scatterplots, fig.height=25, fig.width=10, fig.align="center", results="asis"}
 # Subset to dataset trained and tested on the Immucan lung dataset
 X.exprsList <- keep(X.list, function(x){
   metadata(x)$training=="lung" & metadata(x)$dataset=="lung"})
@@ -281,11 +282,14 @@ for (k in k_s) {
   X.Exprs <- plot_grid(plot_exprs(X.exprsListK, "B", "CD3", "CD20"),
                        plot_exprs(X.exprsListK, "BnT", "CD3", "CD20"),
                        plot_exprs(X.exprsListK, "Neutro", "MPO", "CD15"),
+                       plot_exprs(X.exprsListK, "", "CD3", "MPO"),
+                       plot_exprs(X.exprsListK, "", "CD11c", "CD68"),
                        ncol=1)
   print(X.Exprs)
   cat("\n\n")
 }
 ```
+
 ## Per protein results
 
 #### Results per Protein *(k=1, arcsinh)* {.tabset}
@@ -293,7 +297,7 @@ for (k in k_s) {
 Scatterplot of ground truth vs decomposed results per protein for k=1 and asinh 
 transformed counts.
 
-```{r results_per_protein, fig.height = 12, fig.width = 10, fig.align = "center", results="asis"}
+```{r results_per_protein, fig.height=12, fig.width=10, fig.align="center", results="asis"}
 # Add all X_test counts together into dataframe for easier plotting
 aoi <- "exprs"
 X.df <- lapply(X.list, function(sce){
@@ -337,10 +341,10 @@ for (i in unique(X.df$dataset)) {
 Correlation between ground truth and decomposed results per protein for k=1 and 
 asinh transformed counts.
 
-```{r results_per_protein_cor, fig.height = 6, fig.width = 5, fig.align = "center", results="asis"}
+```{r results_per_protein_cor, fig.height=6, fig.width=5, fig.align="center", results="asis"}
 # Calculate correlations between ground truth and simulated data for each protein
 X.cor <- lapply(X.list, function(sce){
-  counts.long <- as.data.frame(assays(sce)[["counts"]]) %>%
+  counts.long <- as.data.frame(assays(sce)[["exprs"]]) %>%
     mutate(protein=rownames(.)) %>%
     melt() %>%
     dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
@@ -354,8 +358,7 @@ X.cor <- lapply(X.list, function(sce){
   group_by(k, dataset, protein) %>%
   summarize(correlation=cor(ground_truth, simulated),
             median=median(ground_truth),
-            coef_of_var=sd(ground_truth)/mean(ground_truth),
-            relative_var=var(ground_truth)/mean(ground_truth)) 
+            var=var(ground_truth)) 
 
 # Plot correlations for k=1 for each test/training dataset combination
 for (i in unique(X.df$dataset)) {
@@ -381,9 +384,9 @@ Correlation between ground truth and decomposed results per protein for k=1 and
 asinh transformed counts compared to protein characteristics of ground truth:
 Median, max and variance.
 
-```{r protein_cor_vs_char, fig.height = 8, fig.width = 10, fig.align = "center", results="asis"}
+```{r protein_cor_vs_char, fig.height=8, fig.width=10, fig.align="center", results="asis"}
 # Define characteristics of interest
-coi <- c("median", "coef_of_var", "relative_var")
+coi <- c("median", "var")
 
 # Plot correlations for k=1 for each test/training dataset combination
 for (i in coi) {
@@ -402,8 +405,8 @@ for (i in coi) {
     facet_wrap(~ dataset, scales="free", ncol=2) +
     theme_cowplot(10) +
     stat_cor(size=2.8,
-             label.x.npc = "center",
-             label.y.npc = "bottom") +
+             label.x.npc="center",
+             label.y.npc="bottom") +
     stat_smooth(method="lm",
                 formula=y ~ log(x),
                 se=FALSE,
@@ -415,6 +418,53 @@ for (i in coi) {
 }
 ```
 
+#### Cumulative sum of expression values {.tabset}
+
+```{r protein_cum_sum, fig.height=8, fig.width=10, fig.align="center", results="asis"}
+cumsum.df <- lapply(X.list, function(sce){
+  counts.long <- as.data.frame(assays(sce)[["exprs"]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    group_by(protein) %>%
+    dplyr::arrange(desc(value)) %>%
+    mutate(cumsum=cumsum(value),
+           x=(0:(length(cumsum)-1)),
+           auc=AUC(x, cumsum)) %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  cell=variable,
+                  !!as.symbol(paste(metadata(sce)$ground_truth, "auc", sep="_")):=auc,
+                  !!as.symbol(paste(metadata(sce)$ground_truth, "cumsum", sep="_")):=cumsum,
+                  !!as.symbol(paste(metadata(sce)$ground_truth, "x", sep="_")):=x) %>%
+    mutate(k=metadata(sce)$k,
+           dataset=paste(metadata(sce)$training, metadata(sce)$dataset, sep="_"))
+  
+  counts.long
+}) %>% bind_rows() %>%
+  group_by(protein, cell, k, dataset) %>%
+  summarise_all(na.omit) %>% 
+  group_by(k, dataset, protein) %>% 
+  dplyr::arrange(ground_truth_x) %>% 
+  mutate(simulated_cumsum_of_gt=cumsum(simulated), 
+         simulated_auc_of_gt=AUC(ground_truth_x, 
+                                 simulated_cumsum_of_gt))
+
+
+# Plot cumulative sums for k=1 for each test/training dataset combination
+for (i in unique(X.df$dataset)) {
+  cat("#####", i, "\n")
+  
+  proteinCorr <- ggplot(cumsum.df %>% 
+                          dplyr::filter(k=="1" & dataset==i)) +
+    geom_step(aes(x=ground_truth_x, y=simulated_cumsum_of_gt, color=pal_npg("nrc")("1"))) +
+    geom_step(aes(x=ground_truth_x, y=ground_truth_cumsum, color=pal_npg("nrc")("2")[2])) +
+    facet_wrap(~protein, scales="free") +
+    theme_cowplot(10) 
+  
+  print(proteinCorr)
+  cat("\n\n")
+}
+```
+
 ## Reduced dimensions and clustering results
 
 #### Reduced Dimension Plots *(k=1, Immucan_lung, arcsinh)* {.tabset}
@@ -422,7 +472,7 @@ for (i in coi) {
 Below the UMAP and TSNE of the arcsinh counts for the Immucan lung dataset are 
 shown using k=1. Red indicates a high expression of the particular protein.
 
-```{r clustering, fig.height = 12, fig.width = 10, fig.align = "center", results="asis"}
+```{r clustering, fig.height=12, fig.width=10, fig.align="center", results="asis"}
 # Find highly correlated proteins that become more correlated afterwards
 # X.corProtein <- lapply(X.list, function(sce){
 #   counts.long <- as.data.frame(cor(t(assays(sce)[[aoi]]))) %>%
@@ -508,7 +558,7 @@ To investigate the clustering results of ground truth and simulated data a bit m
 we show the overlap of clusters computed using Rphenograph (run with k=47 clusters)
 individually and compare which clusters overlap using a heatmap.
 
-```{r clustering2, fig.height = 10, fig.width = 20, fig.align = "center", results="asis"}
+```{r clustering2, fig.height=10, fig.width=20, fig.align="center", results="asis"}
 # Subset to data tested on lung
 lung.list <- keep(X.list, function(x){
   metadata(x)$dataset=="lung"})
@@ -558,9 +608,13 @@ all.clusters <- lapply(lung.list,
   ungroup 
 
 # Define celltype colours used by the rest of the script
-celltypes_col <- pal_igv("default")("20")[1:length(unique(all.clusters$celltype))]
-names(celltypes_col) <- unique(all.clusters$celltype)
-celltypes_col <-  celltypes_col[all.clusters %>% dplyr::pull(celltype) %>% levels]
+celltype.col <- c(brewer.pal(12, "Paired"),
+                           brewer.pal(8, "Pastel2")[-c(3,5,8)],
+                           brewer.pal(12, "Set3")[-c(2,3,8,9,11,12)])
+celltype.col <- c(celltype.col[1:length(unique(all.clusters$celltype))],
+                  "black")
+names(celltype.col) <- c(unique(all.clusters$celltype), NA)
+celltype.col <-  celltype.col[all.clusters %>% dplyr::pull(celltype) %>% levels]
 
 
 # Define functions to get overview of celltypes per cluster as row and column annotations
@@ -571,9 +625,9 @@ get_anno_clusters <- function(clusters, i, d, direction="reverse", which_sim="ro
                                                              clusters %>% 
                                                                dplyr::filter(k==i & dataset==d) %>% 
                                                                pull(celltype)), 
-                                                       gp=gpar(fill=celltypes_col), 
-                                                       bar_width = 1, 
-                                                       height = unit(5, "cm")),
+                                                       gp=gpar(fill=celltype.col), 
+                                                       bar_width=1, 
+                                                       height=unit(5, "cm")),
                                 show_annotation_name=FALSE)
   row_anno <- HeatmapAnnotation(celltypes=anno_barplot(table(paste("sim", clusters %>% 
                                                                      dplyr::filter(k==i & dataset==d) %>% 
@@ -581,7 +635,7 @@ get_anno_clusters <- function(clusters, i, d, direction="reverse", which_sim="ro
                                                              clusters %>% 
                                                                dplyr::filter(k==i & dataset==d) %>% 
                                                                pull(celltype)), 
-                                                       gp=gpar(fill=celltypes_col), 
+                                                       gp=gpar(fill=celltype.col), 
                                                        bar_width=1, 
                                                        width=unit(5, "cm"),
                                                        axis_param=list(direction=direction)),
@@ -623,7 +677,7 @@ for (i in unique(all.clusters$k)){
                                left_annotation=row_anno,
                                col=magma(100),
                                column_title=d,
-                               row_names_gp=gpar(fontsize = 8),
+                               row_names_gp=gpar(fontsize=8),
                                column_names_gp=gpar(fontsize=8),
                                column_title_gp=gpar(fontsize=10),
                                rect_gp=gpar(col="white", lwd=1)) 
@@ -632,9 +686,9 @@ for (i in unique(all.clusters$k)){
     ht_list <- append(ht_list, 
                       list(grid.grabExpr(draw(cluster.overlap,
                                               heatmap_legend_list=list(
-                                                Legend(labels=names(celltypes_col), 
+                                                Legend(labels=names(celltype.col), 
                                                        title="Celltypes",
-                                                       legend_gp=gpar(fill=celltypes_col)))))))
+                                                       legend_gp=gpar(fill=celltype.col)))))))
   }
   
   print(plot_grid(plotlist=ht_list, nrow=1))
@@ -647,7 +701,7 @@ for (i in unique(all.clusters$k)){
 We also compare the clusters of the ground truth data to the clsuters of the simulated
 data using the Kullback-Leibner divergence of the celltypes.
 
-```{r clustering3, fig.height = 10, fig.width = 20, fig.align = "center", results="asis"}
+```{r clustering3, fig.height=10, fig.width=20, fig.align="center", results="asis"}
 # Plot heatmaps showing overlap of clusters for each dataset and k
 for (i in unique(all.clusters$k)){
   cat("##### k =", i, "\n")
@@ -687,7 +741,7 @@ for (i in unique(all.clusters$k)){
                            left_annotation=row_anno,
                            col=rev(magma(100)),
                            column_title=d,
-                           row_names_gp=gpar(fontsize = 8),
+                           row_names_gp=gpar(fontsize=8),
                            column_names_gp=gpar(fontsize=8),
                            column_title_gp=gpar(fontsize=10),
                            rect_gp=gpar(col="white", lwd=1)) 
@@ -708,7 +762,7 @@ Next, we assess clustering by looking at the median marker expression of each pr
 in each cluster and the compare it to the celltypes of each cluster. Ideally,
 each cluster has a median protein expression pattern that fits its main celltype.
 
-```{r clustering_exprs, fig.height = 10, fig.width = 20, fig.align = "center", results="asis"}
+```{r clustering_exprs, fig.height=10, fig.width=20, fig.align="center", results="asis"}
 for (i in unique(all.clusters$k)){
   cat("##### k =", i, "\n")
   
@@ -765,7 +819,7 @@ for (i in unique(all.clusters$k)){
                                  top_annotation=col_anno,
                                  col=magma(100),
                                  column_title="Ground truth",
-                                 row_names_gp=gpar(fontsize = 8),
+                                 row_names_gp=gpar(fontsize=8),
                                  column_names_gp=gpar(fontsize=8),
                                  column_title_gp=gpar(fontsize=10),
                                  rect_gp=gpar(col="white", lwd=1),
@@ -776,7 +830,7 @@ for (i in unique(all.clusters$k)){
                                  top_annotation=row_anno,
                                  col=magma(100),
                                  column_title="Simulated",
-                                 row_names_gp=gpar(fontsize = 8),
+                                 row_names_gp=gpar(fontsize=8),
                                  column_names_gp=gpar(fontsize=8),
                                  column_title_gp=gpar(fontsize=10),
                                  rect_gp=gpar(col="white", lwd=1),
@@ -786,9 +840,9 @@ for (i in unique(all.clusters$k)){
     ht_list.exprs <- append(ht_list.exprs, 
                             list(grid.grabExpr(draw(cluster.exprsPlotGt + cluster.exprsPlotSim,
                                                     heatmap_legend_list=list(
-                                                Legend(labels=names(celltypes_col), 
+                                                Legend(labels=names(celltype.col), 
                                                        title="Celltypes",
-                                                       legend_gp=gpar(fill=celltypes_col))),
+                                                       legend_gp=gpar(fill=celltype.col))),
                                                 column_title=d))))
   }
   
@@ -803,7 +857,7 @@ for (i in unique(all.clusters$k)){
 Finally, we compute the adjusted random index (ARI) between the clustering of the 
 ground truth and simulated data to assess the overlap.
 
-```{r clustering_ri, fig.height = 6, fig.width = 6, fig.align = "center"}
+```{r clustering_ri, fig.height=6, fig.width=6, fig.align="center"}
 all.clusters <- all.clusters %>%
   ungroup %>%
   mutate(point.x=ifelse(k=="3", -0.25, 0.25) + as.numeric(as.factor(dataset)))
@@ -822,3 +876,65 @@ ari.plot <- ggplot(all.clusters %>%
 
 print(ari.plot)
 ```
+
+#### Cluster overlap *(arcsinh)* {.tabset}
+
+Since the ARI seems to be pretty bad in all cases, we have a look at another
+metric regarding cluster overlap between ground truth and simulated clusters. For that,
+we find the closest cluster in the simulated data for each ground truth cluster and
+compute the Jaccard index of the two.
+
+```{r clustering_prep, fig.height=6, fig.width=6, fig.align="center"}
+cluster.jaccard <- all.clusters %>%
+  group_by(k, dataset, ground_truth, simulated) %>%
+  summarise(count=n()) %>%
+  group_by(k, dataset, ground_truth) %>%
+  dplyr::filter(count==max(count)) %>%
+  dplyr::select(-count) %>%
+  ungroup()
+cluster.jaccard$jaccard <- lapply(1:nrow(cluster.jaccard), function(i){
+    df.temp <- all.clusters %>%
+      dplyr::filter(k==cluster.jaccard$k[i] & 
+               dataset==cluster.jaccard$dataset[i] &
+               (ground_truth==cluster.jaccard$ground_truth[i] |
+                  simulated==cluster.jaccard$simulated[i])) %>%
+      mutate(ground_truth=ifelse(ground_truth==cluster.jaccard$ground_truth[i], 1, 0),
+             simulated=ifelse(simulated==cluster.jaccard$simulated[i], 1, 0))
+
+    jaccard(df.temp %>%
+              pull(ground_truth), 
+            df.temp %>%
+              pull(simulated))
+
+  }) %>% unlist()
+```
+
+```{r clustering_overlap, fig.height=6, fig.width=12, fig.align="center", results="asis"}
+for (i in unique(cluster.jaccard$k)) {
+  cat("##### k =", i, "\n")
+  
+  plot.list <- list()
+  for(d in unique(cluster.jaccard$dataset)){
+    temp.data <- cluster.jaccard %>%
+      dplyr::filter(k==i & dataset==d)
+    cluster.overlapPlot <- ggplot(temp.data, 
+                                  aes(x=jaccard)) +
+      geom_density(fill=pal_npg("nrc")("1")) +
+      theme_cowplot(10) +
+      geom_vline(aes(xintercept=mean(jaccard)),
+                     linetype="dashed") +
+      geom_text(aes(x=mean(jaccard), label=round(mean(jaccard), 2)), 
+             y=Inf, vjust=2, hjust=-2) +
+      xlim(0, 1)
+    
+    plot.list <- append(plot.list, list(cluster.overlapPlot))
+  }
+  
+  print(plot_grid(plotlist=plot.list, nrow=1,
+                  labels=unique(cluster.jaccard$dataset),
+                  label_size=15, hjust=c(-2, -1.5), vjust=1))
+  cat("\n\n")
+}
+  
+```
+

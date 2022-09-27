@@ -122,9 +122,12 @@ compare_cor <- function(A, B){
 }
 
 
+# Train a random forest classifier on arcsinh transformed counts
+# using the gating labels of the training data of a pretrained RF classifier
 train_rf <- function(sce, rffit.original){
-  cur_mat <- t(assay(sce, "exprs"))
-  cur_mat <- cbind(cur_mat,
+  # Extract training data
+  train_mat <- t(assay(sce, "exprs"))
+  train_mat <- cbind(train_mat,
                    as.data.frame(colData(sce)) %>%
                      dplyr::select(cell_id, subbatch) %>%
                      mutate(dummy=1,
@@ -132,21 +135,14 @@ train_rf <- function(sce, rffit.original){
                      dcast(cell_id~subbatch, value.var="dummy", fill=0) %>%
                      dplyr::select(-cell_id)) %>%
     dplyr::filter(rownames(.) %in% rownames(rffit.original$trainingData))
-  cur_mat <- cur_mat[colnames(cur_mat) %in% colnames(rffit.original$trainingData)] %>%
+  train_mat <- train_mat[colnames(train_mat) %in% colnames(rffit.original$trainingData)] %>%
     merge(rffit.original$trainingData %>%
             dplyr::select(".outcome"), by=0, all.x=TRUE)
-  rownames(cur_mat) <- cur_mat$Row.names
-  cur_mat <- cur_mat %>%
+  rownames(train_mat) <- train_mat$Row.names
+  train_mat <- train_mat %>%
     dplyr::select(-Row.names)
   
-  # Randomly split into train and test data
-  # set.seed(220510)
-  # trainIndex <- createDataPartition(factor(cur_mat$.outcome), p = 0.75)
-  # train_mat <- cur_mat[trainIndex$Resample1, ]
-  # test_mat <- cur_mat[-trainIndex$Resample1, ]
-  train_mat <- cur_mat
-  
-  # scecify train parameters for 5-fold cross validation
+  # Specify training parameters for 5-fold cross validation
   fitControl <- trainControl(method="cv",
                              number=5)
   
@@ -162,11 +158,9 @@ train_rf <- function(sce, rffit.original){
   rffit
 }
 
-# Compute confusion matrix using pre-trained RF classifier for a list of SCE
+# Compute confusion matrix using pre-trained RF classifier for a SCE
 compute_confusionMatrix <- function(sce, rffit){
-  # Train classifier using gating labels from original classifier
-  # rffit <- train_rf(sce, rffit.original)
-  
+  # Extract test data to predict celltypes on
   cur_mat <- t(assay(sce, "exprs"))
   cur_mat <- cbind(cur_mat,
                    as.data.frame(colData(sce)) %>%
@@ -182,10 +176,8 @@ compute_confusionMatrix <- function(sce, rffit){
   # Predict cell phenotypes in test data
   cur_pred <- predict(rffit, 
                       newdata=cur_mat)
-  # cur_pred <- as.character(predict.train(rffit.lung,
-  #                                        newdata=cur_mat,
-  #                                        type="raw"))
-  
+
+  # Extract ground truth labels
   gt_labels <- colData(sce) %>%
     as.data.frame() %>%
     dplyr::filter(!(rownames(.) %in% rownames(rffit$trainingData)) &
@@ -193,12 +185,47 @@ compute_confusionMatrix <- function(sce, rffit){
   gt_labels <- gt_labels[match(rownames(cur_mat), rownames(gt_labels)), ] %>%
     dplyr::pull(celltype)
   
+  # Compute confusion matrix
   cm <- confusionMatrix(data=cur_pred,
                         reference=gt_labels,
                         mode="everything")
   cm
 }
 
+
+# Compute celltype probabilities using pre-trained RF classifier for a SCE
+compute_celltypeProb <- function(sce, rffit){
+  # Extract test data to predict celltypes on
+  cur_mat <- t(assay(sce, "exprs"))
+  cur_mat <- cbind(cur_mat,
+                   as.data.frame(colData(sce)) %>%
+                     dplyr::select(cell_id, subbatch) %>%
+                     mutate(dummy=1,
+                            subbatch=paste0("subbatch", subbatch)) %>%
+                     dcast(cell_id~subbatch, value.var="dummy", fill=0) %>%
+                     dplyr::select(-cell_id)) %>%
+    dplyr::filter(!(rownames(.) %in% rownames(rffit$trainingData)) &
+                    !(rownames(.) %in% rownames(colData(sce)[colData(sce)$celltype=="uncertain",])))
+  cur_mat <- cur_mat[colnames(cur_mat) %in% colnames(rffit$trainingData)]
+  
+  # Predict cell phenotypes probabilities in test data
+  cur_pred <- predict(rffit, 
+                      newdata=cur_mat, 
+                      type="prob")
+  
+  # Extract ground truth labels
+  gt_labels <- colData(sce) %>%
+    as.data.frame() %>%
+    dplyr::filter(!(rownames(.) %in% rownames(rffit$trainingData)) &
+                    (celltype!="uncertain"))
+  gt_labels <- gt_labels[match(rownames(cur_mat), rownames(gt_labels)), ] %>%
+    dplyr::pull(celltype)
+  
+  # Add ground truth labels
+  cur_pred$truth <- factor(gt_labels)
+  
+  cur_pred
+}
 
 ## Plotting fncs.
 
@@ -534,4 +561,56 @@ plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="expr
   plot_grid(plot.sim, plot.true, 
             labels=names(sce.list), 
             label_size=15, hjust=c(-2, -1.5), vjust=1)
+}
+
+
+#
+plot_celltype_images <- function(sce, masks, im, celltype.col){
+  # Create empty plot list
+  plot.list <- list()
+  
+  # Create ground truth image with coloured celltypes
+  gt.image <- plotCells(masks[im],
+                        object=sce, 
+                        cell_id="ObjectNumber", 
+                        img_id="sample_id",
+                        colour_by="celltype_NA",
+                        colour=list(celltype_NA=celltype.col),
+                        return_plot=TRUE,
+                        image_title=list(cex=1.5),
+                        legend=list(colour_by.title.cex=0.001, colour_by.labels.cex=0.001),
+                        scale_bar=list(length=2, cex=1, lwidth=2),
+                        display="single")
+  # Create simulated image with coloured celltypes
+  sim.image <- plotCells(masks[im],
+                         object=sce, 
+                         cell_id="ObjectNumber", 
+                         img_id="sample_id",
+                         colour_by="celltype_pred",
+                         colour=list(celltype_pred=celltype.col),
+                         return_plot=TRUE,
+                         image_title=list(cex=1.5),
+                         legend=list(colour_by.title.cex=0.001, colour_by.labels.cex=0.001),
+                         scale_bar=list(length=2, cex=1, lwidth=2),
+                         display="single")
+  # Append both images together
+  plot.list <- append(append(plot.list, 
+                             lapply(gt.image$plot, function(x){ggdraw(x, clip="on")})), 
+                      lapply(sim.image$plot, function(x){ggdraw(x, clip="on")}))
+  
+  # Remove legend plots (formatted weirdly) and add new legend 
+  plot.list <- append(plot.list[names(plot.list)!="legend"], list(
+    legend=grid.grabExpr(draw(Legend(labels=c(names(celltype.col)[1:(length(celltype.col)-1)], 
+                                              "Background/NA"), 
+                                     title="Celltypes",
+                                     legend_gp=gpar(fill=celltype.col),
+                                     grid_height=unit(5, "mm"),
+                                     grid_width=unit(5, "mm"))))))
+  
+  # Put two images and legend into a single row of plots
+  images <- plot_grid(plotlist=plot.list, nrow=1, labels=c("Ground truth", "Simulated"),
+                      label_size=15, hjust=c(-2, -1.5), 
+                      vjust=1, scale=0.9)
+  
+  images
 }
