@@ -115,3 +115,65 @@ for (p_vec in poi) {
   cat("\n\n")
 }
 ```
+
+## Per protein results
+
+### Correlations per Protein (arcsinh) {.tabset}
+
+Correlation between ground truth and decomposed results per protein for  
+asinh transformed counts.
+
+```{r results_per_protein_cor, fig.height=6, fig.width=5, fig.align="center", results="asis"}
+aoi <- "exprs"
+# Calculate correlations between ground truth and simulated data for each protein
+X.cor <- lapply(X.list, function(sce){
+  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  cell=variable) %>%
+    mutate(sm=metadata(sce)$sm,
+           dataset=paste(metadata(sce)$training, metadata(sce)$dataset, sep="_"))
+  
+}) %>% bind_rows() %>%
+  group_by(protein, cell, sm, dataset) %>%
+  summarise_all(na.omit) %>%
+  group_by(sm, dataset, protein) %>%
+  mutate(correlation=cor(ground_truth, simulated))
+
+
+# Plot correlations for k=1 for each test/training dataset combination
+for (i in unique(X.cor$sm)) {
+  cat("####", i, "\n")
+  
+  proteinCorr <- plot_protein_cor(X.cor %>%
+                                    dplyr::filter(sm==i))
+  
+  print(proteinCorr)
+  cat("\n\n")
+}
+```
+
+### Protein distributions coloured by correlation results *(arcsinh)* {.tabset}
+
+For a manual inspection of different protein distribution characteristics, we
+plot the boxplots of the original protein expressions coloured by correlation
+results. These show: Interquartile range (IQR), 1st and 3rd quantiles, median,
+mean, max, min and outliers.
+"
+```{r results_per_protein_dist, fig.height=12, fig.width=20, fig.align="center",         results="asis"}
+# Plot boxplots of protein expr per dataset coloured by protein correlation results
+# (performance)
+
+# Plot correlations for each test/training dataset combination
+for (i in unique(X.cor$sm)) {
+  cat("####", i, "\n")
+  
+  proteinDist <- plot_protein_dist(X.cor %>%
+                                    dplyr::filter(sm==i),
+                                   0)
+  
+  print(proteinDist)
+  cat("\n\n")
+}
+```

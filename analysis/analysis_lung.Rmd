@@ -293,3 +293,33 @@ for (sce in lungSim.list){
 }
 ```
 
+## Cell Phenotyping per ROI *(k=1, arcsinh)* {.tabset}
+
+Next, we compare these results to the 'ground truth' celltypes (celltypes predicted from
+ground truth data) by calculating the precision, sensitivity and specififity but this
+time per ROI.
+
+```{r rffit_per_ROI, fig.height=8, fig.width=8, fig.align="center", results="asis"}
+
+
+# Plot prediction results/confusion matrix as shown in IMCDataAnalysis script
+i <- 1
+for (sce in lungSim.list){
+  cat("###", metadata(sce)$norm, "\n")
+  
+  cm.samples <- lapply(unique(colData(lungSim.list[[1]])$sample_id), function(sce){
+    cm <- confusionMatrix(data=!is.na(colData(sce)["celltype_pred", "sample_id"==sample]),
+                          reference=!is.na(colData(sce)["celltype_NA", "sample_id"==sample]),
+                          mode="everything")$byClass %>%
+      as.data.frame() %>%
+      mutate(class=sub("Class: ", "", rownames(cm$byClass)),
+             sample=sample)
+    
+    cm
+  }) %>% bind_rows()
+  
+  cm
+
+  cat("\n\n")
+}
+```

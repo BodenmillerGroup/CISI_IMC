@@ -25,7 +25,9 @@ library(aricode)
 library(viridis)
 library(ggrepel)
 library(LaplacesDemon)
+library(geiger)
 library(DescTools)
+library(RColorBrewer)
 ```
 
 ```{r specify_paths}
@@ -59,15 +61,9 @@ files <- files[grepl(
 res <- lapply(files, read_results, type="res") %>% 
   bind_rows() 
 
-# Get information about best U files
-# u_files <- res %>% 
-#   dplyr::filter(dataset==training) %>% 
-#   dplyr::select(k, training, `Best crossvalidation fold`, datasize) %>% 
-#   distinct()
-
 # Harmonize all dataset names
 patterns <- unique(unlist(lapply(res$training, function(name){
-  if(length(str_split(name, "_")[[1]])==1){
+  if (length(str_split(name, "_")[[1]])==1){
     name
   }
 })))
@@ -80,14 +76,6 @@ res$dataset <- unlist(lapply(res$dataset, function(pat){
 }))
 
 ## Read U
-# u <- lapply(1:(nrow(u_files)), function(i){
-#   file <- file.path(analysis.path, u_files[i, "training"], "training",
-#                     u_files[i, "datasize"], 
-#                     paste0("k_", u_files[i, "k"]),
-#                     paste0("crossvalidation_", u_files[i, "Best crossvalidation fold"]),
-#                     "gene_modules.csv")
-#   u_temp <- read_U(file, "training")
-# })
 u.files <- list.files(analysis.path, "gene_modules.csv",
                       full.names=TRUE, recursive=TRUE)
 # TODO: change this line if more files come along and need to exclude
@@ -151,6 +139,31 @@ mcols(masks.tonsil) <- DataFrame(sample_id=names(masks.tonsil))
 # Read in masks for lung data
 masks.lung <- loadImages(file.path(lung.path, "masks"), as.is=TRUE)
 mcols(masks.lung) <- DataFrame(sample_id=names(masks.lung))
+
+## Read original H5ad SCE objects
+tonsil.original <- readH5AD(file.path(tonsil.path, "preprocessed_data/spe.h5ad"))
+lung.original <- readH5AD(file.path(lung.path, "Lung_sce.h5ad"))
+original.list <- list(tonsil.original, lung.original)
+names(original.list) <- c("tonsil_tonsil", "lung_lung")
+```
+
+## Plot defaults
+
+```{r set_plot_defaults}
+# Define celltype colours used by the rest of the script
+celltype.col <- c(brewer.pal(12, "Paired"),
+                           brewer.pal(8, "Pastel2")[-c(3,5,8)],
+                           brewer.pal(12, "Set3")[-c(2,3,8,9,11,12)])
+celltype.col <- c(celltype.col[1:length(unique(colData(lung.original)$celltype))],
+                  "black")
+names(celltype.col) <- c(as.character(unique(colData(lung.original)$celltype)), NA)
+celltype.col <-  celltype.col[colData(lung.original) %>% 
+                                as.data.frame() %>%
+                                dplyr::pull(celltype) %>% 
+                                levels]
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(tonsil.original)
+rm(lung.original)
 ```
 
 ## CISI results
@@ -209,20 +222,21 @@ knitr::kable(mantel, digits=2,
 
 ```{r plot_X, fig.height=10, fig.width=10, fig.align="center", fig.keep="last"}
 # Subset to training and test of tonsil data
-X.plotList <- keep(X.list, function(x){
+X.tonsil1 <- keep(X.list, function(x){
   metadata(x)$training=="tonsil" & metadata(x)$dataset=="tonsil" & metadata(x)$k=="1"})
-names(X.plotList) <- lapply(X.plotList, 
+names(X.tonsil1) <- lapply(X.tonsil1, 
                             function(x){metadata(x)$ground_truth})
 # Call plot_cells to get individual plots for each roi for decomposed and true
 # results
-X.imgList <- plot_cells(X.plotList, masks.tonsil, 
-                        "CD20")
+poi <- "SMA"
+X.imgList <- plot_cells(X.tonsil1, masks.tonsil, 
+                        poi)
 # Plot decomposed vs true results for test roi (002)
 X.img <- plot_grid(plotlist=append(X.imgList[grepl("20220520_TsH_th152_cisi1_002",
                                                    names(X.imgList))],
                                    X.imgList[grepl("legend",
                                                    names(X.imgList))]),
-                   ncol=2, labels=names(X.plotList),
+                   ncol=2, labels=names(X.tonsil1),
                    label_size=15, hjust=c(-2, -1.5), 
                    vjust=1, scale=0.9)
 X.img
@@ -232,15 +246,18 @@ X.img
 
 ```{r plot_X_diff, fig.height=7, fig.width=10, fig.align="center", fig.keep="last"}
 # Rename list of tonsil data for nicer titles in plotting
-X.plotListRenamed <- lapply(names(X.plotList), function(n){
-  rownames(X.plotList[[n]]) <- paste(rownames(X.plotList[[n]]),
+X.tonsil1Renamed <- lapply(names(X.tonsil1), function(n){
+  rownames(X.tonsil1[[n]]) <- paste(rownames(X.tonsil1[[n]]),
                                      n, sep="\n")
-  reducedDims(X.plotList[[n]]) <- NULL
-  X.plotList[[n]]
+  reducedDims(X.tonsil1[[n]]) <- NULL
+  X.tonsil1[[n]]
 })
-names(X.plotListRenamed) <- names(X.plotList)
+names(X.tonsil1Renamed) <- names(X.tonsil1)
 # Add decomposed and true dataset of tonsil into one SCE
-X.overlayed <- do.call("rbind", X.plotListRenamed)
+X.overlayed <- do.call("rbind", X.tonsil1Renamed)
+
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(X.tonsil1)
 
 # Define protein of interest
 pois <- c("CD20\nsimulated", "CD20\nground_truth")
@@ -254,6 +271,10 @@ X.imgDiff <- plotCells(mask=masks.tonsil[unique(colData(X.overlayed)$sample_id)]
                        scale_bar=list(cex=1, lwidth=5),
                        legend=list(colour_by.title.cex=0.7, colour_by.labels.cex=0.7))
 
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(X.tonsil1Renamed)
+
+# Draw plot
 ggdraw(X.imgDiff$plot)
 ```
 
@@ -265,25 +286,25 @@ Plot of arcsinh transformed counts coloured by defined celltype.
 
 ```{r plot_scatterplots, fig.height=25, fig.width=10, fig.align="center", results="asis"}
 # Subset to dataset trained and tested on the Immucan lung dataset
-X.exprsList <- keep(X.list, function(x){
+X.lung_lung <- keep(X.list, function(x){
   metadata(x)$training=="lung" & metadata(x)$dataset=="lung"})
-names(X.exprsList) <- lapply(X.exprsList,
+names(X.lung_lung) <- lapply(X.lung_lung,
                              function(x){metadata(x)$ground_truth})
-k_s <- unique(unlist(lapply(X.exprsList, function(sce_temp){metadata(sce_temp)$k})))
+k_s <- unique(unlist(lapply(X.lung_lung, function(sce_temp){metadata(sce_temp)$k})))
 
 for (k in k_s) {
   cat("##### k =", k, "\n")
   
   # Subset for k of interest
-  X.exprsListK <- keep(X.exprsList, function(x){metadata(x)$k==k})
+  X.lung_lungK <- keep(X.lung_lung, function(x){metadata(x)$k==k})
   
   # Plot asinh transformed counts of proteins of interest of decomposed and true 
   # datasets coloured by different celltypes
-  X.Exprs <- plot_grid(plot_exprs(X.exprsListK, "B", "CD3", "CD20"),
-                       plot_exprs(X.exprsListK, "BnT", "CD3", "CD20"),
-                       plot_exprs(X.exprsListK, "Neutro", "MPO", "CD15"),
-                       plot_exprs(X.exprsListK, "", "CD3", "MPO"),
-                       plot_exprs(X.exprsListK, "", "CD11c", "CD68"),
+  X.Exprs <- plot_grid(plot_exprs(X.lung_lungK, "B", "CD3", "CD20"),
+                       plot_exprs(X.lung_lungK, "BnT", "CD3", "CD20"),
+                       plot_exprs(X.lung_lungK, "Neutro", "MPO", "CD15"),
+                       plot_exprs(X.lung_lungK, "Neutro", "CD3", "MPO"),
+                       plot_exprs(X.lung_lungK, "DC", "CD11c", "CD68"),
                        ncol=1)
   print(X.Exprs)
   cat("\n\n")
@@ -334,6 +355,9 @@ for (i in unique(X.df$dataset)) {
   print(proteinPlot)
   cat("\n\n")
 }
+
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(X.df)
 ```
 
 #### Correlations per Protein (k=1, arcsinh) {.tabset}
@@ -342,9 +366,12 @@ Correlation between ground truth and decomposed results per protein for k=1 and
 asinh transformed counts.
 
 ```{r results_per_protein_cor, fig.height=6, fig.width=5, fig.align="center", results="asis"}
+aoi <- "exprs"
 # Calculate correlations between ground truth and simulated data for each protein
-X.cor <- lapply(X.list, function(sce){
-  counts.long <- as.data.frame(assays(sce)[["exprs"]]) %>%
+X.cor <- lapply(keep(X.list, function(sce){
+  metadata(sce)$dataset==metadata(sce)$training
+}), function(sce){
+  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
     mutate(protein=rownames(.)) %>%
     melt() %>%
     dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
@@ -356,49 +383,93 @@ X.cor <- lapply(X.list, function(sce){
   group_by(protein, cell, k, dataset) %>%
   summarise_all(na.omit) %>%
   group_by(k, dataset, protein) %>%
-  summarize(correlation=cor(ground_truth, simulated),
-            median=median(ground_truth),
-            var=var(ground_truth)) 
+  summarize(correlation=cor(ground_truth, simulated))
+
+# Read in original SCE with all samples and proteins and without paper normalization
+# of counts/exprs and compute statistics like mean, median, var,... on these
+# Add this to above correlation dataframe
+aoi.original <- "exprs"
+X.cor <- lapply(names(original.list), function(n){
+  sce <- original.list[[n]]
+  counts.long <- as.data.frame(assays(sce)[[aoi.original]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(ground_truth=value,
+                  cell=variable) %>%
+    dplyr::filter(protein %in% unique(X.cor$protein)) %>%
+    group_by(protein) %>%
+    mutate(median=median(ground_truth),
+           mean=mean(ground_truth),
+           var=var(ground_truth),
+           mode_pos=Modes(ground_truth, min.size=0.1)$modes[1],
+           dataset=n) 
+  
+  counts.long
+}) %>% bind_rows() %>%
+  merge(X.cor) %>%
+  ungroup() %>%
+  rowwise() %>%
+  mutate("mean-median"=mean-median)
 
 # Plot correlations for k=1 for each test/training dataset combination
-for (i in unique(X.df$dataset)) {
+for (i in unique(X.cor$dataset)) {
   cat("#####", i, "\n")
   
-  proteinCorr <- ggplot(X.cor %>% 
-                          dplyr::filter(k=="1" & dataset==i),
-                        aes(x=protein, y=correlation, fill=protein)) +
-    geom_bar(stat="identity") +
-    theme_cowplot() +
-    scale_fill_igv() +
-    guides(fill=FALSE) +
-    coord_flip()
+  proteinCorr <- plot_protein_cor(X.cor %>% 
+                                    dplyr::filter(k=="1" & dataset==i))
   
   print(proteinCorr)
   cat("\n\n")
 }
 ```
 
+#### Protein distributions coloured by correlation results *(k=1, arcsinh)*
+
+For a manual inspection of different protein distribution characteristics, we
+plot the boxplots of the original protein expressions coloured by correlation
+results. These show: Interquartile range (IQR), 1st and 3rd quantiles, median,
+mean, max, min and outliers.
+
+```{r results_per_protein_dist, fig.height=12, fig.width=20, fig.align="center"}
+# # Have a look at dittoRidgePlots of some good/bad performing proteins for lung and
+# # tonsil
+# tonsil.originalSubset <- tonsil.original
+# colData(tonsil.originalSubset)$dummy <- "1"
+# for (p in c("MPO", "Ki-67", "CD15", "CD8a", "CD45RO", "CD303", "PD-L1", "SMA", 
+#             "TCF1/TCF7", "CD27", "CD14")){
+#   print(dittoRidgePlot(tonsil.originalSubset, var=p, group.by="dummy", assay="exprs") +
+#           ggtitle(p) +
+#           coord_cartesian(xlim=c(0, 6.2), expand=TRUE))
+# }
+# lung.originalSubset <- lung.original
+# colData(lung.originalSubset)$dummy <- "1"
+# for (p in c("MPO", "Ki-67", "CD20", "PD-L1", "PD-1", "CD14")){
+#   print(dittoRidgePlot(lung.originalSubset, var=p, group.by="dummy", assay="exprs") +
+#           ggtitle(p))
+# }
+
+# Plot boxplots of protein expr per dataset coloured by protein correlation results
+# (performance)
+proteinDist <- plot_protein_dist(X.cor %>% 
+                                   dplyr::filter(k=="1"))
+
+print(proteinDist)
+```
+
 #### Correlations per Protein vs Protein Characteristics *(k=1, arcsinh)* {.tabset}
 
 Correlation between ground truth and decomposed results per protein for k=1 and 
 asinh transformed counts compared to protein characteristics of ground truth:
-Median, max and variance.
+Median, var, mean and mode_pos.
 
-```{r protein_cor_vs_char, fig.height=8, fig.width=10, fig.align="center", results="asis"}
+```{r protein_cor_vs_char, fig.height=5, fig.width=10, fig.align="center", results="asis"}
 # Define characteristics of interest
-coi <- c("median", "var")
+coi <- c("median", "var", "mean", "mode_pos", "mean-median")
 
 # Plot correlations for k=1 for each test/training dataset combination
 for (i in coi) {
   cat("#####", i, "\n")
   
-  # proteinChar <- ggscatter(X.cor %>%
-  #                            dplyr::filter(k=="1"), 
-  #                          x=i, y="correlation",
-  #                          add="reg.line",
-  #                          color=pal_npg("nrc")("1"),
-  #                          add.params=list(color=pal_npg("nrc")("4")[4],
-  #                                          size=2)) +
   proteinChar <- ggplot(X.cor %>% dplyr::filter(k=="1"), 
                         aes(x=!!sym(i), y=correlation, label=protein)) +
     geom_point(color=pal_npg("nrc")("1")) +
@@ -418,21 +489,29 @@ for (i in coi) {
 }
 ```
 
-#### Cumulative sum of expression values {.tabset}
+#### Cumulative sum of expression values *(k=1)* {.tabset}
+
+Another way to analyse the protein-wise results instead of the correlation is shown
+in the subsequent part. In this case, cells are ranked according to their expression
+in the ground truth data for each protein and we compute the cumulative sum. Then,
+we plot this against the cumulative sum of the simulated data where the cell order
+is determined by the expression values in the ground truth data. The results are
+shown for k=1.
 
 ```{r protein_cum_sum, fig.height=8, fig.width=10, fig.align="center", results="asis"}
+# Collect all counts for each dataset, rank according to the counts and calculate
+# the cumulative sum
+# Calculate area between curves of ground_truth and simulated
 cumsum.df <- lapply(X.list, function(sce){
-  counts.long <- as.data.frame(assays(sce)[["exprs"]]) %>%
+  counts.long <- as.data.frame(assays(sce)[["counts"]]) %>%
     mutate(protein=rownames(.)) %>%
     melt() %>%
     group_by(protein) %>%
     dplyr::arrange(desc(value)) %>%
     mutate(cumsum=cumsum(value),
-           x=(0:(length(cumsum)-1)),
-           auc=AUC(x, cumsum)) %>%
+           x=(0:(length(cumsum)-1))) %>%
     dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
                   cell=variable,
-                  !!as.symbol(paste(metadata(sce)$ground_truth, "auc", sep="_")):=auc,
                   !!as.symbol(paste(metadata(sce)$ground_truth, "cumsum", sep="_")):=cumsum,
                   !!as.symbol(paste(metadata(sce)$ground_truth, "x", sep="_")):=x) %>%
     mutate(k=metadata(sce)$k,
@@ -441,28 +520,72 @@ cumsum.df <- lapply(X.list, function(sce){
   counts.long
 }) %>% bind_rows() %>%
   group_by(protein, cell, k, dataset) %>%
-  summarise_all(na.omit) %>% 
+  summarise_all(na.omit) %>%
+  dplyr::select(-simulated_x) %>%
+  dplyr::rename(x=ground_truth_x) %>%
   group_by(k, dataset, protein) %>% 
-  dplyr::arrange(ground_truth_x) %>% 
-  mutate(simulated_cumsum_of_gt=cumsum(simulated), 
-         simulated_auc_of_gt=AUC(ground_truth_x, 
-                                 simulated_cumsum_of_gt))
+  dplyr::arrange(x) %>% 
+  mutate(simulated_cumsum=cumsum(simulated)) %>%
+  rowwise() %>%
+  mutate(temp_max=max(simulated_cumsum, ground_truth_cumsum),
+         temp_min=min(simulated_cumsum, ground_truth_cumsum)) %>%
+  ungroup() %>%
+  group_by(k, dataset, protein) %>%
+  mutate(auc=geiger:::.area.between.curves(x, temp_min, temp_max,
+                                           xrange=c(0, max(x)))) %>%
+  dplyr::select(-c("temp_max", "temp_min"))
 
 
 # Plot cumulative sums for k=1 for each test/training dataset combination
-for (i in unique(X.df$dataset)) {
+for (i in unique(cumsum.df$dataset)) {
   cat("#####", i, "\n")
   
-  proteinCorr <- ggplot(cumsum.df %>% 
+  protein.cumsum <- ggplot(cumsum.df %>% 
                           dplyr::filter(k=="1" & dataset==i)) +
-    geom_step(aes(x=ground_truth_x, y=simulated_cumsum_of_gt, color=pal_npg("nrc")("1"))) +
-    geom_step(aes(x=ground_truth_x, y=ground_truth_cumsum, color=pal_npg("nrc")("2")[2])) +
+    geom_step(aes(x=x, y=simulated_cumsum, color="simulated")) +
+    geom_step(aes(x=x, y=ground_truth_cumsum, color="ground_truth")) +
     facet_wrap(~protein, scales="free") +
-    theme_cowplot(10) 
+    theme_cowplot(10) + 
+    ylab("Cumulative sum of counts") +
+    xlab("Ordered cells") +
+    scale_colour_manual("", 
+                        breaks=c("simulated", "ground_truth"),
+                        values=c(simulated=pal_npg("nrc")("1"),
+                                 ground_truth=pal_npg("nrc")("2")[2]))
   
-  print(proteinCorr)
+  print(protein.cumsum)
   cat("\n\n")
 }
+```
+#### Area between sumulative sums of expression values *(k=1)* {.tabset}
+
+To summarize the above analysis, the area between the two lines (of the cumulative sum) 
+is computed for each protein and dataset. Ideally, the lines match perfectly (overlap)
+and the area would be 0.
+
+```{r protein_cum_sum_area, fig.height=8, fig.width=10, fig.align="center", results="asis"}
+# Plot auc of cumulative sums for k=1 for each test/training dataset combination
+for (i in unique(cumsum.df$dataset)) {
+  cat("#####", i, "\n")
+  
+  protein.cumsumArea <- ggplot(cumsum.df %>% 
+                                 dplyr::filter(k=="1" & dataset==i) %>%
+                                 ungroup() %>%
+                                 dplyr::select(protein, auc) %>%
+                                 distinct,
+                               aes(x=reorder(protein, auc), y=auc, fill=protein)) +
+    geom_bar(stat="identity") +
+    theme_cowplot() +
+    scale_fill_igv() +
+    guides(fill=FALSE) +
+    coord_flip()
+  
+  print(protein.cumsumArea)
+  cat("\n\n")
+}
+
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(cumsum.df)
 ```
 
 ## Reduced dimensions and clustering results
@@ -473,78 +596,29 @@ Below the UMAP and TSNE of the arcsinh counts for the Immucan lung dataset are
 shown using k=1. Red indicates a high expression of the particular protein.
 
 ```{r clustering, fig.height=12, fig.width=10, fig.align="center", results="asis"}
-# Find highly correlated proteins that become more correlated afterwards
-# X.corProtein <- lapply(X.list, function(sce){
-#   counts.long <- as.data.frame(cor(t(assays(sce)[[aoi]]))) %>%
-#     mutate(proteinA=rownames(.)) %>%
-#     melt() %>%
-#     dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
-#                   proteinB=variable) %>%
-#     mutate(k=metadata(sce)$k,
-#            dataset=paste(metadata(sce)$training, metadata(sce)$dataset, sep="_")) %>%
-#     filter(!(proteinA==proteinB)) %>%
-#     mutate(combProtein=str_c(pmin(as.character(proteinA), 
-#                                   as.character(proteinB)),
-#                                   pmax(as.character(proteinA), 
-#                                        as.character(proteinB))),
-#            proteinB=as.character(proteinB)) %>%
-#     filter(!duplicated(combProtein)) %>%
-#     dplyr::select(-combProtein) %>%
-#     filter(grepl("lung", dataset) & k==1)
-#   
-# }) %>% bind_rows() %>%
-#   group_by(proteinA, proteinB, k, dataset) %>%
-#   summarise_all(na.omit) %>%
-#   mutate(diff=simulated-ground_truth) %>%
-#   group_by(k, dataset) %>%
-#   dplyr::filter(grepl("lung", dataset) & !grepl("tonsil", dataset)) %>%
-#   dplyr::filter(ground_truth>0.6 & diff>0) %>%
-#   arrange(desc(diff))
-
-aoi <- "exprs"
-X.exprsList1 <- keep(X.exprsList, function(x){metadata(x)$k=="1"})
-
-for(protein in rownames(X.exprsList1[[1]])){
-  cat("#####", protein, "\n")
+# Plot UMAP and TSNE for k=1 and lung data
+for (sce in keep(X.lung_lung, function(x){metadata(x)$k=="1"})){
+  cat("#####", metadata(sce)$training, "_", metadata(sce)$dataset, "\n")
   
   # Create empty list for plots
   X.redDimlist <- list()
   # Extract for simulated and true results for UMAP and TSNE and plot and
-  # colour highly correlated ground truth cells
-  for(sce in X.exprsList1){
-    for(method in c("UMAP", "TSNE")){
-      # sce.temp <- reducedDims(sce)[[method]] %>%
-      #   as.data.frame() %>%
-      #   mutate(!!X.corProtein$proteinA[1] :=assays(sce)[[aoi]][X.corProtein$proteinA[1],],
-      #          !!X.corProtein$proteinB[1] :=assays(sce)[[aoi]][X.corProtein$proteinB[1],])
-      # 
-      # X.redDimlist <- append(X.redDimlist, 
-      #                        list(ggplot(sce.temp, aes(V1, V2, colour=cmy_spec(!!sym(X.corProtein$proteinA[1]), 
-      #                                                                          !!sym(X.corProtein$proteinB[1])))) +
-      #                               geom_point(size=0.3) + 
-      #                               theme_cowplot(7)))
-      
-      X.redDimlist <- append(X.redDimlist,
-      list(dittoDimPlot(sce,
-                        var=protein,
-                        reduction.use=method,
-                        size=0.2,
-                        min.color="grey",
-                        max.color=pal_npg(("nrc"))("1")) +
-             #scale_color_igv() +
-             theme_cowplot() +
-             theme(legend.position="bottom") +
-             guides(color=guide_legend(nrow=1))))
-    }
+  # colour by celltype
+  for (method in c("UMAP", "TSNE")){
+    X.redDimlist <- append(X.redDimlist,
+                           list(dittoDimPlot(sce,
+                                             var="celltype",
+                                             reduction.use=method,
+                                             size=0.2,
+                                             color.panel=celltype.col) +
+                                  theme_cowplot() +
+                                  theme(legend.position="bottom") +
+                                  guides(color=guide_legend(nrow=1))))
+    
   }
-  # Remove empty plot at the beginning and add legend to the end of the plot list
-  X.redDimlist <- c(lapply(X.redDimlist, function(p){
-    p + theme(legend.position="none")
-  }), list(get_legend(X.redDimlist[2])))
-  
   # Plot simulated and true reduced dim on top of each other
   X.redDimPlot <- plot_grid(plotlist=X.redDimlist,
-                            ncol=2, labels=rep(names(X.exprsList1), each=2),
+                            ncol=2, labels=c("UMAP", "TSNE"),
                             label_size=15, hjust=c(-2, -1.5), vjust=1, scale=0.9)
   
   print(X.redDimPlot)
@@ -560,15 +634,17 @@ individually and compare which clusters overlap using a heatmap.
 
 ```{r clustering2, fig.height=10, fig.width=20, fig.align="center", results="asis"}
 # Subset to data tested on lung
-lung.list <- keep(X.list, function(x){
+X.lung <- keep(X.list, function(x){
   metadata(x)$dataset=="lung"})
-names(lung.list) <- lapply(lung.list, function(sce){
+names(X.lung) <- lapply(X.lung, function(sce){
   paste(metadata(sce)$training, metadata(sce)$dataset,
         metadata(sce)$k, metadata(sce)$ground_truth, sep="_")
 })
 
-# Compute clusters for each dataset using Rphenograph
-all.clusters <- lapply(lung.list, 
+# Compute clusters for each dataset using Rphenograph (for ground truth data,
+# clusters are computed twice and an ARI score between them is calculated as a 
+# reference)
+all.clusters <- lapply(X.lung, 
   function(sce){
   mat <- t(assay(sce, "exprs"))
   out1 <- Rphenograph(mat, k=100)
@@ -580,21 +656,7 @@ all.clusters <- lapply(lung.list,
            celltype=colData(sce)$celltype,
            cell=colData(sce)$cell_id) 
   
-  # cluster_celltypes <- clusters %>%
-  #   mutate(celltype=colData(sce)$celltype) %>%
-  #   group_by(!!as.symbol(metadata(sce)$ground_truth), dataset, k, celltype) %>% 
-  #   mutate(celltype_n=n()) %>% 
-  #   ungroup %>%
-  #   group_by(!!as.symbol(metadata(sce)$ground_truth), dataset, k) %>%
-  #   filter(celltype_n==max(celltype_n)) %>%
-  #   ungroup %>%
-  #   dplyr::select(-celltype_n) %>%
-  #   distinct
-  #   
-  # clusters <- clusters %>%
-  #   left_join(cluster_celltypes)
-  
-  if(metadata(sce)$ground_truth=="simulated"){
+  if (metadata(sce)$ground_truth=="simulated"){
     out2 <- Rphenograph(mat, k=100)
     max_ari <- ARI(factor(membership(out1[[2]])), factor(membership(out2[[2]])))
     clusters <- clusters %>%
@@ -605,16 +667,7 @@ all.clusters <- lapply(lung.list,
 }) %>% bind_rows() %>%
   group_by(k, dataset, cell, celltype) %>%
   summarise_all(na.omit) %>%
-  ungroup 
-
-# Define celltype colours used by the rest of the script
-celltype.col <- c(brewer.pal(12, "Paired"),
-                           brewer.pal(8, "Pastel2")[-c(3,5,8)],
-                           brewer.pal(12, "Set3")[-c(2,3,8,9,11,12)])
-celltype.col <- c(celltype.col[1:length(unique(all.clusters$celltype))],
-                  "black")
-names(celltype.col) <- c(unique(all.clusters$celltype), NA)
-celltype.col <-  celltype.col[all.clusters %>% dplyr::pull(celltype) %>% levels]
+  ungroup()
 
 
 # Define functions to get overview of celltypes per cluster as row and column annotations
@@ -739,7 +792,7 @@ for (i in unique(all.clusters$k)){
                            show_column_dend=FALSE,
                            top_annotation=col_anno,
                            left_annotation=row_anno,
-                           col=rev(magma(100)),
+                           col=colorRamp2(c(0, 0.1, 5), rev(magma(3))), #rev(magma(100)),
                            column_title=d,
                            row_names_gp=gpar(fontsize=8),
                            column_names_gp=gpar(fontsize=8),
@@ -769,10 +822,10 @@ for (i in unique(all.clusters$k)){
   plot.new()
   ht_list.exprs <- NULL
   for (d in unique(all.clusters$dataset)){
-    cluster_gt.exprs <- assay(lung.list[grepl(i, names(lung.list)) &
-                                       grepl(d, names(lung.list)) &
-                                       grepl("ground_truth", names(lung.list))][[1]], "exprs") %>%
-      as.data.frame %>%
+    cluster_gt.exprs <- assay(X.lung[grepl(i, names(X.lung)) &
+                                       grepl(d, names(X.lung)) &
+                                       grepl("ground_truth", names(X.lung))][[1]], "exprs") %>%
+      as.data.frame() %>%
       mutate(protein=rownames(.)) %>%
       melt() %>%
       dplyr::rename(cell=variable, expr=value)
@@ -788,10 +841,10 @@ for (i in unique(all.clusters$k)){
       column_to_rownames("protein") %>%
       as.matrix
     
-    cluster_sim.exprs <- assay(lung.list[grepl(i, names(lung.list)) &
-                                       grepl(d, names(lung.list)) &
-                                       grepl("simulated", names(lung.list))][[1]], "exprs") %>%
-      as.data.frame %>%
+    cluster_sim.exprs <- assay(X.lung[grepl(i, names(X.lung)) &
+                                       grepl(d, names(X.lung)) &
+                                       grepl("simulated", names(X.lung))][[1]], "exprs") %>%
+      as.data.frame() %>%
       mutate(protein=rownames(.)) %>%
       melt() %>%
       dplyr::rename(cell=variable, expr=value)
@@ -858,10 +911,12 @@ Finally, we compute the adjusted random index (ARI) between the clustering of th
 ground truth and simulated data to assess the overlap.
 
 ```{r clustering_ri, fig.height=6, fig.width=6, fig.align="center"}
+# Add position for labels to dataframe for easier annotation in ggplot
 all.clusters <- all.clusters %>%
-  ungroup %>%
+  ungroup() %>%
   mutate(point.x=ifelse(k=="3", -0.25, 0.25) + as.numeric(as.factor(dataset)))
 
+# Create barplot for ARI (cluster overlap)
 ari.plot <- ggplot(all.clusters %>%
                     group_by(dataset, k) %>%
                     summarize(ARI=ARI(simulated, ground_truth),
@@ -885,6 +940,7 @@ we find the closest cluster in the simulated data for each ground truth cluster 
 compute the Jaccard index of the two.
 
 ```{r clustering_prep, fig.height=6, fig.width=6, fig.align="center"}
+# Calculate celltype probabilites per cluster
 cluster.jaccard <- all.clusters %>%
   group_by(k, dataset, ground_truth, simulated) %>%
   summarise(count=n()) %>%
@@ -892,6 +948,8 @@ cluster.jaccard <- all.clusters %>%
   dplyr::filter(count==max(count)) %>%
   dplyr::select(-count) %>%
   ungroup()
+
+# Calculate jaccard index between clusters using celltype probabilities
 cluster.jaccard$jaccard <- lapply(1:nrow(cluster.jaccard), function(i){
     df.temp <- all.clusters %>%
       dplyr::filter(k==cluster.jaccard$k[i] & 
@@ -910,13 +968,17 @@ cluster.jaccard$jaccard <- lapply(1:nrow(cluster.jaccard), function(i){
 ```
 
 ```{r clustering_overlap, fig.height=6, fig.width=12, fig.align="center", results="asis"}
+# Plot jaccard index distribution per dataset and k
 for (i in unique(cluster.jaccard$k)) {
   cat("##### k =", i, "\n")
   
+  # Create empty plot list to append all dataset jaccard distribution plots to
   plot.list <- list()
-  for(d in unique(cluster.jaccard$dataset)){
+  for (d in unique(cluster.jaccard$dataset)){
+    # Subset to dataset and k of interest
     temp.data <- cluster.jaccard %>%
       dplyr::filter(k==i & dataset==d)
+    # Create plot
     cluster.overlapPlot <- ggplot(temp.data, 
                                   aes(x=jaccard)) +
       geom_density(fill=pal_npg("nrc")("1")) +
@@ -930,11 +992,11 @@ for (i in unique(cluster.jaccard$k)) {
     plot.list <- append(plot.list, list(cluster.overlapPlot))
   }
   
+  # Print plot
   print(plot_grid(plotlist=plot.list, nrow=1,
                   labels=unique(cluster.jaccard$dataset),
                   label_size=15, hjust=c(-2, -1.5), vjust=1))
   cat("\n\n")
 }
-  
 ```
 
