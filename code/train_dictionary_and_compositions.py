@@ -103,7 +103,7 @@ outputs:
 
 
 def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=10,
-                  UW=None, posW=False, posU=True,use_chol=False, module_lower=1,
+                  UW=None, posW=False, posU=True, use_chol=False, module_lower=1,
                   activity_lower=1, donorm=False, mode_smaf=1, mink=0, U0=[],
                   U0_delta=0.1, doprint=False, normalization='paper_norm',
                   THREADS_smaf=4, nmeasurements = 10, maxcomposition = 3, mode_phi='G',
@@ -194,7 +194,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
     training_res, training_res_comp = analyze_U_and_A(X_test, U_best, [Phi_best],
                                                       [version_best], outpath, k_best,
                                                       lasso_sparsity, THREADS_A_and_U,
-                                                      layer, normalization, save, snr, 
+                                                      layer, normalization, save, snr,
                                                       num_blocks)
 
     # Calculate pairwise protein correlations
