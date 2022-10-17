@@ -196,11 +196,11 @@ read_results <- function(file, type, voi="k", use_voi=TRUE){
     training_name <- dataset_name
     
     if (use_voi){
-      k_name <- gsub("*._", "", str_split(file, "/")[[1]][8])
+      k_name <- gsub(".*_", "", str_split(file, "/")[[1]][8])
     }
     
     if (type=="res"){
-      datasize_name <- gsub("*._", "", str_split(file, "/")[[1]][7])
+      datasize_name <- str_split(file, "/")[[1]][7]
     }
   } else {
     dataset_name <- gsub(".*_", "", str_split(file, "/")[[1]][6])
@@ -208,7 +208,7 @@ read_results <- function(file, type, voi="k", use_voi=TRUE){
                                                      pattern=c(dataset_name, "_vs_"),
                                                      replacement=c("", ""), vectorize=FALSE)
     if (use_voi){
-      k_name <- gsub("*._", "", str_split(file, "/")[[1]][7])
+      k_name <- gsub(".*_", "", str_split(file, "/")[[1]][7])
     }
     
     if (type=="res"){
@@ -916,6 +916,7 @@ plot_protein_cor <- function(X.cor){
     theme_cowplot(title.fontsize) +
     scale_fill_igv() +
     guides(fill=FALSE) +
+    xlab("protein") +
     coord_flip()
   
   protein.plot

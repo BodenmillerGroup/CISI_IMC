@@ -383,7 +383,9 @@ X.cor <- lapply(keep(X.list, function(sce){
   group_by(protein, cell, k, dataset) %>%
   summarise_all(na.omit) %>%
   group_by(k, dataset, protein) %>%
-  summarize(correlation=cor(ground_truth, simulated))
+  summarize(correlation=cor(ground_truth, simulated)) %>%
+  dplyr::filter(k=="1") %>%
+  dplyr::select(-k)
 
 # Read in original SCE with all samples and proteins and without paper normalization
 # of counts/exprs and compute statistics like mean, median, var,... on these
@@ -416,7 +418,7 @@ for (i in unique(X.cor$dataset)) {
   cat("#####", i, "\n")
   
   proteinCorr <- plot_protein_cor(X.cor %>% 
-                                    dplyr::filter(k=="1" & dataset==i))
+                                    dplyr::filter(dataset==i))
   
   print(proteinCorr)
   cat("\n\n")
@@ -450,8 +452,7 @@ mean, max, min and outliers.
 
 # Plot boxplots of protein expr per dataset coloured by protein correlation results
 # (performance)
-proteinDist <- plot_protein_dist(X.cor %>% 
-                                   dplyr::filter(k=="1"))
+proteinDist <- plot_protein_dist(X.cor)
 
 print(proteinDist)
 ```
@@ -463,6 +464,12 @@ asinh transformed counts compared to protein characteristics of ground truth:
 Median, var, mean and mode_pos.
 
 ```{r protein_cor_vs_char, fig.height=5, fig.width=10, fig.align="center", results="asis"}
+# Remove indidvidual cell levels to make data frame smaller bc of storage
+X.cor <- X.cor %>%
+  dplyr::select(-cell) %>%
+  ungroup() %>%
+  distinct()
+
 # Define characteristics of interest
 coi <- c("median", "var", "mean", "mode_pos", "mean-median")
 
@@ -470,7 +477,7 @@ coi <- c("median", "var", "mean", "mode_pos", "mean-median")
 for (i in coi) {
   cat("#####", i, "\n")
   
-  proteinChar <- ggplot(X.cor %>% dplyr::filter(k=="1"), 
+  proteinChar <- ggplot(X.cor, 
                         aes(x=!!sym(i), y=correlation, label=protein)) +
     geom_point(color=pal_npg("nrc")("1")) +
     facet_wrap(~ dataset, scales="free", ncol=2) +
@@ -487,6 +494,9 @@ for (i in coi) {
   print(proteinChar)
   cat("\n\n")
 }
+
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(X.cor)
 ```
 
 #### Cumulative sum of expression values *(k=1)* {.tabset}
@@ -557,6 +567,7 @@ for (i in unique(cumsum.df$dataset)) {
   cat("\n\n")
 }
 ```
+
 #### Area between sumulative sums of expression values *(k=1)* {.tabset}
 
 To summarize the above analysis, the area between the two lines (of the cumulative sum) 

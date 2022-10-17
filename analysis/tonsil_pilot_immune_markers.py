@@ -57,11 +57,13 @@ sce_tonsil = sce_tonsil[:, sce_tonsil.var.index.str.contains(immune_channels,
 test_names_tonsil = ('20220520_TsH_th152_cisi1_002',)
 
 
-# Specify k-sparsity of dictionary used in training and name of final folder
-# for each dataset, where results will be saved
+# Specify k-sparsity of dictionary used in training, name of final folder
+# for each dataset, where results will be saved and if (test-)analysis is done
+# on normalized data or not
 k = 1
-folder_name = 'pilot_immune_channels'
-normalization = 'none'
+folder_name = 'pilot_immune_channels_normalized'
+normalization = 'paper_norm'
+analysis_normalization = False
 
 # Train CISI
 (training_res, training_res_comp,
@@ -70,4 +72,5 @@ normalization = 'none'
                          os.path.join(out_path, folder_name),
                          split_by='percentage', k_cv=4,
                          test_set=test_names_tonsil,
-                         lda1=k, normalization=normalization)
+                         lda1=k, normalization=normalization,
+                         analysis_normalization=analysis_normalization)
