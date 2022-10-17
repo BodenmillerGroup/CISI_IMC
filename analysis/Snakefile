@@ -1,0 +1,118 @@
+# Python import libraries
+import anndata as ad
+from pathlib import Path
+import errno
+import os
+import numpy as np
+
+# Helper fncs
+import helpers.analysis_utils
+
+
+################################################################################
+## Globals
+################################################################################
+
+# Config file for workflow parameters
+configfile: 'config.yml'
+
+## Read in config file parameters
+
+# Specify where CISI code folder is located, input path, output path and
+# which channels/proteins of the anndata object are used in CISI
+CISI_PATH = config['cisi_path']
+SCE_PATH = config['sce_path']
+MASKS_PATH = config['masks_path']
+OUT_PATH = config['out_path']
+POI = config['proteins_of_interest']
+
+# Name of file where workflow statistics are captured
+report: os.path.join(OUT_PATH, 'report/workflow.rst')
+
+# Check that input files/dictionary exist
+if not helpers.analysis_utils.is_valid_file(SCE_PATH, ['.h5ad']):
+    # If file is not found, throw error
+    raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
+                            SCE_PATH)
+# Read in SingleCellExperiment converted to anndata by cellconverter in R
+SCE = ad.read_h5ad(SCE_PATH)
+# Remove uninteresting proteins/channels
+SCE = SCE[:, SCE.var.index.isin(POI)]
+
+
+# Define parameters for parameter sweep and other default parameters
+SPARSITY_K = config['parameter_sweep']['k']
+DICTIONARY_D = config['parameter_sweep']['d']
+MEASUREMENTS = config['parameter_sweep']['m']
+DEFAULT_PARAMS = config['default_params']
+
+
+################################################################################
+## Rules
+################################################################################
+
+
+# Define first (default) rule that will be executed
+rule all:
+    input:
+        # Create output HTML file comparing different parameters
+        os.path.join(OUT_PATH, 'parameter_sweep_evaluation.html')
+
+# Rule to create renv environment
+rule create_renv:
+    output:
+        directory(os.path.join(OUT_PATH, 'renv'))
+    log:
+        os.path.join(OUT_PATH, 'renv.log')
+    message:
+        ''' --- Create RENV  --- '''
+    conda:
+        'envs/master_thesis.yml'
+    shell:
+        '''
+        R -e "renv::init()"
+        R -e "renv::restore()"
+        '''
+
+# Run CISI training with default parameters and parameter of interest
+rule run_CISI:
+    output:
+        os.path.join(OUT_PATH, 'parameter_sweep/k_{k}/d_{d}/m_{m}/X_simulated_0.h5ad'),
+        os.path.join(OUT_PATH, 'parameter_sweep/k_{k}/d_{d}/m_{m}/simulation_results.txt'),
+        os.path.join(OUT_PATH, 'parameter_sweep/k_{k}/d_{d}/m_{m}/no_noise_simulation_results.txt')
+
+    params:
+        cisi_path=CISI_PATH,
+        sce=SCE,
+        default_params=DEFAULT_PARAMS,
+        out_path=os.path.join(OUT_PATH, 'parameter_sweep/k_{k}/d_{d}/m_{m}')
+    log:
+        os.path.join(OUT_PATH, 'logs/run_CISI_k_{k}_d_{d}_m_{m}.log')
+    message:
+        ''' --- Training CISI (Parameter Sweep) --- '''
+    conda:
+        'envs/master_thesis.yml'
+    script:
+        'parameter_sweep.py'
+
+
+# Gather all results for parameter sweep and evaluate
+rule evaluate_CISI:
+    input:
+        # All parameter sweep results
+        expand(os.path.join(OUT_PATH,
+                            'parameter_sweep/k_{k}/d_{d}/m_{m}/no_noise_simulation_results.txt'),
+               k=SPARSITY_K, d=DICTIONARY_D, m=MEASUREMENTS)
+    output:
+        os.path.join(OUT_PATH, 'parameter_evaluation.html')
+    params:
+        out_path=os.path.join(OUT_PATH, 'parameter_sweep'),
+        masks_path=MASKS_PATH
+    log:
+        os.path.join(OUT_PATH, 'logs/evaluate_CISI.log')
+    message:
+        ''' --- Evaluating CISI parameters --- '''
+    conda:
+        'envs/master_thesis.yml'
+    script:
+        'parameter_sweep_evaluation.Rmd'
