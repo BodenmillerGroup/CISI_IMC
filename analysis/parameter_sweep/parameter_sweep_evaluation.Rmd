@@ -1,0 +1,439 @@
+---
+title: "Parameter Sweep Evaluation"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+## Setup
+
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+
+# Load libraries
+library(RColorBrewer)
+library(dittoSeq)
+```
+
+```{r specify_paths}
+# Set general input paths to all analysis files
+analysis.path <- snakemake@params[["out_path"]]
+
+# Set path to masks
+masks.path <- snakemake@params[["masks_path"]]
+```
+
+```{r helper_fnc}
+## General helper fnc.
+
+# Function to read in any of the outputs of CISI training
+# file: path to file to read in 
+# type: res (results.txt files with correlations), x (X_*.h5ad files with anndata
+# object), a (version_*.txt with A/Phi experiment design matrix) or u (gene_modules.csv
+# containing the learned dictionary)
+read_results <- function(file, type){
+  # Read out parameter types of parameter sweep and the values used to create
+  # particular output 'file'
+  params <- gsub("/[^/]+$", "", gsub(".*parameter_sweep/", "", file))
+  params <- str_split(str_split(params, "/")[[1]], "_")
+  # Define what type of output of CISI is read in
+  if (type=="res"){
+    # If type="res" file containing correlation results is read in
+    # Column gets added to show if results comes from noisy or no noise simulations
+    res <- read_tsv(file, show_col_types=FALSE) %>%
+      mutate(simulation=ifelse((grepl("composite", file) | grepl("no_noise", file)), 
+                               "no_noise", "noisy"),
+             folder=gsub("/[^/]+$", "", file))
+  } else if (type=="x") {
+    # If type="x", then anndata object gets read into SCE containing either
+    # ground truth or simulated/decomposed expressions (normalized and subsetted
+    # according to what was specified/used in the CISI run)
+    res <- readH5AD(file)
+    metadata(res) <- list(ground_truth=ifelse(grepl("X_test", file), 
+                                              "ground_truth", 
+                                              "simulated"))
+  } else if (type=="a"){
+    # If type="a" file containing experiment matrix is read in specifying
+    # which proteins are measured in the same channel
+    res <- read.table(file, row.names=1, sep="\t") %>%
+      dplyr::rename_all(~ (stringr::str_replace_all( ., "\\.", "-" ))) %>%
+      rownames_to_column(var="channel")
+  } else if (type=="u"){
+    # If type="u" file containing dictionary is read in
+    res <- read.csv(file) %>%
+      dplyr::rename(protein=X) %>%
+      dplyr::rename_with(~gsub("X", "", .x, fixed=TRUE)) %>%
+      melt(id="protein") %>%
+      dplyr::rename(module=variable, membership=value)
+  }
+  
+  # Add information about which type of parameters were evaluated in the parameter
+  # sweep and what the values were for particular file
+  for (p in params){
+    if (type=="x"){
+      metadata(res)[[p[1]]] <- p[2]
+    } else {
+      res <- res %>%
+        mutate(!!as.symbol(p[1]):=p[2])
+    }
+  }
+  
+  res
+}
+```
+
+## Read Inputs
+
+First, we read in the results from CISI pilot run for the chosen immune markers
+(CD15, CD20, CD3, CD38, CD4, CD68, CD8a, ICOS, Ki-67, MPO, panCK, SMA, CD303, 
+FOXP3, GranzymeB). The pilot ran was done using no normalization and with k=1.
+
+```{r read_inputs}
+## Read results
+# Read in all results (correlations) into one dataframe
+results.files <- list.files(analysis.path, 'simulation_results.txt',
+                            full.names=TRUE, recursive=TRUE)
+
+results.df <- lapply(results.files, read_results, type="res") %>% 
+  bind_rows() %>%
+  arrange(desc("Gene average"))
+
+
+## Read X_test and X_simulated
+# Specify X_test and X_simulated files from best run 
+X.files <- list.files(results.df$folder[1], "X_", full.names=TRUE, recursive=TRUE)
+
+# Read in sce experiments from saved anndata 
+X.list <- lapply(X.files, read_results, type="x")
+X.list <- lapply(X.list, function(sce.temp){
+  assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
+  
+  sce.temp
+})
+
+
+
+## Read U
+# Specify U file from best run 
+u.files <- list.files(results.df$folder[1], "gene_modules.csv",
+                      full.names=TRUE, recursive=TRUE)
+u <- lapply(u.files, read_results, type="u")
+
+
+## Read A
+# Specify A/Phi file from best run 
+a.files <- list.files(results.df$folder[1], "version_*",
+                      full.names=TRUE, recursive=TRUE)
+a <- lapply(a.files, read_results, type="a") 
+
+
+# Read in masks for tonsil data
+masks <- loadImages(masks.path, as.is=TRUE)
+mcols(masks) <- DataFrame(sample_id=names(masks))
+```
+
+## Results
+
+### Barplot of Average Gene Correlation
+
+For each different measurement used to test training results, a barplot is shown 
+comparing CISI results.
+
+```{r plot_average_gene_correlation, results="asis", fig.height=8, fig.width=18, fig.align="center"}
+# For each different measurement of training results, plot barplot 
+
+# Melt dataframe for plotting
+data_temp <- results.df %>%
+  dplyr::select(-c("dataset", "training", "datasize", "version", "Best crossvalidation fold")) %>%
+  pivot_longer(!c("simulation", "normalisation"), names_to="measure", values_to="value")
+
+# Create barplot
+results.barplot <- plot_cisi_results(data_temp, "measure", "value", "normalisation")
+print(results.barplot)
+```
+
+### Per protein results
+
+#### Correlations per Protein *(k=1, arcsinh)* {.tabset}
+
+Correlation between ground truth and decomposed results per protein for  
+asinh transformed counts.
+
+```{r results_per_protein_cor, fig.height=6, fig.width=5, fig.align="center", results="asis"}
+aoi <- "exprs"
+# Calculate correlations between ground truth and simulated data for each protein
+X.cor <- lapply(X.list, function(sce){
+  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  cell=variable) %>%
+    mutate(normalisation=metadata(sce)$normalisation)
+  
+}) %>% bind_rows() %>%
+  group_by(protein, cell, normalisation) %>%
+  summarise_all(na.omit) %>%
+  group_by(normalisation, protein) %>%
+  mutate(correlation=cor(ground_truth, simulated))
+
+# Plot correlations for normalized and combi CISI run
+for (i in unique(X.cor$normalisation)) {
+  cat("#####", i, "\n")
+  
+  proteinCorr <- plot_protein_cor(X.cor %>% 
+                                    dplyr::filter(normalisation==i)) + ylim(0, 1)
+  
+  print(proteinCorr)
+  cat("\n\n")
+}
+```
+
+## Image results
+
+#### FOXP3 of Test Image *(k=1, arcsinh)* {.tabset}
+
+Expression values for cells in test image for worst performing protein FOXP3 for
+unnormalized and combi CISI run.
+
+```{r plot_FOXP3, fig.height=10, fig.width=10, fig.align="center", fig.keep=c(13, 26), results="asis"}
+# Call plot_cells to get individual plots for test roi for decomposed and true
+# results
+poi <- "FOXP3"
+for (n in unique(X.cor$normalisation)){
+  cat("#####", n, "\n")
+  
+  img.foxp3 <- plot_cells(keep(X.list, function(sce.temp){
+    metadata(sce.temp)$normalisation == n
+  }), masks, poi)
+  # Plot decomposed vs true results for test roi (002)
+  img.foxp3 <- plot_grid(plotlist=append(img.foxp3[grepl("20220520_TsH_th152_cisi1_002",
+                                                         names(img.foxp3))],
+                                         img.foxp3[grepl("legend",
+                                                         names(img.foxp3))]), ncol=2, 
+                         labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
+                         label_size=15, hjust=c(-2, -1.5), 
+                         vjust=1, scale=0.9)
+  print(img.foxp3)
+  cat("\n\n")
+}
+```
+
+#### CD303 of Test Image *(k=1, arcsinh)* {.tabset}
+
+Expression values for cells in test image for second worst performing protein CD303
+for unnormalized and combi CISI run.
+
+```{r plot_CD303, fig.height=10, fig.width=10, fig.align="center", fig.keep=c(13, 26), results="asis"}
+# Call plot_cells to get individual plots for test roi for decomposed and true
+# results
+poi <- "CD303"
+for (n in unique(X.cor$normalisation)){
+  cat("#####", n, "\n")
+  
+  # Call plot_cells to get individual plots for test roi for decomposed and true
+  # results
+  img.cd303 <- plot_cells(keep(X.list, function(sce.temp){
+    metadata(sce.temp)$normalisation == n
+  }), masks, poi)
+  # Plot decomposed vs true results for test roi (002)
+  img.cd303 <- plot_grid(plotlist=append(img.cd303[grepl("20220520_TsH_th152_cisi1_002",
+                                                         names(img.cd303))],
+                                         img.cd303[grepl("legend",
+                                                         names(img.cd303))]), ncol=2, 
+                         labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
+                         label_size=15, hjust=c(-2, -1.5), 
+                         vjust=1, scale=0.9)
+  print(img.cd303)
+  cat("\n\n")
+}
+```
+
+#### CD68 of Test Image *(k=1, arcsinh)* {.tabset}
+
+Expression values for cells in test image for another bad performing protein CD68
+for unnormalized and combi CISI run.
+
+```{r plot_CD68, fig.height=10, fig.width=10, fig.align="center", fig.keep=c(13, 26), results="asis"}
+# Call plot_cells to get individual plots for test roi for decomposed and true
+# results
+poi <- "CD68"
+for (n in unique(X.cor$normalisation)){
+  cat("#####", n, "\n")
+  
+  # Call plot_cells to get individual plots for test roi for decomposed and true
+  # results
+  img.cd68 <- plot_cells(keep(X.list, function(sce.temp){
+    metadata(sce.temp)$normalisation == n
+  }), masks, poi)
+  # Plot decomposed vs true results for test roi (002)
+  img.cd68 <- plot_grid(plotlist=append(img.cd68[grepl("20220520_TsH_th152_cisi1_002",
+                                                       names(img.cd68))],
+                                        img.cd68[grepl("legend",
+                                                       names(img.cd68))]), ncol=2, 
+                        labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
+                        label_size=15, hjust=c(-2, -1.5), 
+                        vjust=1, scale=0.9)
+  print(img.cd68)
+  cat("\n\n")
+}
+```
+
+#### CD38 of Test Image *(k=1, arcsinh)* {.tabset}
+
+Expression values for cells in test image for another bad performing protein CD38
+for unnormalized and combi CISI run.
+
+```{r plot_CD38, fig.height=10, fig.width=10, fig.align="center", fig.keep=c(13, 26), results="asis"}
+# Call plot_cells to get individual plots for test roi for decomposed and true
+# results
+poi <- "CD38"
+for (n in unique(X.cor$normalisation)){
+  cat("#####", n, "\n")
+  
+  # Call plot_cells to get individual plots for test roi for decomposed and true
+  # results
+  img.cd38 <- plot_cells(keep(X.list, function(sce.temp){
+    metadata(sce.temp)$normalisation == n
+  }), masks, poi)
+  # Plot decomposed vs true results for test roi (002)
+  img.cd38 <- plot_grid(plotlist=append(img.cd38[grepl("20220520_TsH_th152_cisi1_002",
+                                                       names(img.cd38))],
+                                        img.cd38[grepl("legend",
+                                                       names(img.cd38))]), ncol=2, 
+                        labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
+                        label_size=15, hjust=c(-2, -1.5), 
+                        vjust=1, scale=0.9)
+  print(img.cd38)
+  cat("\n\n")
+}
+```
+
+#### GranzymeB of Test Image *(k=1, arcsinh)* {.tabset}
+
+Expression values for cells in test image for another bad performing protein GranzymeB
+for unnormalized and combi CISI run.
+
+```{r plot_GranzymeB, fig.height=10, fig.width=10, fig.align="center", fig.keep=c(13, 26), results="asis"}
+# Call plot_cells to get individual plots for test roi for decomposed and true
+# results
+poi <- "GranzymeB"
+for (n in unique(X.cor$normalisation)){
+  cat("#####", n, "\n")
+  
+  # Call plot_cells to get individual plots for test roi for decomposed and true
+  # results
+  img.granzymeB <- plot_cells(keep(X.list, function(sce.temp){
+    metadata(sce.temp)$normalisation == n
+  }), masks, poi)
+  # Plot decomposed vs true results for test roi (002)
+  img.granzymeB <- plot_grid(plotlist=append(img.granzymeB[grepl("20220520_TsH_th152_cisi1_002",
+                                                                 names(img.granzymeB))],
+                                             img.granzymeB[grepl("legend",
+                                                                 names(img.granzymeB))]), ncol=2, 
+                             labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
+                             label_size=15, hjust=c(-2, -1.5), 
+                             vjust=1, scale=0.9)
+  print(img.granzymeB)
+  cat("\n\n")
+}
+```
+
+#### CD20 of Test Image *(k=1, arcsinh)* {.tabset}
+
+Expression values for cells in test image for best performing protein CD20
+for unnormalized and combi CISI run.
+
+```{r plot_CD20, fig.height=10, fig.width=10, fig.align="center", fig.keep=c(13, 26), results="asis"}
+# Call plot_cells to get individual plots for test roi for decomposed and true
+# results
+poi <- "CD20"
+for (n in unique(X.cor$normalisation)){
+  cat("#####", n, "\n")
+  
+  # Call plot_cells to get individual plots for test roi for decomposed and true
+  # results
+  img.cd20 <- plot_cells(keep(X.list, function(sce.temp){
+    metadata(sce.temp)$normalisation == n
+  }), masks, poi)
+  # Plot decomposed vs true results for test roi (002)
+  img.cd20 <- plot_grid(plotlist=append(img.cd20[grepl("20220520_TsH_th152_cisi1_002",
+                                                       names(img.cd20))],
+                                        img.cd20[grepl("legend",
+                                                       names(img.cd20))]), ncol=2, 
+                        labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
+                        label_size=15, hjust=c(-2, -1.5), 
+                        vjust=1, scale=0.9)
+  print(img.cd20)
+  cat("\n\n")
+}
+```
+
+#### CD3 of Test Image *(k=1, arcsinh)* {.tabset}
+ 
+Expression values for cells in test image for CD3, a protein performing mediocre
+for unnormalized and combi CISI run.
+
+```{r plot_CD3, fig.height=10, fig.width=10, fig.align="center", fig.keep=c(13, 26), results="asis"}
+# Call plot_cells to get individual plots for test roi for decomposed and true
+# results
+poi <- "CD3"
+for (n in unique(X.cor$normalisation)){
+  cat("#####", n, "\n")
+  
+  # Call plot_cells to get individual plots for test roi for decomposed and true
+  # results
+  img.cd3 <- plot_cells(keep(X.list, function(sce.temp){
+    metadata(sce.temp)$normalisation == n
+  }), masks, poi)
+  # Plot decomposed vs true results for test roi (002)
+  img.cd3 <- plot_grid(plotlist=append(img.cd3[grepl("20220520_TsH_th152_cisi1_002",
+                                                     names(img.cd3))],
+                                       img.cd3[grepl("legend",
+                                                     names(img.cd3))]), ncol=2, 
+                       labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
+                       label_size=15, hjust=c(-2, -1.5), 
+                       vjust=1, scale=0.9)
+  print(img.cd3)
+  cat("\n\n")
+}
+```
+
+#### CD303 protein distribution *(k=1, arcsinh)* 
+
+```{r CD303_distributions, fig.height=4, fig.width=10, fig.align="center"}
+# Have a look at dittoRidgePlots of a bad performing protein
+X.list <- lapply(X.list, function(sce.temp) {
+  colData(sce.temp)$dummy <- "1"
+  
+  sce.temp
+})
+
+plot.list <- NULL
+for(sce in X.list){
+  plot.list <- append(plot.list, list(dittoRidgePlot(sce, var="CD303", 
+                                                     group.by="dummy", assay="exprs") +
+                                        ggtitle(metadata(sce)$ground_truth) +
+                                        coord_cartesian(xlim=c(0, 6.2), expand=TRUE)))
+}
+print(plot_grid(plotlist=plot.list, ncol=1))
+```
+
+## Matrix designs 
+
+### U {.tabset}
+
+```{r plot_U, fig.height=8, fig.width=18, fig.align="center", results="asis"}
+# Plot U for normalized and combi CISI run
+cor <- plot_U(u, "normalisation", "dataset")
+```
+
+### A {.tabset}
+
+```{r plot_A, fig.height=8, fig.width=18, fig.align="center", results="asis"}
+plot_A(a %>%
+         dplyr::select(-training), "normalisation", "dataset")
+```

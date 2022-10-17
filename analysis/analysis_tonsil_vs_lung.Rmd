@@ -466,7 +466,7 @@ Median, var, mean and mode_pos.
 ```{r protein_cor_vs_char, fig.height=5, fig.width=10, fig.align="center", results="asis"}
 # Remove indidvidual cell levels to make data frame smaller bc of storage
 X.cor <- X.cor %>%
-  dplyr::select(-cell) %>%
+  dplyr::select(-c("cell", "ground_truth")) %>%
   ungroup() %>%
   distinct()
 
@@ -606,7 +606,7 @@ rm(cumsum.df)
 Below the UMAP and TSNE of the arcsinh counts for the Immucan lung dataset are 
 shown using k=1. Red indicates a high expression of the particular protein.
 
-```{r clustering, fig.height=12, fig.width=10, fig.align="center", results="asis"}
+```{r clustering, fig.height=5, fig.width=10, fig.align="center", results="asis"}
 # Plot UMAP and TSNE for k=1 and lung data
 for (sce in keep(X.lung_lung, function(x){metadata(x)$k=="1"})){
   cat("#####", metadata(sce)$training, "_", metadata(sce)$dataset, "\n")
@@ -624,7 +624,9 @@ for (sce in keep(X.lung_lung, function(x){metadata(x)$k=="1"})){
                                              color.panel=celltype.col) +
                                   theme_cowplot() +
                                   theme(legend.position="bottom") +
-                                  guides(color=guide_legend(nrow=1))))
+                                  guides(color=guide_legend(nrow=4, 
+                                                            byrow=TRUE,
+                                                            override.aes=list(size=3)))))
     
   }
   # Plot simulated and true reduced dim on top of each other
@@ -921,7 +923,7 @@ for (i in unique(all.clusters$k)){
 Finally, we compute the adjusted random index (ARI) between the clustering of the 
 ground truth and simulated data to assess the overlap.
 
-```{r clustering_ri, fig.height=6, fig.width=6, fig.align="center"}
+```{r clustering_ri, fig.height=4, fig.width=4, fig.align="center"}
 # Add position for labels to dataframe for easier annotation in ggplot
 all.clusters <- all.clusters %>%
   ungroup() %>%
