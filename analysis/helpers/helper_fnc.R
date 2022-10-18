@@ -728,7 +728,7 @@ plot_cisi_results <- function(df, group, measure, fill){
                      pattern_key_scale_factor=0.6) +
     scale_y_continuous(limits=c(0, 1)) +
     scale_fill_npg() +
-    scale_pattern_manual(values=c(no_noise="stripe", noisy="none"), 
+    scale_pattern_manual(values=c(no_noise="stripe", noisy="none"),
                          labels=c("No noise", "Noisy (SNR=5)")) +
     labs(x=str_to_title(group), y=str_to_title(measure), pattern="Simulation type") + 
     guides(pattern=guide_legend(override.aes=list(fill="white")),
