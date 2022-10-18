@@ -30,9 +30,6 @@ inputs:
     outpath: If specified, the best 50 U versions are saved as .txt files in
              compositions_A folder
     num_phi: the number of best phi's that are saved (default: 1, at most: 50)
-    binary: boolean variable that specifies if Phi is binary or not (default: False)
-            If True, then Phi will be binarized directly after computation and the
-            best Phi is chosen according to the results of its binarized version
     maxItr: Number of iterations to test random A/Phi's (default: 2000)
     num_blocks: number of blocks used to calculate W (should be bigger for pixel-wise?)
                 (default: 20)
@@ -46,7 +43,7 @@ outputs:
 
 
 def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsity=0.2,
-              outpath=None, THREADS=20, layer=None, num_phi=1, binary=False, maxItr=2000,
+              outpath=None, THREADS=20, layer=None, num_phi=1, maxItr=2000,
               num_blocks=20):
     # Raise error if unsupported mode is given
     if (mode != 'M') and (mode != 'G'):
@@ -88,9 +85,6 @@ def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsit
         if _%100 == 0:
             print(_, best)
 
-        # If binary= True then binarize phi (A)
-        if binary:
-            phi = np.where(phi > 0, 1, 0)
 
         # Initialze composite oservations Y using X and noise
         y = get_observations(X, phi, snr=5)
@@ -175,7 +169,9 @@ def random_phi_subsets_g(m, g, n, d_thresh=0.4):
             p[np.random.choice(m,np.random.randint(n[0], n[1]), replace=False)] = 1
             dmax = 1 - distance.cdist(Phi[:,:i].T, [p], 'correlation').min()
         Phi[:,i] = p
-    Phi = (Phi.T / Phi.sum(1)).T
+    # Normalize between 0-1 per column (protein) as is more realistic in an experiment
+    # Phi = (Phi.T / Phi.sum(1)).T
+    Phi = Phi / Phi.sum(0)
     return Phi
 
 

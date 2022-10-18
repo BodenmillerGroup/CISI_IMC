@@ -26,7 +26,6 @@ inputs:
     THREADS: # Number of threads used (default=20)
     outpath: If specified, the best 50 U versions are saved as .txt files in
              compositions_A folder
-    k: Which crossvalidation led to best results
     versions: list containing versions of phi's in Phi
     layer: which layer in anndata object to use (default: X)
     norm: which normalization used before simulating decomposition measurements
@@ -45,7 +44,7 @@ outputs:
     simulation_results.txt: Performance analysis
 '''
 
-def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
+def analyze_U_and_A(X_input, U, Phi, versions, outpath, lasso_sparsity=0.2,
                     THREADS=20, layer=None, norm='none', save='no_noise', snr=5,
                     correct_comeasured=False, train_corr=None, num_blocks=20):
     # Select layer of anndata object that should be used and transpose it
@@ -92,8 +91,8 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
     # Write x_test to file for analysis
     X_save = X_input.copy()
     X_save.X = X_test.T
-    for k in list(X_save.layers.keys()):
-        del X_save.layers[k]
+    for l in list(X_save.layers.keys()):
+        del X_save.layers[l]
     X_save.write(os.path.join(path, 'X_test.h5ad'))
 
     # Write output to file
@@ -102,7 +101,7 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
     colnames = ['version', 'Overall pearson', 'Overall spearman', 'Gene average',
                 'Sample average', 'Sample dist pearson', 'Sample dist spearman',
                 'Gene dist pearson', 'Gene dist spearman',
-                'Matrix coherence (90th ptile)', 'Best crossvalidation fold']
+                'Matrix coherence (90th ptile)']
     f2.write('\t'.join(colnames) + '\n')
     f3.write('\t'.join(colnames) + '\n')
 
@@ -118,14 +117,14 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
                         num_blocks=num_blocks)
         x2[np.isnan(x2)] = 0
         results = compare_results(X_test, x2)
-        f2.write('\t'.join([str(x) for x in [versions[i]]+results+[d_gene[i]]+[k]]) + '\n')
+        f2.write('\t'.join([str(x) for x in [versions[i]]+results+[d_gene[i]]]) + '\n')
 
         y_noNoise = get_observations_no_noise(X_test, phi, normalization=norm)
         x2_noNoise = decompress(y_noNoise, U, phi, correct_comeasured=correct_comeasured,
                                 train_corr=train_corr, num_blocks=num_blocks)
         x2_noNoise[np.isnan(x2_noNoise)] = 0
         results_noNoise = compare_results(X_test, x2_noNoise)
-        f3.write('\t'.join([str(x) for x in [versions[i]]+results_noNoise+[d_gene[i]]+[k]]) + '\n')
+        f3.write('\t'.join([str(x) for x in [versions[i]]+results_noNoise+[d_gene[i]]]) + '\n')
 
         # Either safe the decomposed results X computed from noisy simulated data
         # or simulated data without noise
@@ -151,8 +150,8 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, k, lasso_sparsity=0.2,
 
 
         # Add results to pandas df
-        results_df.loc[len(results_df)] = [versions[i]]+results+[d_gene[i]] + [k]
-        results_noNoise_df.loc[len(results_noNoise_df)] = [versions[i]]+results_noNoise+[d_gene[i]] + [k]
+        results_df.loc[len(results_df)] = [versions[i]]+results+[d_gene[i]]
+        results_noNoise_df.loc[len(results_noNoise_df)] = [versions[i]]+results_noNoise+[d_gene[i]]
 
     f2.close()
     f3.close()

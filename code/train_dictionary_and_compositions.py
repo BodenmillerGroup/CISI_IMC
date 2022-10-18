@@ -62,9 +62,6 @@ inputs:
                   'G', maximum times each gene is represented is constrained (default)
         THREADS_A: # Number of threads used (default=20)
         num_phi: the number of best phi's that are returned/saved (default: 1, at most: 50)
-        binary: boolean variable that specifies if Phi is binary or not (default: False)
-                If True, then Phi will be binarized directly after computation and the
-                best Phi is chosen according to the results of its binarized version
         maxItr_A: Number of iterations to test random A/Phi's (default: 2000)
 
     For fnc analyze_U_and_A():
@@ -107,8 +104,8 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
                   activity_lower=1, donorm=False, mode_smaf=1, mink=0, U0=[],
                   U0_delta=0.1, doprint=False, normalization='paper_norm',
                   THREADS_smaf=4, nmeasurements = 10, maxcomposition = 3, mode_phi='G',
-                  lasso_sparsity=0.2, THREADS_A=20, num_phi=1, binary=False,
-                  THREADS_A_and_U=20, split_by='roi', k_cv=4, test_set=(), test_size=None,
+                  lasso_sparsity=0.2, THREADS_A=20, num_phi=1, THREADS_A_and_U=20,
+                  split_by='roi', k_cv=4, test_set=(), test_size=None,
                   threshold_cond_prob=10.0, save='no_noise', snr=5,
                   analysis_normalization=True, maxItr_A=2000, num_blocks=20):
 
@@ -145,7 +142,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
             Phi, pearson_cor, versions = compute_A(X_validate, U, nmeasurements, maxcomposition,
                                                   mode_phi, lasso_sparsity,
                                                   None, THREADS_A, layer, num_phi,
-                                                  binary, maxItr_A, num_blocks)
+                                                  maxItr_A, num_blocks)
             # Mark step for progressbar
             bar()
 
@@ -153,7 +150,6 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
             if pearson_cor > max(cor for cor in all_pearson_cor if cor is not None):
                 U_best = U
                 Phi_best = Phi
-                k_best = k
                 version_best = versions
             all_pearson_cor[k] = pearson_cor
 
@@ -192,7 +188,7 @@ def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=1
 
     # Analize training
     training_res, training_res_comp = analyze_U_and_A(X_test, U_best, [Phi_best],
-                                                      [version_best], outpath, k_best,
+                                                      [version_best], outpath,
                                                       lasso_sparsity, THREADS_A_and_U,
                                                       layer, normalization, save, snr,
                                                       num_blocks)
