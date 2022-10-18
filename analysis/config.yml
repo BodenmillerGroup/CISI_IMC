@@ -12,7 +12,7 @@
     "default_params": {
         "split_by": "percentage",
         "k_cv": 4,
-        "test_names": ("20220520_TsH_th152_cisi1_002", ),
+        "test_names": "20220520_TsH_th152_cisi1_002",
         "normalization": "none",
         "maxItr": 10,
         "maxcomposition": 2,

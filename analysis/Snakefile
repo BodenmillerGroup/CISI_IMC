@@ -107,7 +107,8 @@ rule evaluate_CISI:
         os.path.join(OUT_PATH, 'parameter_evaluation.html')
     params:
         out_path=os.path.join(OUT_PATH, 'parameter_sweep'),
-        masks_path=MASKS_PATH
+        masks_path=MASKS_PATH,
+        test_names=config['default_params']['test_names']
     log:
         os.path.join(OUT_PATH, 'logs/evaluate_CISI.log')
     message:

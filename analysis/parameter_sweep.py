@@ -18,7 +18,6 @@ d = snakemake.wildcards.d
 nmeasurements = snakemake.wildcards.m
 
 sce = snakemake.params.sce
-test_names = snakemake.params.test_names
 outpath = snakemake.outpath[0]
 default_params = snakemake.params.default_params
 
@@ -29,7 +28,7 @@ default_params = snakemake.params.default_params
                                            outpath,
                                            split_by=default_params['split_by'],
                                            k_cv=default_params['k_cv'],
-                                           test_set=default_params['test_names'],
+                                           test_set=(default_params['test_names'], ),
                                            lda1=k,
                                            normalization=default_params['normalization'],
                                            d=d,
