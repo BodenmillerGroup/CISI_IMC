@@ -3,11 +3,15 @@
     "sce_path": "/mnt/bb_dqbm_volume/data/Tonsil_th152/preprocessed_data/spe.h5ad",
     "masks_path": "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell",
     "out_path": "/mnt/bb_dqbm_volume/analysis/Tonsil_th152/training/subset",
+    "reports_path": "/home/ubuntu/git/CISI_IMC/results/reports",
     "proteins_of_interest": ["CD8a", "CD20", "CD4", "CD11c", "CD3", "Ki-67", "SMA", "panCK"],
     "parameter_sweep": {
-        "k": [1, 2, 3, 4],
-        "d": [5, 10, 20, 50, 80],
-        "m": [3, 4, 5]
+        "k": [1],
+        #, 2, 3, 4],
+        "d": [5], 
+        #, 10, 20, 50, 80],
+        "m": [3]
+        #, 4, 5]
     },
     "default_params": {
         "split_by": "percentage",

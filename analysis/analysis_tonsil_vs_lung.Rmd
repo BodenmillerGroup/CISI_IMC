@@ -218,7 +218,7 @@ knitr::kable(mantel, digits=2,
 
 ## Image results
 
-#### CD20 of Test Image *(Tonsil th152, k=1)*
+#### SMA of Test Image *(Tonsil th152, k=1)*
 
 ```{r plot_X, fig.height=10, fig.width=10, fig.align="center", fig.keep="last"}
 # Subset to training and test of tonsil data

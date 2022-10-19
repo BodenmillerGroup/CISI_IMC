@@ -4,7 +4,7 @@ import sys
 
 ## Import/Specify path to CISI code
 # Specify CISI code directory path
-CODE_DIR = snakemake.params.cisi_dir
+CODE_DIR = snakemake.params['cisi_path']
 # Add code directory to systems paths
 sys.path.append(CODE_DIR)
 
@@ -13,13 +13,13 @@ from train_dictionary_and_compositions import train_U_and_A
 
 
 ## Read in snakemake parameters
-k = snakemake.wildcards.k
-d = snakemake.wildcards.d
-nmeasurements = snakemake.wildcards.m
+k = int(snakemake.wildcards['k'])
+d = int(snakemake.wildcards['d'])
+nmeasurements = int(snakemake.wildcards['m'])
 
-sce = snakemake.params.sce
-outpath = snakemake.outpath[0]
-default_params = snakemake.params.default_params
+sce = snakemake.params['sce']
+outpath = snakemake.params['out_path']                       
+default_params = snakemake.params['default_params']
 
 
 ## Train CISI
@@ -28,7 +28,7 @@ default_params = snakemake.params.default_params
                                            outpath,
                                            split_by=default_params['split_by'],
                                            k_cv=default_params['k_cv'],
-                                           test_set=(default_params['test_names'], ),
+                                           test_set=tuple(default_params['test_names']),
                                            lda1=k,
                                            normalization=default_params['normalization'],
                                            d=d,
