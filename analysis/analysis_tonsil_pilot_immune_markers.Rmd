@@ -382,14 +382,14 @@ print(plot_grid(plotlist=plot.list, ncol=1))
 
 ## Matrix designs 
 
-### U {.tabset}
+#### U {.tabset}
 
 ```{r plot_U, fig.height=8, fig.width=18, fig.align="center", results="asis"}
 # Plot U for normalized and combi CISI run
 cor <- plot_U(u, "normalisation", "dataset")
 ```
 
-### A {.tabset}
+#### A {.tabset}
 
 ```{r plot_A, fig.height=8, fig.width=18, fig.align="center", results="asis"}
 plot_A(a %>%

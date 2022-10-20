@@ -28,6 +28,7 @@ library(LaplacesDemon)
 library(geiger)
 library(DescTools)
 library(RColorBrewer)
+library(mclust)
 ```
 
 ```{r specify_paths}
@@ -387,6 +388,9 @@ X.cor <- lapply(keep(X.list, function(sce){
   dplyr::filter(k=="1") %>%
   dplyr::select(-k)
 
+# Set seed for reproducibility when using Mclust
+set.seed(220224)
+
 # Read in original SCE with all samples and proteins and without paper normalization
 # of counts/exprs and compute statistics like mean, median, var,... on these
 # Add this to above correlation dataframe
@@ -403,15 +407,28 @@ X.cor <- lapply(names(original.list), function(n){
     mutate(median=median(ground_truth),
            mean=mean(ground_truth),
            var=var(ground_truth),
-           mode_pos=Modes(ground_truth, min.size=0.1)$modes[1],
-           dataset=n) 
+           dataset=n)
   
+  # Add signal to noise ratio and mean of positive class per protein
+  mat <- apply(assays(sce)[[aoi.original]], 1, function(x){
+    cur_model <- Mclust(x, G = 2)
+    mean1 <- mean(x[cur_model$classification == 1])
+    mean2 <- mean(x[cur_model$classification == 2])
+    
+    signal <- ifelse(mean1 > mean2, mean1, mean2)
+    noise <- ifelse(mean1 > mean2, mean2, mean1)
+    
+    return(c(snr=signal/noise, ps=signal))
+  }) 
+  counts.long <- counts.long %>%
+    merge(t(mat) %>% 
+            as.data.frame() %>% 
+            mutate(protein=colnames(mat)))
+
   counts.long
 }) %>% bind_rows() %>%
   merge(X.cor) %>%
-  ungroup() %>%
-  rowwise() %>%
-  mutate("mean-median"=mean-median)
+  ungroup()
 
 # Plot correlations for k=1 for each test/training dataset combination
 for (i in unique(X.cor$dataset)) {
@@ -471,7 +488,7 @@ X.cor <- X.cor %>%
   distinct()
 
 # Define characteristics of interest
-coi <- c("median", "var", "mean", "mode_pos", "mean-median")
+coi <- c("median", "var", "mean", "snr")
 
 # Plot correlations for k=1 for each test/training dataset combination
 for (i in coi) {

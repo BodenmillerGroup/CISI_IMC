@@ -48,9 +48,13 @@ if not helpers.analysis_utils.is_valid_file(tonsil_path, ['.h5ad']):
 sce_tonsil = ad.read_h5ad(tonsil_path)
 
 # Remove uninteresting proteins/channels
-immune_channels = 'CD15|CD20|CD3|CD38|CD4|CD68|CD8a|ICOS|Ki-67|MPO|panCK|SMA|CD303|FOXP3|GranzymeB'
-sce_tonsil = sce_tonsil[:, sce_tonsil.var.index.str.contains(immune_channels,
-                                                             regex=True, case=False)]
+'''
+immune_channels = ['CD15', 'CD20', 'CD3', 'CD38', 'CD4', 'CD68', 'CD8a', 
+                   'ICOS', 'Ki-67', 'MPO', 'panCK', 'SMA', 'CD303', 'FOXP3', 
+                   'GranzymeB']
+'''
+immune_channels = ["CD8a", "CD20", "CD4", "CD11c", "CD3", "Ki-67", "SMA", "panCK"]
+sce_tonsil = sce_tonsil[:, sce_tonsil.var.index.isin(immune_channels)]
 
 
 # Define test rois
@@ -61,8 +65,9 @@ test_names_tonsil = ('20220520_TsH_th152_cisi1_002',)
 # for each dataset, where results will be saved and if (test-)analysis is done
 # on normalized data or not
 k = 1
-folder_name = 'pilot_immune_channels_normalized'
-normalization = 'paper_norm'
+#folder_name = 'pilot_immune_channels_normalized'
+folder_name = 'test_proof_of_concept'
+normalization = 'none'
 analysis_normalization = False
 
 # Train CISI
@@ -73,4 +78,9 @@ analysis_normalization = False
                          split_by='percentage', k_cv=4,
                          test_set=test_names_tonsil,
                          lda1=k, normalization=normalization,
-                         analysis_normalization=analysis_normalization)
+                         analysis_normalization=analysis_normalization,
+                         d=5,
+                         maxItr=10,
+                         nmeasurements=4,
+                         maxcomposition=2,
+                         save=False)
