@@ -158,9 +158,9 @@ def random_phi_subsets_m(m, g, n, d_thresh=0.4):
             if (end-start) > 300:
                 raise ValueError(('Computing Phi/A took to long or got stuck ' +
                                   'in an infinit loop. Either there are not enough ' +
-                                  'combinations possible using nmeasurements=({0})'.format(m) +
-                                  ', # proteins=({0}) and '.format(g) +
-                                  'maxcomposition=({0}) or d_thresh is to small.'.format(n[1])))            
+                                  'combinations possible using nmeasurements={0}'.format(m) +
+                                  ', # proteins={0} and '.format(g) +
+                                  'maxcomposition={0} or d_thresh is to small.'.format(n[1])))
         Phi[i] = p
     return Phi
 
@@ -186,9 +186,9 @@ def random_phi_subsets_g(m, g, n, d_thresh=0.4):
             if (end-start) > 300:
                 raise ValueError(('Computing Phi/A took to long or got stuck ' +
                                   'in an infinit loop. Either there are not enough ' +
-                                  'combinations possible using nmeasurements=({0})'.format(m) +
-                                  ', # proteins=({0}) and '.format(g) +
-                                  'maxcomposition=({0}) or d_thresh is to small.'.format(n[1])))
+                                  'combinations possible using nmeasurements={0}'.format(m) +
+                                  ', # proteins={0} and '.format(g) +
+                                  'maxcomposition={0} or d_thresh is to small.'.format(n[1])))
 
         Phi[:,i] = p
     # Normalize between 0-1 per column (protein) as is more realistic in an experiment
