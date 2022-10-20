@@ -99,11 +99,11 @@ outputs:
 '''
 
 
-def train_U_and_A(X, outpath, layer=None, d = 80, lda1 = 3, lda2 = 0.2, maxItr=10,
+def train_U_and_A(X, outpath, layer=None, d=80, lda1=3, lda2=0.2, maxItr=10,
                   UW=None, posW=False, posU=True, use_chol=False, module_lower=1,
                   activity_lower=1, donorm=False, mode_smaf=1, mink=0, U0=[],
                   U0_delta=0.1, doprint=False, normalization='paper_norm',
-                  THREADS_smaf=4, nmeasurements = 10, maxcomposition = 3, mode_phi='G',
+                  THREADS_smaf=4, nmeasurements=10, maxcomposition=3, mode_phi='G',
                   lasso_sparsity=0.2, THREADS_A=20, num_phi=1, THREADS_A_and_U=20,
                   split_by='roi', k_cv=4, test_set=(), test_size=None,
                   threshold_cond_prob=10.0, save='no_noise', snr=5,

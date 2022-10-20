@@ -8,6 +8,7 @@ import os
 # Import libraries (additionaly added)
 from utils import sparse_decode_blocks, compare_results, get_observations
 from pathlib import Path
+import time
 
 
 '''
@@ -138,18 +139,28 @@ def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsit
 # per channel (at most n[1] 1s per row)
 def random_phi_subsets_m(m, g, n, d_thresh=0.4):
     Phi = np.zeros((m, g))
-    Phi[0, np.random.choice(g, np.random.randint(n[0], n[1]), replace=False)] = 1
+    Phi[0, np.random.choice(g, np.random.randint(n[0], n[1]+1), replace=False)] = 1
     Phi[0] /= Phi[0].sum()
     # Add random rows with at most n[1] 1's which have a min distance from last rows
     # of 1 - dist > d_thresh (such that rows/compositions are not to similar) until
     # Phi has m measurements
     for i in range(1, m):
         dmax = 1
+        # Set starting time to make sure while loop is not stuck in infinit loop
+        start = time.time()
         while dmax > d_thresh:
             p = np.zeros(g)
-            p[np.random.choice(g, np.random.randint(n[0], n[1]), replace=False)] = 1
+            p[np.random.choice(g, np.random.randint(n[0], n[1]+1), replace=False)] = 1
             p /= p.sum()
             dmax = 1 - distance.cdist(Phi[:i], [p], 'cosine').min()
+            # Catch that while loop is not stuck in infinit loop
+            end = time.time()
+            if (end-start) > 300:
+                raise ValueError(('Computing Phi/A took to long or got stuck ' +
+                                  'in an infinit loop. Either there are not enough ' +
+                                  'combinations possible using nmeasurements=({0})'.format(m) +
+                                  ', # proteins=({0}) and '.format(g) +
+                                  'maxcomposition=({0}) or d_thresh is to small.'.format(n[1])))            
         Phi[i] = p
     return Phi
 
@@ -158,16 +169,27 @@ def random_phi_subsets_m(m, g, n, d_thresh=0.4):
 # times over all channels (at most n[1] 1s per column)
 def random_phi_subsets_g(m, g, n, d_thresh=0.4):
     Phi = np.zeros((m, g))
-    Phi[np.random.choice(m,np.random.randint(n[0], n[1]), replace=False), 0] = 1
+    Phi[np.random.choice(m,np.random.randint(n[0], n[1]+1), replace=False), 0] = 1
     for i in range(1, g):
         dmax = 1
+        # Set starting time to make sure while loop is not stuck in infinit loop
+        start = time.time()
         # Add random columns with at most n[1] 1's which have a min distance from
         # last column of 1 - dist > d_thresh (such that columns are not to similar)
         # until Phi has g columns
         while dmax > d_thresh:
             p = np.zeros(m)
-            p[np.random.choice(m,np.random.randint(n[0], n[1]), replace=False)] = 1
+            p[np.random.choice(m,np.random.randint(n[0], n[1]+1), replace=False)] = 1
             dmax = 1 - distance.cdist(Phi[:,:i].T, [p], 'correlation').min()
+            # Catch that while loop is not stuck in infinit loop
+            end = time.time()
+            if (end-start) > 300:
+                raise ValueError(('Computing Phi/A took to long or got stuck ' +
+                                  'in an infinit loop. Either there are not enough ' +
+                                  'combinations possible using nmeasurements=({0})'.format(m) +
+                                  ', # proteins=({0}) and '.format(g) +
+                                  'maxcomposition=({0}) or d_thresh is to small.'.format(n[1])))
+
         Phi[:,i] = p
     # Normalize between 0-1 per column (protein) as is more realistic in an experiment
     # Phi = (Phi.T / Phi.sum(1)).T
