@@ -157,7 +157,12 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
                               'The computed U has zero columns.'))
 
     # Remove empty columns (modules containing no proteins)
-    U = U[:, (U.sum(0) > 0)]
+    U = U[:, (U.sum(0) > 0)] 
+    if np.shape(U)[1] == 0:
+            # In case U is empty throw error, since CISI didn't work and will
+            # crash with an unspecific error when computing phi/A
+            raise ValueError(('CISI failed when computing U (dictionary). ' +
+                              'The computed U has zero columns.'))
 
     # If an outpath is given
     if outpath!=None:
