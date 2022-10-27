@@ -26,8 +26,6 @@ OUT_PATH = config['out_path']
 REPORTS_PATH = config['reports_path']
 POI = config['proteins_of_interest']
 
-# Name of file where workflow statistics are captured
-report: os.path.join(REPORTS_PATH, 'report/workflow.rst')
 
 # Check that SCE exists and is an anndata object
 if not (SCE_PATH.exists() and SCE_PATH.is_file() and SCE_PATH.suffix in ['.h5ad']): 
@@ -46,6 +44,9 @@ DICTIONARY_D = config['parameter_sweep']['d']
 MEASUREMENTS = config['parameter_sweep']['m']
 DEFAULT_PARAMS = config['default_params']
 
+# Name of file where workflow statistics are captured
+report: os.path.join(REPORTS_PATH, 'snakemake_report/workflow.rst')
+
 
 ################################################################################
 ## Rules
@@ -58,27 +59,10 @@ rule all:
         # Create output HTML file comparing different parameters
         os.path.join(REPORTS_PATH, 'parameter_sweep_evaluation.html')
 
-# Rule to create renv environment
-rule create_renv:
-    output:
-        directory(os.path.join(OUT_PATH, 'renv'))
-    log:
-        os.path.join(OUT_PATH, 'renv.log')
-    message:
-        ''' --- Create RENV  --- '''
-    conda:
-        'envs/master_thesis.yml'
-    shell:
-        '''
-        R -e "renv::init()"
-        R -e "renv::restore()"
-        '''
 
 # Run CISI training with default parameters and parameter of interest
 rule run_CISI:
     output:
-        os.path.join(OUT_PATH, 'parameter_sweep/k_{k}/d_{d}/m_{m}/X_simulated_0.h5ad'),
-        os.path.join(OUT_PATH, 'parameter_sweep/k_{k}/d_{d}/m_{m}/simulation_results.txt'),
         os.path.join(OUT_PATH, 'parameter_sweep/k_{k}/d_{d}/m_{m}/no_noise_simulation_results.txt')
 
     params:
@@ -87,7 +71,7 @@ rule run_CISI:
         default_params=DEFAULT_PARAMS,
         out_path=os.path.join(OUT_PATH, 'parameter_sweep/k_{k}/d_{d}/m_{m}')
     log:
-        os.path.join(OUT_PATH, 'logs/run_CISI_k_{k}_d_{d}_m_{m}.log')
+        os.path.join(OUT_PATH, 'parameter_sweep/logs/run_CISI_k_{k}_d_{d}_m_{m}.log')
     message:
         ''' --- Training CISI (Parameter Sweep) --- '''
     conda:
@@ -108,9 +92,11 @@ rule evaluate_CISI:
     params:
         out_path=os.path.join(OUT_PATH, 'parameter_sweep'),
         masks_path=MASKS_PATH,
-        test_names=config['default_params']['test_names']
+        test_names=config['default_params']['test_names'],
+        parameter_sweep=config['parameter_sweep'],
+        show_results=config['show_results']
     log:
-        os.path.join(OUT_PATH, 'logs/evaluate_CISI.log')
+        os.path.join(OUT_PATH, 'parameter_sweep/logs/evaluate_CISI.log')
     message:
         ''' --- Evaluating CISI parameters --- '''
     conda:
