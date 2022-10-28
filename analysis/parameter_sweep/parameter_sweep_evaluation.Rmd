@@ -11,10 +11,6 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 
 ## Setup
 ***
-```{r init_log}
-log <- file(snakemake@log[[1]], open="wt")
-sink(log)
-```
 
 ```{r init_renv}
 renv::init()

@@ -4,6 +4,7 @@ from pathlib import Path
 import errno
 import os
 import numpy as np
+import sys
 
 
 ################################################################################
@@ -11,7 +12,9 @@ import numpy as np
 ################################################################################
 
 # Config file for workflow parameters
-configfile: 'config.yml'
+configfile: 'config.json'
+# Add text for report
+report: "report/workflow.rst"
 
 
 ## Read in config file parameters
@@ -44,9 +47,6 @@ DICTIONARY_D = config['parameter_sweep']['d']
 MEASUREMENTS = config['parameter_sweep']['m']
 DEFAULT_PARAMS = config['default_params']
 
-# Name of file where workflow statistics are captured
-report: os.path.join(REPORTS_PATH, 'snakemake_report/workflow.rst')
-
 
 ################################################################################
 ## Rules
@@ -58,7 +58,7 @@ rule all:
     input:
         # Create output HTML file comparing different parameters
         os.path.join(REPORTS_PATH, 'parameter_sweep_evaluation.html')
-
+        
 
 # Run CISI training with default parameters and parameter of interest
 rule run_CISI:
@@ -71,7 +71,9 @@ rule run_CISI:
         default_params=DEFAULT_PARAMS,
         out_path=os.path.join(OUT_PATH, 'parameter_sweep/k_{k}/d_{d}/m_{m}')
     log:
-        os.path.join(OUT_PATH, 'parameter_sweep/logs/run_CISI_k_{k}_d_{d}_m_{m}.log')
+        os.path.join(OUT_PATH, 'logs/run_CISI_k_{k}_d_{d}_m_{m}.log')
+    benchmark:
+        os.path.join(OUT_PATH, 'benchmarks/run_CISI_k_{k}_d_{d}_m_{m}.tsv')
     message:
         ''' --- Training CISI (Parameter Sweep) --- '''
     conda:
@@ -88,7 +90,8 @@ rule evaluate_CISI:
                             'parameter_sweep/k_{k}/d_{d}/m_{m}/no_noise_simulation_results.txt'),
                k=SPARSITY_K, d=DICTIONARY_D, m=MEASUREMENTS)
     output:
-        os.path.join(REPORTS_PATH, 'parameter_sweep_evaluation.html')
+        report(os.path.join(REPORTS_PATH, 'parameter_sweep_evaluation.html'), category='report')
+        
     params:
         out_path=os.path.join(OUT_PATH, 'parameter_sweep'),
         masks_path=MASKS_PATH,
@@ -96,10 +99,18 @@ rule evaluate_CISI:
         parameter_sweep=config['parameter_sweep'],
         show_results=config['show_results']
     log:
-        os.path.join(OUT_PATH, 'parameter_sweep/logs/evaluate_CISI.log')
+        os.path.join(OUT_PATH, 'logs/evaluate_CISI.log')
+    benchmark:
+        os.path.join(OUT_PATH, 'benchmarks/evaluate_CISI.tsv')
     message:
         ''' --- Evaluating CISI parameters --- '''
     conda:
         'envs/master_thesis.yml'
     script:
         'parameter_sweep_evaluation.Rmd'
+
+
+# When everything has completed automatically create a report
+onsuccess:
+    from snakemake.report import auto_report
+    auto_report(workflow.persistence.dag, os.path.join(REPORTS_PATH, 'snakemake_report.html'))

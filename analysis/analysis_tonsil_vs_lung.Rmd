@@ -25,7 +25,6 @@ library(aricode)
 library(viridis)
 library(ggrepel)
 library(LaplacesDemon)
-library(geiger)
 library(DescTools)
 library(RColorBrewer)
 library(mclust)
@@ -536,7 +535,8 @@ cumsum.df <- lapply(X.list, function(sce){
     group_by(protein) %>%
     dplyr::arrange(desc(value)) %>%
     mutate(cumsum=cumsum(value),
-           x=(0:(length(cumsum)-1))) %>%
+           x=(0:(length(cumsum)-1)),
+           cumsum=cumsum/max(cumsum)) %>%
     dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
                   cell=variable,
                   !!as.symbol(paste(metadata(sce)$ground_truth, "cumsum", sep="_")):=cumsum,
@@ -547,20 +547,7 @@ cumsum.df <- lapply(X.list, function(sce){
   counts.long
 }) %>% bind_rows() %>%
   group_by(protein, cell, k, dataset) %>%
-  summarise_all(na.omit) %>%
-  dplyr::select(-simulated_x) %>%
-  dplyr::rename(x=ground_truth_x) %>%
-  group_by(k, dataset, protein) %>% 
-  dplyr::arrange(x) %>% 
-  mutate(simulated_cumsum=cumsum(simulated)) %>%
-  rowwise() %>%
-  mutate(temp_max=max(simulated_cumsum, ground_truth_cumsum),
-         temp_min=min(simulated_cumsum, ground_truth_cumsum)) %>%
-  ungroup() %>%
-  group_by(k, dataset, protein) %>%
-  mutate(auc=geiger:::.area.between.curves(x, temp_min, temp_max,
-                                           xrange=c(0, max(x)))) %>%
-  dplyr::select(-c("temp_max", "temp_min"))
+  summarise_all(na.omit) 
 
 
 # Plot cumulative sums for k=1 for each test/training dataset combination
@@ -569,8 +556,8 @@ for (i in unique(cumsum.df$dataset)) {
   
   protein.cumsum <- ggplot(cumsum.df %>% 
                           dplyr::filter(k=="1" & dataset==i)) +
-    geom_step(aes(x=x, y=simulated_cumsum, color="simulated")) +
-    geom_step(aes(x=x, y=ground_truth_cumsum, color="ground_truth")) +
+    geom_step(aes(x=simulated_x, y=simulated_cumsum, color="simulated")) +
+    geom_step(aes(x=ground_truth_x, y=ground_truth_cumsum, color="ground_truth")) +
     facet_wrap(~protein, scales="free") +
     theme_cowplot(10) + 
     ylab("Cumulative sum of counts") +
@@ -581,34 +568,6 @@ for (i in unique(cumsum.df$dataset)) {
                                  ground_truth=pal_npg("nrc")("2")[2]))
   
   print(protein.cumsum)
-  cat("\n\n")
-}
-```
-
-#### Area between sumulative sums of expression values *(k=1)* {.tabset}
-
-To summarize the above analysis, the area between the two lines (of the cumulative sum) 
-is computed for each protein and dataset. Ideally, the lines match perfectly (overlap)
-and the area would be 0.
-
-```{r protein_cum_sum_area, fig.height=8, fig.width=10, fig.align="center", results="asis"}
-# Plot auc of cumulative sums for k=1 for each test/training dataset combination
-for (i in unique(cumsum.df$dataset)) {
-  cat("#####", i, "\n")
-  
-  protein.cumsumArea <- ggplot(cumsum.df %>% 
-                                 dplyr::filter(k=="1" & dataset==i) %>%
-                                 ungroup() %>%
-                                 dplyr::select(protein, auc) %>%
-                                 distinct,
-                               aes(x=reorder(protein, auc), y=auc, fill=protein)) +
-    geom_bar(stat="identity") +
-    theme_cowplot() +
-    scale_fill_igv() +
-    guides(fill=FALSE) +
-    coord_flip()
-  
-  print(protein.cumsumArea)
   cat("\n\n")
 }
 
@@ -626,7 +585,7 @@ shown using k=1. Red indicates a high expression of the particular protein.
 ```{r clustering, fig.height=5, fig.width=10, fig.align="center", results="asis"}
 # Plot UMAP and TSNE for k=1 and lung data
 for (sce in keep(X.lung_lung, function(x){metadata(x)$k=="1"})){
-  cat("#####", metadata(sce)$training, "_", metadata(sce)$dataset, "\n")
+  cat("#####", metadata(sce)$ground_truth, "\n")
   
   # Create empty list for plots
   X.redDimlist <- list()
