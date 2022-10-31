@@ -346,6 +346,7 @@ u <- read_results(u.file, type="u")
 # Specify A/Phi file from best run 
 a.file <- list.files(best_run.df$folder[1], "version_*",
                       full.names=TRUE, recursive=TRUE)
+a.file <- a.file[grepl(best_run.df$version[1], a.file)]
 a <- read_results(a.file, type="a") 
 
 

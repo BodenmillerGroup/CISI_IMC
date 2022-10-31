@@ -1,0 +1,215 @@
+---
+title: "POC for fixed A/Phi"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+
+## Setup
+***
+
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+
+# Load libraries
+```
+
+```{r helper_fnc}
+# Import helper fncs
+source("../analysis/helpers/helper_fnc.R")
+```
+
+```{r specify_paths}
+# Set general input paths to all analysis files
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152/training/subset/POC_fixed_A"
+
+# Set path to masks
+masks.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell"
+```
+
+
+## Read Inputs
+***
+
+First, we read in the results from the CISI analysis using a pre-defined A and
+the best parameters from the parameter sweep.
+
+```{r read_inputs}
+## Read results
+# Read in all results for tonsil into one dataframe
+results.files <- list.files(analysis.path, 'simulation_results.txt',
+                            full.names=TRUE, recursive=TRUE)
+results.df <- lapply(results.files, read_single_correlation_results) %>% 
+  bind_rows() 
+
+
+## Read X_test and X_simulated
+# Specify X_test and X_simulated files to be read in
+X.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
+
+# Read in all sce experiments from saved anndata and save additional info in metadata
+# (e.g. which dataset is used in training and testing and if it is the ground truth or simulated X)
+X.list <- lapply(X.files, read_single_anndata)
+X.list <- lapply(X.list, function(sce.temp){
+  assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
+  
+  sce.temp
+})
+
+
+
+## Read U
+u.files <- list.files(analysis.path, "gene_modules.csv",
+                      full.names=TRUE, recursive=TRUE)
+u <- lapply(u.files, read_single_U)
+
+
+## Read A
+a.files <- list.files(analysis.path, "version_*",
+                      full.names=TRUE, recursive=TRUE)
+a <- lapply(a.files, read_single_A) 
+
+
+# Read in masks for tonsil data
+masks <- loadImages(masks.path, as.is=TRUE)
+mcols(masks) <- DataFrame(sample_id=names(masks))
+```
+
+
+## Results
+***
+
+### Barplot of Results 
+
+The barplot shows the different measurements used to evaluate decomposition of CISI
+with the specified U, A and parameters.
+
+```{r plot_results, results="asis", fig.height=8, fig.width=18, fig.align="center"}
+# For each different measurement of training results, plot barplot 
+
+# Melt dataframe for plotting
+data_temp <- results.df %>%
+  dplyr::select(-c("dataset", "training", "datasize", "version", "Best crossvalidation fold")) %>%
+  pivot_longer(!c("simulation"), names_to="measure", values_to="value")
+
+# Create barplot
+results.barplot <- plot_cisi_results(data_temp, "measure", "value", "simulation")
+print(results.barplot)
+```
+
+## Per protein results
+***
+
+### Correlations per Protein *(arcsinh)* {.tabset}
+
+Correlation between ground truth and decomposed results per protein for  
+asinh transformed counts.
+
+```{r results_per_protein_cor, fig.height=6, fig.width=5, fig.align="center", results="asis"}
+aoi <- "exprs"
+# Calculate correlations between ground truth and simulated data for each protein
+X.cor <- lapply(X.list, function(sce){
+  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  cell=variable)
+}) %>% bind_rows() %>%
+  group_by(protein, cell) %>%
+  summarise_all(na.omit) %>%
+  group_by(protein) %>%
+  mutate(correlation=cor(ground_truth, simulated))
+
+# Plot correlations per protein
+proteinCorr <- plot_protein_cor(X.cor) + ylim(0, 1)
+```
+
+
+## Best Parameters
+***
+
+### Correlations per Protein *(arcsinh)*
+
+Correlation between ground truth and decomposed results per protein for  
+asinh transformed counts of the best run.
+
+```{r results_per_protein_best, fig.asp=1, fig.width=5, fig.align="center"}
+aoi <- "exprs"
+
+# Calculate correlations between ground truth and simulated data for each protein
+X.cor <- lapply(X.list, function(sce){
+  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  cell=variable) 
+  
+}) %>% bind_rows() %>%
+  group_by(protein, cell) %>%
+  summarise_all(na.omit) %>%
+  group_by(protein) %>%
+  mutate(correlation=cor(ground_truth, simulated))
+
+# Plot correlations for each protein
+protein.plot <- plot_protein_cor(X.cor) + ylim(0, 1)
+print(protein.plot)
+```
+
+
+## Image results
+***
+
+### Espression Values for Worst and Best Proteins *(arcsinh)* {.tabset}
+
+Expression values for cells in test image for the worst and best performing protein. 
+
+```{r plot_protein_expr, fig.asp=0.5, fig.width=18, fig.align="center", fig.keep=c(13, 26), results="asis"}
+# Find worst and best performing protein
+pois <- c(X.cor[which.min(X.cor$correlation), "protein"],
+          X.cor[which.max(X.cor$correlation), "protein"])
+names(pois) <- c("Worst", "Best")
+
+# Call plot_cells to get individual plots for test roi for decomposed and true
+# results
+for (n in names(pois)){
+  cat("####", n, "\n")
+  
+  img <- plot_cells(X.list, masks, pois[[n]])
+  # Plot decomposed vs true results for test roi (002)
+  img <- plot_grid(plotlist=append(img[grepl("20220520_TsH_th152_cisi1_002",
+                                             names(img))],
+                                   img[grepl("legend",
+                                             names(img))]), ncol=2, 
+                   labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
+                   label_size=15, hjust=c(-2, -1.5), 
+                   vjust=1, scale=0.9)
+  print(img)
+  cat("\n\n")
+}
+```
+
+
+## Matrix designs
+***
+
+### U 
+
+```{r plot_U, fig.asp=0.7, fig.width=8, fig.align="center"}
+# Plot U for best run
+u.plot <- plot_single_U(u, paste0("U\n(dictionary size: ", length(unique(u$module)), ")"))
+print(u.plot)
+```
+
+### A 
+
+```{r plot_A, fig.asp=0.6, fig.width=8, fig.align="center"}
+# Plot A for best run
+a.plot <- plot_single_A(a %>%
+                          dplyr::select(-training), "A")
+print(a.plot)
+```

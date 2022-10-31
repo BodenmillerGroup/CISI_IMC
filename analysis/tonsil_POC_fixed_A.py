@@ -4,6 +4,7 @@ from pathlib import Path
 import errno
 import os
 import numpy as np
+import sys
 
 
 # Helper fncs
@@ -11,8 +12,7 @@ import helpers.analysis_utils
 
 
 ## CISI
-# Import system libraries to configure code directory as module
-import sys
+# Configure code directory as module
 
 # Find code directory relative to our directory
 THIS_DIR = os.path.dirname('__file__')
