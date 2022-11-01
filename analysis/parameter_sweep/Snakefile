@@ -77,7 +77,7 @@ rule run_CISI:
     message:
         ''' --- Training CISI (Parameter Sweep) --- '''
     conda:
-        'envs/master_thesis.yml'
+        'envs/cisi_imc_env.yml'
     script:
         'parameter_sweep.py'
 
@@ -105,7 +105,7 @@ rule evaluate_CISI:
     message:
         ''' --- Evaluating CISI parameters --- '''
     conda:
-        'envs/master_thesis.yml'
+        'envs/cisi_imc_env.yml'
     script:
         'parameter_sweep_evaluation.Rmd'
 

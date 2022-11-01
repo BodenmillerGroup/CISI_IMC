@@ -8,7 +8,7 @@ output:
     pandoc_args: [ 
       "--output=analysis_U_stability_Tonsil_th152.html" 
     ]
-date: "2022-08-31"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
 ## Setup
@@ -101,7 +101,7 @@ u_stability.mantel <- lapply(unique(u_stability.modules$k), function(k_iter){
       res.temp <- u_stability.modules %>%
         dplyr::filter(rep==r & k==k_iter & size==s) %>%
         dplyr::select(-c("rep", "k", "size")) %>%
-        pivot_wider(names_from = variable, values_from = value) %>%
+        pivot_wider(names_from=module, values_from=membership) %>%
         column_to_rownames(var="protein") %>%
         as.matrix()
       

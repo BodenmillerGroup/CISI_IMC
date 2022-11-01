@@ -646,17 +646,32 @@ plot_dist_boxplot <- function(df, x_lab, to_int=TRUE){
 plot_metan_mantel <- function(df, var_name){
   for (n in names(df)) {
     cat('##### ', var_name, ' = ', n, '\n')
-    # Call mantel test fnc
-    mantel_plot <- as.lpcor(df[[n]][[1]],
-                            df[[n]][[2]],
-                            df[[n]][[3]],
-                            df[[n]][[4]],
-                            df[[n]][[5]],
-                            df[[n]][[6]],
-                            df[[n]][[7]],
-                            df[[n]][[8]],
-                            df[[n]][[9]],
-                            df[[n]][[10]]) %>%
+    
+    # Catch error that it hasn't run for all parameters (ugly solution due to
+    # lpcor not accepting list)
+    if (length(df[[n]])>=7) {
+      # Call mantel test fnc
+      mantel_list <- as.lpcor(df[[n]][[1]],
+                              df[[n]][[2]],
+                              df[[n]][[3]],
+                              df[[n]][[4]],
+                              df[[n]][[5]],
+                              df[[n]][[6]],
+                              df[[n]][[7]],
+                              df[[n]][[8]],
+                              df[[n]][[9]],
+                              df[[n]][[10]])
+    } else {
+      # Call mantel test fnc
+      mantel_list <- as.lpcor(df[[n]][[1]],
+                              df[[n]][[2]],
+                              df[[n]][[3]],
+                              df[[n]][[4]],
+                              df[[n]][[5]],
+                              df[[n]][[6]])
+    }
+    
+    mantel_plot <- mantel_list %>%
       pairs_mantel(diag = TRUE,
                    pan.spacing = 0,
                    shape.point = 21,
