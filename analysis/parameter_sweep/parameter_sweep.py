@@ -45,7 +45,8 @@ with open(snakemake.log[0], "w") as f:
                                                    nmeasurements=nmeasurements,
                                                    maxcomposition=default_params['maxcomposition'],
                                                    save=default_params['save'],
-                                              analysis_normalization=default_params['analysis_normalization'])
+                                                   analysis_normalization=default_params['analysis_normalization'],
+                                                   best_A_method=default_params['best_A_method'])
     except ValueError as ve:
         if 'dictionary' in str(ve):
             with open(os.path.join(outpath, 'no_noise_simulation_results.txt'), 'w') as f:

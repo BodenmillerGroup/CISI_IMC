@@ -20,7 +20,8 @@
         "maxItr": 10,
         "maxcomposition": 2,
         "save": "no_noise",
-        "analysis_normalization": False
+        "analysis_normalization": False,
+        "best_A_method": "mean"
     },   
     "show_results": {
         "k": "",
