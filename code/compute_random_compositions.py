@@ -34,6 +34,12 @@ inputs:
     maxItr: Number of iterations to test random A/Phi's (default: 2000)
     num_blocks: number of blocks used to calculate W (should be bigger for pixel-wise?)
                 (default: 20)
+    best_A_method: Method to evaluate best A/Phi
+                   'min', best A chosen according to highest worst performing
+                          protein measured by protein-wise pearson correlation
+                   'mean', best A chosen according to highest mean protein-wise
+                           pearson correlation
+                           (default)
 
 outputs:
     Phi/A: composition matrix (composite channels (measurements) x proteins,
@@ -45,7 +51,7 @@ outputs:
 
 def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsity=0.2,
               outpath=None, THREADS=20, layer=None, num_phi=1, maxItr=2000,
-              num_blocks=20):
+              num_blocks=20, best_A_method='mean'):
     # Raise error if unsupported mode is given
     if (mode != 'M') and (mode != 'G'):
         raise AssertionError("Unsupported mode 'mode' given!", mode)
@@ -95,10 +101,24 @@ def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsit
         x2 = U.dot(w)
         # Compare X to predicted X
         r = compare_results(X, x2)
+
+        # Specify how to choose best A/Phi
+        if best_A_method=='mean':
+            r_compare = r[2]
+        elif best_A_method=='min':
+            dist_genes = np.zeros(X.shape[0])
+        	for i in range(X.shape[0]):
+        		dist_genes[i] = 1 - distance.correlation(X[i], x2[i])
+        	r_compare = (np.min(dist_genes[np.isfinite(dist_genes)]))
+        else:
+            raise AssertionError(('Unsupported method to choose best A (best_A_method) ' +
+                                  '{0} given!'.format(best_A_method) +
+                                  'Either choose: mean or min.'))
+
         # Update best A
-        if r[2] > best.min():
+        if r_compare > best.min():
             i = np.argmin(best)
-            best[i] = r[2]
+            best[i] = r_compare
             Phi[i] = phi
 
 

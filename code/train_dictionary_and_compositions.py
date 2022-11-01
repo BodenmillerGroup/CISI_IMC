@@ -63,6 +63,12 @@ inputs:
         THREADS_A: # Number of threads used (default=20)
         num_phi: the number of best phi's that are returned/saved (default: 1, at most: 50)
         maxItr_A: Number of iterations to test random A/Phi's (default: 2000)
+        best_A_method: Method to evaluate best A/Phi
+                       'min', best A chosen according to highest worst performing
+                              protein measured by protein-wise pearson correlation
+                       'mean', best A chosen according to highest mean protein-wise
+                               pearson correlation
+                               (default)
 
     For fnc analyze_U_and_A():
         THREADS_A_and_U: # Number of threads used (default=20)
@@ -107,7 +113,8 @@ def train_U_and_A(X, outpath, layer=None, d=80, lda1=3, lda2=0.2, maxItr=10,
                   lasso_sparsity=0.2, THREADS_A=20, num_phi=1, THREADS_A_and_U=20,
                   split_by='roi', k_cv=4, test_set=(), test_size=None,
                   threshold_cond_prob=10.0, save='no_noise', snr=5,
-                  analysis_normalization=True, maxItr_A=2000, num_blocks=20):
+                  analysis_normalization=True, maxItr_A=2000, num_blocks=20,
+                  best_A_method='mean'):
 
     # Add a seed to use by numpy for reproducibility
     np.random.seed(11)
@@ -142,7 +149,7 @@ def train_U_and_A(X, outpath, layer=None, d=80, lda1=3, lda2=0.2, maxItr=10,
             Phi, pearson_cor, versions = compute_A(X_validate, U, nmeasurements, maxcomposition,
                                                   mode_phi, lasso_sparsity,
                                                   None, THREADS_A, layer, num_phi,
-                                                  maxItr_A, num_blocks)
+                                                  maxItr_A, num_blocks, best_A_method)
             # Mark step for progressbar
             bar()
 
