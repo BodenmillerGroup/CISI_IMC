@@ -1,2 +1,0 @@
-version	Overall pearson	Overall spearman	Gene average	Sample average	Sample dist pearson	Sample dist spearman	Gene dist pearson	Gene dist spearman	Matrix coherence (90th ptile)	Best crossvalidation fold
-16	0.2106581259230189	0.3447323901939212	0.37015383639572147	0.18505935818496952	0.6797079798485413	0.579648029590009	-0.07385783868168246	0.05911962838260029	0.5965285513360886	log_exprs
