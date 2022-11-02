@@ -5,6 +5,7 @@ output:
     toc: true
     toc_float: true
     code_folding: "hide"
+    keep_md: true
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
@@ -299,9 +300,7 @@ Next, we compare these results to the 'ground truth' celltypes (celltypes predic
 ground truth data) by calculating the precision, sensitivity and specififity but this
 time per ROI.
 
-```{r rffit_per_ROI, fig.height=8, fig.width=8, fig.align="center", results="asis"}
-
-
+```{r rffit_per_ROI, fig.height=8, fig.width=8, fig.align="center", results="asis", include=FALSE, eval=FALSE}
 # Plot prediction results/confusion matrix as shown in IMCDataAnalysis script
 i <- 1
 for (sce in lungSim.list){
