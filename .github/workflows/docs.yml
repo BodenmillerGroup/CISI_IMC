@@ -24,10 +24,13 @@ jobs:
           git diff-index --quiet HEAD ||  git commit -am "deploy files"  # commit to the repository (ignore if no modification)
           git push origin gh-pages # push to remote branch
       
-      - name: mkdocs
+      - name: install python
         uses: actions/setup-python@v2
         with:
           python-version: 3.x
           
-      - run: pip install mkdocs-material
-      - run: mkdocs gh-deploy --force
+      - name: install mkdocs      
+        run: pip install mkdocs-material
+        
+      - name: Deploy
+        run: mkdocs gh-deploy --force
