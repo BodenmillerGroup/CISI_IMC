@@ -107,9 +107,9 @@ def compute_A(X_input, U, nmeasurements, maxcomposition, mode='G', lasso_sparsit
             r_compare = r[2]
         elif best_A_method=='min':
             dist_genes = np.zeros(X.shape[0])
-        	for i in range(X.shape[0]):
-        		dist_genes[i] = 1 - distance.correlation(X[i], x2[i])
-        	r_compare = (np.min(dist_genes[np.isfinite(dist_genes)]))
+            for i in range(X.shape[0]):
+                dist_genes[i] = 1 - distance.correlation(X[i], x2[i])
+            r_compare = (np.min(dist_genes[np.isfinite(dist_genes)]))
         else:
             raise AssertionError(('Unsupported method to choose best A (best_A_method) ' +
                                   '{0} given!'.format(best_A_method) +

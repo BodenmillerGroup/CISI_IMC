@@ -47,7 +47,7 @@ inputs:
         doprint: Print correlations between predicted X and real X and some additional info
         normalization: How data is normalized before running smaf (default: paper_norm)
                        Options: paper_norm (normalization used in paper, protein-wise),
-                       min_max_norm (protein-wise), zscore_norm (protein-wise) or none
+                       min_max_norm (protein-wise) or none
         others: All other parameters belong to the fnc. call of lasso from spams and
                 further information is available on the respective website
                 (maxItr, UW, posW, posU, use_chol, module_lower, activity_lower,
