@@ -17,9 +17,7 @@ plugins:
 site_name: CISI IMC
 nav:
     - Home: index.md
-    - Reports:
-        - reports/index.md
-        - Lung analysis: reports/analysis_lung.html
+    - Lung analysis: results/reports/analysis_lung.html
     
 markdown_extensions:
     - footnotes

@@ -2,4 +2,4 @@
 
 A markdown document linking to the reports.
 
-[Lung analysis](reports/analysis_lung.html)
+[Lung analysis](results/reports/analysis_lung.html)
