@@ -5,7 +5,6 @@ output:
     toc: true
     toc_float: true
     code_folding: "hide"
-    keep_md: true
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
