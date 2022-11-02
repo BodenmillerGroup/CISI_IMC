@@ -1,8 +1,8 @@
 on: 
   push: 
-    branches: [html_hosting] 
+    branches: [main] 
   pull_request:
-    branches: [html_hosting]
+    branches: [main]
 
 name: docs
 
