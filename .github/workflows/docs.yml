@@ -13,17 +13,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
       
-      - name: copy files
-        run: |
-          git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github.com'
-          git fetch                         # fetch branches
-          git checkout gh-pages       # checkout to your branch
-          git checkout main -- results/reports/* # copy files from the source branch
-          git add -A
-          git diff-index --quiet HEAD ||  git commit -am "deploy files"  # commit to the repository (ignore if no modification)
-          git push origin gh-pages # push to remote branch
-      
       - name: install python
         uses: actions/setup-python@v2
         with:
@@ -34,3 +23,14 @@ jobs:
         
       - name: Deploy
         run: mkdocs gh-deploy --force
+        
+      - name: copy files
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git fetch                         # fetch branches
+          git checkout gh-pages       # checkout to your branch
+          git checkout main -- results/reports/* # copy files from the source branch
+          git add -A
+          git diff-index --quiet HEAD ||  git commit -am "deploy files"  # commit to the repository (ignore if no modification)
+          git push origin gh-pages # push to remote branch
