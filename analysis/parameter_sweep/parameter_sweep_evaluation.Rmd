@@ -369,7 +369,8 @@ The best parameter combination is:
 `r parameters[1]` = `r best_run.df[[1, parameters[1]]]`, 
 `r parameters[2]` = `r best_run.df[[1, parameters[2]]]`, 
 `r parameters[3]` = `r best_run.df[[1, parameters[3]]]` 
-(path: `r best_run.df$folder[1]`).
+(path: `r best_run.df$folder[1]`) with mean protein correlation (pearson) of 
+`r round(as.integer(best_run.df[[1, "Gene average"]])*100, digits=0)`%.
 
 
 ## Results
