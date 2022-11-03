@@ -70,14 +70,14 @@ code, as well as to run snakemake for the parameter sweep you need to download c
 
 1. Clone the neccesary folders in the repo.
 
-        ```sh
+        ```
         git clone --depth 1 --no-checkout https://github.com/BodenmillerGroup/CISI_IMC.git
         cd CISI_IMC
         git sparse-checkout set code analysis/parameter_sweep
         git checkout
         ```
 
-    **Note**
+    :exclamation: **Note**
     If only interested in the CISI for IMC code and not the parameter sweep,
     `analysis/parameter_sweep` can be removed from `git sparse-checkout`
 
@@ -89,19 +89,19 @@ code, as well as to run snakemake for the parameter sweep you need to download c
 
     1. Install cisi_imc_env conda environment.
 
-            ```sh
+            ```
             conda env create -f cisi_imc_env.yml
             conda activate cisi_imc_env
             ```
 
     2. Install conda environment containing snakemake.
 
-            ```sh
+            ```
             conda create -n snakemake_env -c bioconda snakemake=7.17.1
             conda activate snakemake_env
             ```
 
-        **Warning**
+        :warning: **Warning**
         When running the paramter-sweep, add parameters `--use-conda --conda-frontend conda`
         to the snakemake call.
 
@@ -130,7 +130,7 @@ The main function is the *train_U_and_A()* function, which takes the anndata obj
 and computes a dictionary U, a experiment design matrix A/Phi and test statistics
 from simulated data using part of the training data kept solely for testing purposes.
 
-```sh
+```
 (training_res, training_res_no_noise,
 U_best, Phi_best, X_test) = train_U_and_A(anndata_object,   
                                           outpath,
@@ -205,7 +205,7 @@ X_decompressed = decompress(y, U, phi)
 * **U:** dictionary from CISI training
 * **phi:** experiment design matrix A/Phi from CISI training
 
-**Warning**
+:warning: **Warning**
 Be sure to have proteins/channels in y, U and phi in the same order, otherwise
 the matrix multiplications in CISI will lead to wrong results.
 
@@ -230,14 +230,14 @@ the parameters accordingly.
 
 The parameter sweep can then be deployed from the parameter_sweep folder using:
 
-```sh
+```
 snakemake --cores <NUMBER_OF_CORES> --configfile <YOUR_CONFIG>.json --keep-going
 ```
 
 Or if using a conda environment only containing snakemake with the flags --use-conda
 --conda-frontend conda.
 
-```sh
+```
 snakemake --cores <NUMBER_OF_CORES> --use-conda --conda-frontend conda --configfile <YOUR_CONFIG>.json --keep-going
 ```
 
@@ -246,7 +246,7 @@ folder for each parameter combination, a summary .html report in the specified r
 path as well as an automatic snakemake report containing additional snakemake statistics
 and configurations in the same folder.
 
-**Note**
+:exclamation: **Note**
 For more information on available flags to run snakemake, refer to
 [command line interface snakemake](https://snakemake.readthedocs.io/en/stable/executing/cli.html).
 
