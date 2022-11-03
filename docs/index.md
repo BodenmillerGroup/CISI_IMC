@@ -2,7 +2,7 @@
 <a name="readme-top"></a>
 
 
-![logo](/images/CISI_IMC_logo.png "Logo of CISI for IMC")
+![logo](https://github.com/BodenmillerGroup/CISI_IMC/tree/main/images/CISI_IMC_logo.png)
 
 
 <!-- TABLE OF CONTENTS -->
@@ -40,7 +40,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-![overview](/images/CISI_IMC_overview.png "Overview of CISI for IMC")
+![overview](https://github.com/BodenmillerGroup/CISI_IMC/tree/main/images/CISI_IMC_overview.png)
 
 This projects adapts the code from the paper [“Compressed sensing for highly efficient imaging transcriptomics.”](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8355028/)
 published in 2021 in Nature biotechnology by Cleary, Brian et al. to IMC data.
