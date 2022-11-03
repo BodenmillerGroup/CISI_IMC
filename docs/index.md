@@ -69,12 +69,14 @@ code, as well as to run snakemake for the parameter sweep you need to download c
 ### Installation
 
 1. Clone the neccesary folders in the repo.
+
    ```sh
    git clone --depth 1 --no-checkout https://github.com/BodenmillerGroup/CISI_IMC.git
    cd CISI_IMC
    git sparse-checkout set code analysis/parameter_sweep
    git checkout
    ```
+
    **Note**
    If only interested in the CISI for IMC code and not the parameter sweep,
    `analysis/parameter_sweep` can be removed from `git sparse-checkout`
@@ -86,15 +88,19 @@ code, as well as to run snakemake for the parameter sweep you need to download c
    For this, follow option '2.'
 
     1. Install cisi_imc_env conda environment.
+
        ```sh
        conda env create -f cisi_imc_env.yml
        conda activate cisi_imc_env
        ```
+
     2. Install conda environment containing snakemake.
+
        ```sh
        conda create -n snakemake_env -c bioconda snakemake=7.17.1
        conda activate snakemake_env
        ```
+
        **Warning**
        When running the paramter-sweep, add parameters `--use-conda --conda-frontend conda`
        to the snakemake call.
@@ -113,14 +119,14 @@ As an input, CISI expects an anndata object, containing an expression matrix wit
 dimensions: cells x proteins. For this steinbock can be used to segment the IMC data,
 and the results can then be read into an R SingleCellExperiment [please refer to IMCDataAnalysis](https://bodenmillergroup.github.io/IMCDataAnalysis/).
 To convert the subsequent SingleCellExperiment to an anndata object the function
-writeH5AD() from [zellkonverter](https://bioconductor.org/packages/release/bioc/html/zellkonverter.html) can be used.
+*writeH5AD()* from [zellkonverter](https://bioconductor.org/packages/release/bioc/html/zellkonverter.html) can be used.
 
 The anndata object is used for training, validation and testing (split according to set
 parameters). Additionally, there are a lot more parameters that can be set. The
 most important parameters are listed underneath with an explanation of their function.
 For a more complete list of parameters, please refer to the code of the function [train_dictionary_and_compositions.py](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/code/train_dictionary_and_compositions.py).
 
-The main function is the train_U_and_A() function, which takes the anndata object
+The main function is the *train_U_and_A()* function, which takes the anndata object
 and computes a dictionary U, a experiment design matrix A/Phi and test statistics
 from simulated data using part of the training data kept solely for testing purposes.
 
@@ -184,11 +190,11 @@ the ground truth anndata object subseted to the test set, e.g. the same cells as
 the experiment design matrix A (version_*.txt), and two other files, which could be used to correct decomposed expression values (conditional_probability.csv, correlations.csv
 has not been tested yet).
 
-The train_U_and_A() calls on three functions: [smaf()](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/code/compute_dictionary.py) to compute the dictionary U,
-[compute_A()](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/code/compute_random_compositions.py) to compute the best experiment design matrix and [analyze_U_and_A()](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/code/analyze_dictionary_and_compositions.py) to analyze the results. They can all be
+The *train_U_and_A()* calls on three functions: [*smaf()*](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/code/compute_dictionary.py) to compute the dictionary U,
+[*compute_A()*](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/code/compute_random_compositions.py) to compute the best experiment design matrix and [*analyze_U_and_A()*](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/code/analyze_dictionary_and_compositions.py) to analyze the results. They can all be
 called individually as well.
 
-To decompress composite IMC data, the function [decompress()](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/code/decompress.py) can be used. The most important parameters
+To decompress composite IMC data, the function [*decompress()*](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/code/decompress.py) can be used. The most important parameters
 are mentioned underneath. For more parameter options, refer to the [code](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/code/decompress.py) directly.
 
 ```sh
