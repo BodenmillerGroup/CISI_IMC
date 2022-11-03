@@ -5,6 +5,7 @@ output:
     toc: true
     toc_float: true
     code_folding: "hide"
+    keep_md: true
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
@@ -44,11 +45,11 @@ lung.path <- "/mnt/bb_dqbm_volume/data/Immucan_lung"
 source("../analysis/helpers/helper_fnc.R")
 ```
 
-## Read Inputs
+### Read Inputs
 
-first, we look at U computed using different training datasets. For this, we 
+First, we look at U computed using different training datasets. For this, we 
 read in the results from CISI training on the Tonsil th152 and the Immucan lung
-dataset (tonsil_vs_lung.py).
+dataset (created by tonsil_vs_lung.py).
 
 ```{r read_tonsil_and_lung}
 ## Read results
@@ -147,7 +148,9 @@ original.list <- list(tonsil.original, lung.original)
 names(original.list) <- c("tonsil_tonsil", "lung_lung")
 ```
 
-## Plot defaults
+### Plot defaults
+
+Next, we set some defaults for consisistend plotting accross the script.
 
 ```{r set_plot_defaults}
 # Define celltype colours used by the rest of the script
@@ -168,7 +171,12 @@ rm(lung.original)
 
 ## CISI results
 
+In the next part, we have a look at the result statistics and outputs produced 
+by the CISI training function.
+
 #### Results {.tabset}
+
+Here the correlation result statistics produced by CISI are shown as barplots.
 
 ```{r plot_results, results="asis", fig.height=8, fig.width=18, fig.align="center"}
 # For each different measurement of training results, plot a barplot comparing
@@ -191,6 +199,10 @@ for (measure in names(res)[2:10]) {
 
 ## U
 
+Next, we have a look at the dictionaries U created for the tonsil and lung datasets.
+For this, the active proteins in a module are defined as the proteins explaining 90% 
+of the cumulative sum of the whole module. These are then coloured accordingly.
+
 #### Heatmaps of U {.tabset}
 
 ```{r plot_U, results="asis", fig.height=8, fig.width=18, fig.align="center"}
@@ -199,11 +211,16 @@ cor <- plot_U(u, "k", "dataset")
 
 #### Module Comparisons {.tabset}
 
+To illustrate the overlap of modules between datasets, both U's are shown in the 
+same heatmap and shared modules are coloured accordingly.
+
 ```{r plot_module_comparison, results="asis", fig.height=8, fig.width=18, fig.align="center"}
 plot_U_membership(u, "k", "dataset")
 ```
 
 #### Mantel Test between U's
+
+To compute the similarity of U's between datasets, the mantel correlations is calculated.
 
 ```{r mantel, fig.height=8, fig.width=18, fig.align="center"}
 # Calculate mantel test between U's of tonsil and lung for all k's
@@ -217,6 +234,9 @@ knitr::kable(mantel, digits=2,
 ```
 
 ## Image results
+
+To have a better intuition on how CISI performs, we now look at the expression levels 
+of individual cells for the testing image.
 
 #### SMA of Test Image *(Tonsil th152, k=1)*
 
@@ -243,6 +263,10 @@ X.img
 ```
 
 #### CD20 of Test Image Overlayed (Tonsil th152, k=1)
+
+To make it easier to see differences in simulated and ground truth images, we overlay 
+them next using opposite colors. Cells which have similar expressions in both simulated 
+and ground truth data should therefore have an orange colour.
 
 ```{r plot_X_diff, fig.height=7, fig.width=10, fig.align="center", fig.keep="last"}
 # Rename list of tonsil data for nicer titles in plotting
@@ -280,6 +304,9 @@ ggdraw(X.imgDiff$plot)
 
 ## Counts results
 
+In the next part, we look at the counts of individual cells for different protein 
+combinations.
+
 #### Scatterplots of arcsinh Transformed Counts *(Immucan Lung)* {.tabset}
 
 Plot of arcsinh transformed counts coloured by defined celltype.
@@ -300,11 +327,11 @@ for (k in k_s) {
   
   # Plot asinh transformed counts of proteins of interest of decomposed and true 
   # datasets coloured by different celltypes
-  X.Exprs <- plot_grid(plot_exprs(X.lung_lungK, "B", "CD3", "CD20"),
-                       plot_exprs(X.lung_lungK, "BnT", "CD3", "CD20"),
-                       plot_exprs(X.lung_lungK, "Neutro", "MPO", "CD15"),
-                       plot_exprs(X.lung_lungK, "Neutro", "CD3", "MPO"),
-                       plot_exprs(X.lung_lungK, "DC", "CD11c", "CD68"),
+  X.Exprs <- plot_grid(plot_exprs(X.lung_lungK, "B", "CD3", "CD20", layer="counts"),
+                       plot_exprs(X.lung_lungK, "BnT", "CD3", "CD20", layer="counts"),
+                       plot_exprs(X.lung_lungK, "Neutro", "MPO", "CD15", layer="counts"),
+                       plot_exprs(X.lung_lungK, "Neutro", "CD3", "MPO", layer="counts"),
+                       plot_exprs(X.lung_lungK, "DC", "CD11c", "CD68", layer="counts"),
                        ncol=1)
   print(X.Exprs)
   cat("\n\n")
@@ -312,6 +339,9 @@ for (k in k_s) {
 ```
 
 ## Per protein results
+
+To have an idea on how individual proteins perform using CISI and not just an overview, 
+we also look at individual protein performances.
 
 #### Results per Protein *(k=1, arcsinh)* {.tabset}
 
@@ -580,7 +610,8 @@ rm(cumsum.df)
 #### Reduced Dimension Plots *(k=1, Immucan_lung, arcsinh)* {.tabset}
 
 Below the UMAP and TSNE of the arcsinh counts for the Immucan lung dataset are 
-shown using k=1. Red indicates a high expression of the particular protein.
+shown using k=1. The cells are coloured by their celltype (predicted by Daniel and 
+present in the training data already).
 
 ```{r clustering, fig.height=5, fig.width=10, fig.align="center", results="asis"}
 # Plot UMAP and TSNE for k=1 and lung data
@@ -618,7 +649,7 @@ for (sce in keep(X.lung_lung, function(x){metadata(x)$k=="1"})){
 #### Cluster overlap between ground truth and simulated data *(arcsinh)* {.tabset}
 
 To investigate the clustering results of ground truth and simulated data a bit more, 
-we show the overlap of clusters computed using Rphenograph (run with k=47 clusters)
+we show the overlap of clusters computed using Rphenograph (run with k=100 clusters)
 individually and compare which clusters overlap using a heatmap.
 
 ```{r clustering2, fig.height=10, fig.width=20, fig.align="center", results="asis"}
@@ -740,7 +771,7 @@ for (i in unique(all.clusters$k)){
 
 #### Kullback-Leibner divergence of clusters *(arcsinh)* {.tabset}
 
-We also compare the clusters of the ground truth data to the clsuters of the simulated
+We also compare the clusters of the ground truth data to the clusters of the simulated
 data using the Kullback-Leibner divergence of the celltypes.
 
 ```{r clustering3, fig.height=10, fig.width=20, fig.align="center", results="asis"}
@@ -801,7 +832,7 @@ for (i in unique(all.clusters$k)){
 #### Cluster vs mean expression *(arcsinh)* {.tabset}
 
 Next, we assess clustering by looking at the median marker expression of each protein
-in each cluster and the compare it to the celltypes of each cluster. Ideally,
+in each cluster and then compare it to the celltypes of each cluster. Ideally,
 each cluster has a median protein expression pattern that fits its main celltype.
 
 ```{r clustering_exprs, fig.height=10, fig.width=20, fig.align="center", results="asis"}

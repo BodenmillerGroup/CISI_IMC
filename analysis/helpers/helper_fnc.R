@@ -775,14 +775,14 @@ plot_cells <- function(sce.list, masks.list, poi, layer="none"){
                      return_plot=TRUE,  image_title=list(cex=1),
                      colour=colour.cells, display="single",
                      scale_bar=list(cex=1, lwidth=5),
-                     legend = list(colour_by.title.cex=0.7, colour_by.labels.cex=0.7))
+                     legend=list(colour_by.title.cex=0.7, colour_by.labels.cex=0.7))
     } else {
       p <- plotCells(mask=masks.list, object=el,
                      cell_id="ObjectNumber", img_id="sample_id", colour_by=poi,
                      return_plot=TRUE,  image_title=list(cex=1),
                      colour=colour.cells, display="single",
                      scale_bar=list(cex=1, lwidth=5),
-                     legend = list(colour_by.title.cex=0.7, colour_by.labels.cex=0.7),
+                     legend=list(colour_by.title.cex=0.7, colour_by.labels.cex=0.7),
                      exprs_values=layer)
     }
     # Add plot to image list

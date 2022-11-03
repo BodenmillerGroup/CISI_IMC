@@ -132,12 +132,12 @@ else:
 
 ## Decompression
 # Decompress composite channels                     
-decompressed_x = decompress(sce_experiment[:, sce_experiment.var.index.isin(channels_of_interest)], 
+decompressed_x = decompress((sce_experiment[:, sce_experiment.var.index.isin(channels_of_interest)].X).T, 
                             U, [A])
 # Remove infinit values                   
 decompressed_x[np.isnan(decompressed_x)] = 0
 # Compute statistics
-decompression_results = compare_results(sce_experiment[:, sce_experiment.var.index.isin(proteins_of_interest)], 
+decompression_results = compare_results((sce_experiment[:, sce_experiment.var.index.isin(proteins_of_interest)].X).T, 
                                         decompressed_x)
 d_gene = np.percentile(1 - distance.pdist(A.dot(U).T, 'correlation'), 90)
 

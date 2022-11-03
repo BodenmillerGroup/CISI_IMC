@@ -26,6 +26,8 @@ nav:
     - Pilot Run for Immune Markers: results/reports/analysis_tonsil_pilot_immune_markers.html
     - Parameter Sweep (Proof-of-Concept): results/reports/parameter_sweep_evaluation_POC.html
     - Snakemake Report (Proof-of-Concept): results/reports/snakemake_report_POC.html
+    - Parameter Sweep (Proof-of-Concept, min strategy for A): results/reports/parameter_sweep_evaluation_POC_max_worst_protein.html
+    - Snakemake Report (Proof-of-Concept, min strategy for A): results/reports/snakemake_report_POC_max_worst_protein.html
     - Parameter Sweep (Immune Markers): results/reports/parameter_sweep_evaluation_immune_channels.html
     - Snakemake Report (Immune Markers): results/reports/snakemake_report_immune_channels.html
 
