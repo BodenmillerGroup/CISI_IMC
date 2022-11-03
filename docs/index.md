@@ -4,43 +4,17 @@
 
 ![logo](img/CISI_IMC_logo.png)
 
-
-<!-- TABLE OF CONTENTS -->
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#usage">Usage</a>
-      <ul>
-        <li><a href="#CISI for IMC">CISI for IMC</a></li>
-        <li><a href="#Parameter Sweep">Parameter Sweep</a></li>
-      </ul>
-    </li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
-  </ol>
-</details>
-
+<div align="center">
+  <p align="center">
+    CISI for IMC Data Overview
+  </p>
+</div>
 
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-![overview](img/CISI_IMC_overview.png)
+![Matrix Overview](img/CISI_IMC_overview.png)
 
 This projects adapts the code from the paper [“Compressed sensing for highly efficient imaging transcriptomics.”](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8355028/)
 published in 2021 in Nature biotechnology by Cleary, Brian et al. to IMC data.
