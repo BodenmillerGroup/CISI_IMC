@@ -1,0 +1,28 @@
+theme:
+  name: material
+  palette:
+    primary: teal
+    accent: teal
+  icon:
+    repo: fontawesome/brands/github
+
+repo_url: https://github.com/BodenmillerGroup/CISI_IMC
+repo_name: BodenmillerGroup/CISI_IMC
+
+use_directory_urls: false
+
+plugins:
+  - search
+
+site_name: CISI IMC
+nav:
+    - Home: index.md
+    - Lung analysis: results/reports/analysis_lung.html
+    
+markdown_extensions:
+    - footnotes
+    - attr_list
+    - md_in_html
+    - pymdownx.emoji:
+        emoji_index: !!python/name:materialx.emoji.twemoji
+        emoji_generator: !!python/name:materialx.emoji.to_svg

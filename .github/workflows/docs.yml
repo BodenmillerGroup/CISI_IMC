@@ -1,0 +1,36 @@
+on: 
+  push: 
+    branches: [main] 
+  pull_request:
+    branches: [main]
+
+name: docs
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      
+      - name: install python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+          
+      - name: install mkdocs      
+        run: pip install mkdocs-material
+        
+      - name: Deploy
+        run: mkdocs gh-deploy --force
+        
+      - name: copy files
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git fetch                         # fetch branches
+          git checkout gh-pages       # checkout to your branch
+          git checkout ${GITHUB_REF##*/} -- results/reports/* # copy files from the source branch
+          git add -A
+          git diff-index --quiet HEAD ||  git commit -am "deploy files"  # commit to the repository (ignore if no modification)
+          git push origin gh-pages # push to remote branch
