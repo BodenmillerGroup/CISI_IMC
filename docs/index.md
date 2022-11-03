@@ -70,12 +70,12 @@ code, as well as to run snakemake for the parameter sweep you need to download c
 
 1. Clone the neccesary folders in the repo.
 
-   ```sh
-   git clone --depth 1 --no-checkout https://github.com/BodenmillerGroup/CISI_IMC.git
-   cd CISI_IMC
-   git sparse-checkout set code analysis/parameter_sweep
-   git checkout
-   ```
+ ```sh
+    git clone --depth 1 --no-checkout https://github.com/BodenmillerGroup/CISI_IMC.git
+    cd CISI_IMC
+    git sparse-checkout set code analysis/parameter_sweep
+    git checkout
+ ```
 
    **Note**
    If only interested in the CISI for IMC code and not the parameter sweep,
@@ -84,22 +84,22 @@ code, as well as to run snakemake for the parameter sweep you need to download c
 2. For downloading all the packages into a conda environment, follow instructions
    'a.'. If the CISI code is only accessed via the parameter sweep, there is the
    option of only installing a conda environment containing snakemake and then
-   running the Snakefile for the parameter sweep using the --use-conda parameter.
+   running the Snakefile for the parameter sweep using the `--use-conda` parameter.
    For this, follow option 'b.'
 
     1. Install cisi_imc_env conda environment.
 
-       ```sh
+```sh
        conda env create -f cisi_imc_env.yml
        conda activate cisi_imc_env
-       ```
+```
 
     2. Install conda environment containing snakemake.
 
-       ```sh
+```sh
        conda create -n snakemake_env -c bioconda snakemake=7.17.1
        conda activate snakemake_env
-       ```
+```
 
        **Warning**
        When running the paramter-sweep, add parameters `--use-conda --conda-frontend conda`
