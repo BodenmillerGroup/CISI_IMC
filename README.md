@@ -14,7 +14,7 @@
   </p>
 
   <a href="https://github.com/BodenmillerGroup/CISI_IMC">
-    <img src="images/CISI_IMC_logo.png" alt="Logo" width="480" height="240">
+    <img src="docs/img/CISI_IMC_logo.png" alt="Logo" width="480" height="240">
   </a>
 </div>
 
@@ -56,7 +56,7 @@
 ## About The Project
 
 <div align="center">
-  <img src="images/CISI_IMC_overview.png" alt="overview" width="480" height="240">
+  <img src="docs/img/CISI_IMC_overview.png" alt="overview" width="480" height="240">
 </div>
 
 This projects adapts the code from the paper [“Compressed sensing for highly efficient imaging transcriptomics.”](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8355028/)
