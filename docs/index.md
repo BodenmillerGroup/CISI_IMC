@@ -82,10 +82,10 @@ code, as well as to run snakemake for the parameter sweep you need to download c
    `analysis/parameter_sweep` can be removed from `git sparse-checkout`
 
 2. For downloading all the packages into a conda environment, follow instructions
-   '1.'. If the CISI code is only accessed via the parameter sweep, there is the
+   'a.'. If the CISI code is only accessed via the parameter sweep, there is the
    option of only installing a conda environment containing snakemake and then
    running the Snakefile for the parameter sweep using the --use-conda parameter.
-   For this, follow option '2.'
+   For this, follow option 'b.'
 
     1. Install cisi_imc_env conda environment.
 
