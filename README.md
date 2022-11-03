@@ -321,10 +321,3 @@ Project Link: [https://github.com/BodenmillerGroup/CISI_IMC](https://github.com/
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[snakemake-shield]: https://img.shields.io/badge/snakemake-≥7.17.1-brightgreen.svg?style=flat
-[snakemake-url]: https://snakemake.readthedocs.io
