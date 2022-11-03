@@ -2,18 +2,7 @@
 <a name="readme-top"></a>
 
 
-
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <h3 align="center">CISI for IMC</h3>
-  <p align="center">
-    This project contains code and analysis for Composite In Situ Imaging (CISI)
-    of Imaging Mass Cytometry (IMC) data
-  </p>
-</div>
-
-![logo](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/images/CISI_IMC_logo.png "Logo of CISI for IMC")
+![logo](/images/CISI_IMC_logo.png "Logo of CISI for IMC")
 
 
 <!-- TABLE OF CONTENTS -->
@@ -51,7 +40,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-![overview](https://github.com/BodenmillerGroup/CISI_IMC/blob/main/images/CISI_IMC_overview.png "Overview of CISI for IMC")
+![overview](/images/CISI_IMC_overview.png "Overview of CISI for IMC")
 
 This projects adapts the code from the paper [“Compressed sensing for highly efficient imaging transcriptomics.”](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8355028/)
 published in 2021 in Nature biotechnology by Cleary, Brian et al. to IMC data.
