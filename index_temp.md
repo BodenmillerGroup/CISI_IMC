@@ -1,9 +1,10 @@
-<!-- Back to top link -->
+# CISI for IMC
+<!-- Remove html
 <a name="readme-top"></a>
 
 
 
-<!-- PROJECT LOGO -->
+
 <br />
 <div align="center">
   <h3 align="center">CISI for IMC</h3>
@@ -14,13 +15,13 @@
   </p>
 
   <a href="https://github.com/BodenmillerGroup/CISI_IMC">
-    <img src="https://github.com/BodenmillerGroup/CISI_IMC/blob/main/images/CISI_IMC_logo.png" alt="Logo" width="480" height="240">
+    <img src="images/CISI_IMC_logo.png" alt="Logo" width="480" height="240">
   </a>
 </div>
 
 
 
-<!-- TABLE OF CONTENTS -->
+
 <details>
   <summary>Table of Contents</summary>
   <ol>
@@ -49,29 +50,27 @@
     <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
 </details>
-
+-->
 
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
+<!-- remove html
 <div align="center">
-  <img src="https://github.com/BodenmillerGroup/CISI_IMC/blob/main/images/CISI_IMC_overview.png" alt="overview" width="480" height="240">
+  <img src="images/CISI_IMC_overview.png" alt="overview" width="480" height="240">
 </div>
+-->
 
 This projects adapts the code from the paper [“Compressed sensing for highly efficient imaging transcriptomics.”](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8355028/)
 published in 2021 in Nature biotechnology by Cleary, Brian et al. to IMC data.
-<br />
+
 The core idea of the paper is that we can use compressed sensing to recover individual
 protein expression levels from composite measurements (e.g. using the same channel/metal-isotop
 to measure multiple proteins). The advantage is that we need less channels overall
 to measure the same amount of proteins as in a normal IMC run.
-<br />
-For more information on the steps of CISI for IMC and how it works, go to
-<a href="#usage">Usage</a>.
 
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+For more information on the steps of CISI for IMC and how it works, go to Usage.
 
 
 
@@ -80,9 +79,6 @@ For more information on the steps of CISI for IMC and how it works, go to
 * [conda](https://www.anaconda.com/)
 * [renv](https://rstudio.github.io/renv/articles/renv.html)
 * [snakemake](https://snakemake.readthedocs.io/en/stable/)
-
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
@@ -105,8 +101,6 @@ code, as well as to run snakemake for the parameter sweep you need to download c
 
 * [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html)
 
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 ### Installation
@@ -141,9 +135,6 @@ code, as well as to run snakemake for the parameter sweep you need to download c
        **Warning**
        When running the paramter-sweep, add parameters `--use-conda --conda-frontend conda`
        to the snakemake call.
-
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
@@ -247,8 +238,6 @@ Be sure to have proteins/channels in y, U and phi in the same order, otherwise
 the matrix multiplications in CISI will lead to wrong results.
 
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 ### Parameter Sweep
 
@@ -288,15 +277,11 @@ For more information on available flags to run snakemake, refer to
 [command line interface snakemake](https://snakemake.readthedocs.io/en/stable/executing/cli.html).
 
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 <!-- LICENSE -->
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
@@ -308,9 +293,6 @@ Leonor Schubert Santana - leonors@student.ethz.ch
 Project Link: [https://github.com/BodenmillerGroup/CISI_IMC](https://github.com/BodenmillerGroup/CISI_IMC)
 
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
@@ -318,6 +300,3 @@ Project Link: [https://github.com/BodenmillerGroup/CISI_IMC](https://github.com/
 * Prof. Dr. Bernd Bodenmiller
 * Dr. Nils Eling
 * Tsuyoshi Hosogane
-
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
