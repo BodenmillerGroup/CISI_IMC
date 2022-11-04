@@ -5,7 +5,6 @@ output:
     toc: true
     toc_float: true
     code_folding: "hide"
-    keep_md: true
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
@@ -16,9 +15,7 @@ knitr::opts_chunk$set(echo=TRUE)
 knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 
 # Load libraries
-# library(ggchromatic)
 library(scater)
-library(ggpubr)
 library(igraph)
 library(dittoSeq)
 library(Rphenograph)
@@ -101,7 +98,7 @@ X.files <- X.files[!grepl("_processed", X.files)]
 # Read in all sce experiments from saved anndata and save additional info in metadata
 # (e.g. which dataset is used in training and testing, which k was used and if it
 # is the ground truth or simulated X)
-# Remove neg. values and transform counts?
+# Add assay with transformed counts
 X.list <- lapply(X.files, read_results, type="x")
 X.list <- lapply(X.list, function(sce.temp){
   pat <- metadata(sce.temp)
@@ -184,7 +181,7 @@ Here the correlation result statistics produced by CISI are shown as barplots.
 for (measure in names(res)[2:10]) {
   cat("##### ", measure, "\n")
   
-  # Reorder dataframe for plotting
+  # Subset dataframe for plotting and add column to combine training and test dataset name
   data_temp <- res %>%
     dplyr::select(dataset, training, simulation, k, !!measure) %>%
     mutate(group=paste(training, dataset, sep="_"))
@@ -206,6 +203,7 @@ of the cumulative sum of the whole module. These are then coloured accordingly.
 #### Heatmaps of U {.tabset}
 
 ```{r plot_U, results="asis", fig.height=8, fig.width=18, fig.align="center"}
+# Plot U as heatmaps for the different datasets and k's
 cor <- plot_U(u, "k", "dataset")
 ```
 
@@ -215,6 +213,7 @@ To illustrate the overlap of modules between datasets, both U's are shown in the
 same heatmap and shared modules are coloured accordingly.
 
 ```{r plot_module_comparison, results="asis", fig.height=8, fig.width=18, fig.align="center"}
+# PLot the heatmap of the combined U's for both datasets to show overlap for all k's
 plot_U_membership(u, "k", "dataset")
 ```
 
@@ -241,11 +240,12 @@ of individual cells for the testing image.
 #### SMA of Test Image *(Tonsil th152, k=1)*
 
 ```{r plot_X, fig.height=10, fig.width=10, fig.align="center", fig.keep="last"}
-# Subset to training and test of tonsil data
+# Subset to objects trained and tested on tonsil data
 X.tonsil1 <- keep(X.list, function(x){
   metadata(x)$training=="tonsil" & metadata(x)$dataset=="tonsil" & metadata(x)$k=="1"})
 names(X.tonsil1) <- lapply(X.tonsil1, 
                             function(x){metadata(x)$ground_truth})
+
 # Call plot_cells to get individual plots for each roi for decomposed and true
 # results
 poi <- "SMA"
@@ -325,7 +325,7 @@ for (k in k_s) {
   # Subset for k of interest
   X.lung_lungK <- keep(X.lung_lung, function(x){metadata(x)$k==k})
   
-  # Plot asinh transformed counts of proteins of interest of decomposed and true 
+  # Plot counts of proteins of interest of decomposed and true 
   # datasets coloured by different celltypes
   X.Exprs <- plot_grid(plot_exprs(X.lung_lungK, "B", "CD3", "CD20", layer="counts"),
                        plot_exprs(X.lung_lungK, "BnT", "CD3", "CD20", layer="counts"),
@@ -349,7 +349,7 @@ Scatterplot of ground truth vs decomposed results per protein for k=1 and asinh
 transformed counts.
 
 ```{r results_per_protein, fig.height=12, fig.width=10, fig.align="center", results="asis"}
-# Add all X_test counts together into dataframe for easier plotting
+# Add all X_test arrays-of-interested (aoi) together into one dataframe for easier plotting
 aoi <- "exprs"
 X.df <- lapply(X.list, function(sce){
   counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
@@ -365,22 +365,13 @@ X.df <- lapply(X.list, function(sce){
   summarise_all(na.omit)
 
 # For each test/training dataset combination plot for each true vs decomposed
-# results in scatter plot and add diagonal and regression line, as well as
+# results a scatter plot and add diagonal and regression line, as well as
 # R (pearson correlation coefficient)
 for (i in unique(X.df$dataset)) {
   cat("#####", i, "\n")
   
-  proteinPlot <- ggscatter(X.df %>%
-                             dplyr::filter(k=="1" & dataset==i), 
-                           x="ground_truth", y="simulated",
-                           add="reg.line",
-                           color=pal_npg("nrc")("1"),
-                           add.params=list(color=pal_npg("nrc")("4")[4],
-                                           size=2)) +
-    facet_wrap(~ protein, scales="free", ncol=5) +
-    theme_cowplot(10) +
-    geom_abline(slope=1, linetype="dashed") +
-    stat_cor(size=2)
+  proteinPlot <- plot_protein_scatterplot(X.df %>%
+                                            dplyr::filter(k=="1" & dataset==i))
   
   print(proteinPlot)
   cat("\n\n")
@@ -398,6 +389,7 @@ asinh transformed counts.
 ```{r results_per_protein_cor, fig.height=6, fig.width=5, fig.align="center", results="asis"}
 aoi <- "exprs"
 # Calculate correlations between ground truth and simulated data for each protein
+# using the assay 'aoi'
 X.cor <- lapply(keep(X.list, function(sce){
   metadata(sce)$dataset==metadata(sce)$training
 }), function(sce){
@@ -421,7 +413,7 @@ X.cor <- lapply(keep(X.list, function(sce){
 set.seed(220224)
 
 # Read in original SCE with all samples and proteins and without paper normalization
-# of counts/exprs and compute statistics like mean, median, var,... on these
+# of counts/exprs and compute statistics like mean, median, var and SNR on these
 # Add this to above correlation dataframe
 aoi.original <- "exprs"
 X.cor <- lapply(names(original.list), function(n){
@@ -557,7 +549,6 @@ shown for k=1.
 ```{r protein_cum_sum, fig.height=8, fig.width=10, fig.align="center", results="asis"}
 # Collect all counts for each dataset, rank according to the counts and calculate
 # the cumulative sum
-# Calculate area between curves of ground_truth and simulated
 cumsum.df <- lapply(X.list, function(sce){
   counts.long <- as.data.frame(assays(sce)[["counts"]]) %>%
     mutate(protein=rownames(.)) %>%
@@ -690,35 +681,6 @@ all.clusters <- lapply(X.lung,
   ungroup()
 
 
-# Define functions to get overview of celltypes per cluster as row and column annotations
-get_anno_clusters <- function(clusters, i, d, direction="reverse", which_sim="row"){
-  col_anno <- HeatmapAnnotation(celltypes=anno_barplot(table(paste("gt", clusters %>% 
-                                                                     dplyr::filter(k==i & dataset==d) %>% 
-                                                                     pull(ground_truth)), 
-                                                             clusters %>% 
-                                                               dplyr::filter(k==i & dataset==d) %>% 
-                                                               pull(celltype)), 
-                                                       gp=gpar(fill=celltype.col), 
-                                                       bar_width=1, 
-                                                       height=unit(5, "cm")),
-                                show_annotation_name=FALSE)
-  row_anno <- HeatmapAnnotation(celltypes=anno_barplot(table(paste("sim", clusters %>% 
-                                                                     dplyr::filter(k==i & dataset==d) %>% 
-                                                                     pull(simulated)), 
-                                                             clusters %>% 
-                                                               dplyr::filter(k==i & dataset==d) %>% 
-                                                               pull(celltype)), 
-                                                       gp=gpar(fill=celltype.col), 
-                                                       bar_width=1, 
-                                                       width=unit(5, "cm"),
-                                                       axis_param=list(direction=direction)),
-                                show_annotation_name=FALSE,
-                                which=which_sim)
-  
-  list(col_anno, row_anno)
-}
-
-
 # Plot heatmaps showing overlap of clusters for each dataset and k
 for (i in unique(all.clusters$k)){
   cat("##### k =", i, "\n")
@@ -738,7 +700,9 @@ for (i in unique(all.clusters$k)){
     temp.matrix <- log10(temp.matrix + 10)
     
     # Get barplot annotations of celltypes
-    anno.list <- get_anno_clusters(all.clusters, i, d)
+    anno.list <- get_anno_clusters(all.clusters %>% 
+                                     dplyr::filter(k==i & dataset==d),
+                                   celltype.col=celltype.col)
     col_anno <- anno.list[[1]]
     row_anno <- anno.list[[2]]
     
@@ -779,9 +743,12 @@ data using the Kullback-Leibner divergence of the celltypes.
 for (i in unique(all.clusters$k)){
   cat("##### k =", i, "\n")
   
+  # Start new plot 
   plot.new()
+  # New empty heatmap list
   ht_list.kl <- NULL
   for (d in unique(all.clusters$dataset)){
+    # Compute Kullback-Leibner divergence
     clusters.filtered <- all.clusters %>%
       dplyr::filter(k==i & dataset==d) %>%
       dplyr::select(-c("k", "dataset", "max_ari"))
@@ -802,7 +769,9 @@ for (i in unique(all.clusters$k)){
     })
     
     # Get barplot annotations of celltypes
-    anno.list <- get_anno_clusters(all.clusters, i, d)
+    anno.list <- get_anno_clusters(all.clusters %>% 
+                                     dplyr::filter(k==i & dataset==d),
+                                   celltype.col=celltype.col)
     col_anno <- anno.list[[1]]
     row_anno <- anno.list[[2]]
 
@@ -839,9 +808,13 @@ each cluster has a median protein expression pattern that fits its main celltype
 for (i in unique(all.clusters$k)){
   cat("##### k =", i, "\n")
   
+  # Start new plot 
   plot.new()
+  # New empty heatmap list
   ht_list.exprs <- NULL
   for (d in unique(all.clusters$dataset)){
+    # Extract arcsinh transformed counts for specified dataset d for ground truth 
+    # and simulated data
     cluster_gt.exprs <- assay(X.lung[grepl(i, names(X.lung)) &
                                        grepl(d, names(X.lung)) &
                                        grepl("ground_truth", names(X.lung))][[1]], "exprs") %>%
@@ -881,7 +854,10 @@ for (i in unique(all.clusters$k)){
       as.matrix
     
     # Get barplot annotations of celltypes
-    anno.list <- get_anno_clusters(all.clusters, i, d, direction="normal", which_sim="column")
+    anno.list <- get_anno_clusters(all.clusters %>% 
+                                     dplyr::filter(k==i & dataset==d),
+                                   celltype.col=celltype.col, direction="normal", 
+                                   which_sim="column")
     col_anno <- anno.list[[1]]
     row_anno <- anno.list[[2]]
     

@@ -13,6 +13,7 @@ library(tidyverse)
 library(cowplot)
 library(ggplot2)
 library(ggsci)
+library(ggpubr)
 library(metan)
 library(circlize)
 library(reshape2)
@@ -196,7 +197,7 @@ read_results <- function(file, type, voi="k", use_voi=TRUE){
     training_name <- dataset_name
     
     if (use_voi){
-      k_name <- gsub(".*_", "", str_split(file, "/")[[1]][8])
+      k_name <- gsub(".*_", "", str_split(file, "/")[[1]][length(str_split(file, "/")[[1]])-1])
     }
     
     if (type=="res"){
@@ -953,4 +954,53 @@ plot_protein_dist <- function(X.cor, lower_limit.colour=0.7){
     labs(y="protein expression")
   
   protein.dist
+}
+
+
+# Plot scatterplot of exrpession values per protein and add add diagonal and 
+# regression line, as well as R (pearson correlation coefficient)
+plot_protein_scatterplot <- function(X.df){
+  # Create barplot with proteins on y-axis and their correlations on the y-axis
+  protein.scatter <- ggscatter(X.df,
+                               x="ground_truth", y="simulated",
+                               add="reg.line",
+                               color=pal_npg("nrc")("1"),
+                               add.params=list(color=pal_npg("nrc")("4")[4],
+                                               size=2)) +
+    facet_wrap(~ protein, scales="free", ncol=5) +
+    theme_cowplot(title.fontsize) +
+    geom_abline(slope=1, linetype="dashed") +
+    stat_cor(size=2)
+  
+  protein.scatter
+}
+
+
+# Define function to get overview of celltypes per cluster as row and column annotations
+# using celltype.col for the colours defined per celltype, direction for the facing
+# of the barplots (reversed for row annotations) and which_sim to specify if simulated
+# annotation is a row or column annotation
+get_anno_clusters <- function(clusters, celltype.col, direction="reverse", which_sim="row"){
+  # Create column barplot annotation according to celltypes in clusters
+  col_anno <- HeatmapAnnotation(celltypes=anno_barplot(table(paste("gt", clusters %>% 
+                                                                     pull(ground_truth)), 
+                                                             clusters %>% 
+                                                               pull(celltype)), 
+                                                       gp=gpar(fill=celltype.col), 
+                                                       bar_width=1, 
+                                                       height=unit(5, "cm")),
+                                show_annotation_name=FALSE)
+  # Create row barplot annotation according to celltypes in clusters
+  row_anno <- HeatmapAnnotation(celltypes=anno_barplot(table(paste("sim", clusters %>% 
+                                                                     pull(simulated)), 
+                                                             clusters %>% 
+                                                               pull(celltype)), 
+                                                       gp=gpar(fill=celltype.col), 
+                                                       bar_width=1, 
+                                                       width=unit(5, "cm"),
+                                                       axis_param=list(direction=direction)),
+                                show_annotation_name=FALSE,
+                                which=which_sim)
+  
+  list(col_anno, row_anno)
 }

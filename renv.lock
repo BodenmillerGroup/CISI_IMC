@@ -1054,18 +1054,6 @@
       "Hash": "4f57884290cc75ab22f4af9e9d4ca862",
       "Requirements": []
     },
-    "ape": {
-      "Package": "ape",
-      "Version": "5.6-2",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "894108412a7ec23d5de85cdcce871c8b",
-      "Requirements": [
-        "Rcpp",
-        "lattice",
-        "nlme"
-      ]
-    },
     "aricode": {
       "Package": "aricode",
       "Version": "1.0.0",
@@ -1436,26 +1424,6 @@
       "Hash": "c5f8447373ec2a0f593c694024e5b7ee",
       "Requirements": []
     },
-    "clusterGeneration": {
-      "Package": "clusterGeneration",
-      "Version": "1.3.7",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "bd5a27acbb72cdb7e01714fe29470675",
-      "Requirements": [
-        "MASS"
-      ]
-    },
-    "coda": {
-      "Package": "coda",
-      "Version": "0.19-4",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "24b6d006b8b2343876cf230687546932",
-      "Requirements": [
-        "lattice"
-      ]
-    },
     "codetools": {
       "Package": "codetools",
       "Version": "0.2-18",
@@ -1478,14 +1446,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "bb4341986bc8b914f0f0acf2e4a3f2f7",
-      "Requirements": []
-    },
-    "combinat": {
-      "Package": "combinat",
-      "Version": "0.0-8",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "f0acb9dcb71a9cd9d5ae233c5035b1c5",
       "Requirements": []
     },
     "commonmark": {
@@ -1894,14 +1854,6 @@
       "Hash": "77bd60a6157420d4ffa93b27cf6a58b8",
       "Requirements": []
     },
-    "fastmatch": {
-      "Package": "fastmatch",
-      "Version": "1.1-3",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "dabc225759a2c2b241e60e42bf0e8e54",
-      "Requirements": []
-    },
     "fda": {
       "Package": "fda",
       "Version": "6.0.5",
@@ -2187,26 +2139,6 @@
         "rlang",
         "rstudioapi",
         "withr"
-      ]
-    },
-    "geiger": {
-      "Package": "geiger",
-      "Version": "2.0.10",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "61c7a2349f51ca262f97292ae7409367",
-      "Requirements": [
-        "MASS",
-        "Rcpp",
-        "ape",
-        "coda",
-        "colorspace",
-        "deSolve",
-        "digest",
-        "mvtnorm",
-        "ncbit",
-        "phytools",
-        "subplex"
       ]
     },
     "generics": {
@@ -3100,14 +3032,6 @@
       "Hash": "7ce2733a9826b3aeb1775d56fd305472",
       "Requirements": []
     },
-    "maps": {
-      "Package": "maps",
-      "Version": "3.4.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "b3d98a967ec17c80f795719529812fa0",
-      "Requirements": []
-    },
     "maptools": {
       "Package": "maptools",
       "Version": "1.1-4",
@@ -3283,14 +3207,6 @@
       "Hash": "7a7541cc284cb2ba3ba7eae645892af5",
       "Requirements": []
     },
-    "ncbit": {
-      "Package": "ncbit",
-      "Version": "2013.03.29.1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "45986d180221d87a741975bdd752f073",
-      "Requirements": []
-    },
     "ncdfFlow": {
       "Package": "ncdfFlow",
       "Version": "2.42.1",
@@ -3398,14 +3314,6 @@
         "askpass"
       ]
     },
-    "optimParallel": {
-      "Package": "optimParallel",
-      "Version": "1.0-2",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "5a15e068f0bd9bac4252f8f9e11dc79f",
-      "Requirements": []
-    },
     "pROC": {
       "Package": "pROC",
       "Version": "1.18.0",
@@ -3463,23 +3371,6 @@
         "mvtnorm"
       ]
     },
-    "phangorn": {
-      "Package": "phangorn",
-      "Version": "2.10.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "45eb555cbc0393f9b748dd16e0111272",
-      "Requirements": [
-        "Matrix",
-        "Rcpp",
-        "ape",
-        "digest",
-        "fastmatch",
-        "generics",
-        "igraph",
-        "quadprog"
-      ]
-    },
     "pheatmap": {
       "Package": "pheatmap",
       "Version": "1.0.12",
@@ -3490,29 +3381,6 @@
         "RColorBrewer",
         "gtable",
         "scales"
-      ]
-    },
-    "phytools": {
-      "Package": "phytools",
-      "Version": "1.2-0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "50ccacd5eb43b1b88eca11f05b964b04",
-      "Requirements": [
-        "MASS",
-        "ape",
-        "clusterGeneration",
-        "coda",
-        "combinat",
-        "expm",
-        "maps",
-        "mnormt",
-        "nlme",
-        "numDeriv",
-        "optimParallel",
-        "phangorn",
-        "plotrix",
-        "scatterplot3d"
       ]
     },
     "pillar": {
@@ -3727,14 +3595,6 @@
         "magrittr",
         "rlang"
       ]
-    },
-    "quadprog": {
-      "Package": "quadprog",
-      "Version": "1.5-8",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "5f919ae5e7f83a6f91dcf2288943370d",
-      "Requirements": []
     },
     "quantreg": {
       "Package": "quantreg",
@@ -4208,14 +4068,6 @@
         "scales"
       ]
     },
-    "scatterplot3d": {
-      "Package": "scatterplot3d",
-      "Version": "0.3-42",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "fcdda5020cea741880b22d974a7e4d86",
-      "Requirements": []
-    },
     "scuttle": {
       "Package": "scuttle",
       "Version": "1.6.3",
@@ -4385,14 +4237,6 @@
         "magrittr",
         "stringi"
       ]
-    },
-    "subplex": {
-      "Package": "subplex",
-      "Version": "1.8",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "d83eebf4383ea5a3cb96ebcaba1d387d",
-      "Requirements": []
     },
     "survival": {
       "Package": "survival",
