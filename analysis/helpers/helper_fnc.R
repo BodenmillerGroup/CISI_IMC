@@ -173,7 +173,9 @@ read_single_anndata <- function(file){
   res <- readH5AD(file)
   metadata(res) <- list(ground_truth=ifelse(grepl("X_test", file), 
                                             "ground_truth", 
-                                            "simulated"))
+                                            ifelse(grepl("X_simulated", file),
+                                                   "simulated",
+                                                   "decomposed")))
   
   res
 }
@@ -209,7 +211,7 @@ read_results <- function(file, type, voi="k", use_voi=TRUE){
                                                      pattern=c(dataset_name, "_vs_"),
                                                      replacement=c("", ""), vectorize=FALSE)
     if (use_voi){
-      k_name <- gsub(".*_", "", str_split(file, "/")[[1]][7])
+      k_name <- gsub(".*_", "", str_split(file, "/")[[1]][length(str_split(file, "/")[[1]])-1])
     }
     
     if (type=="res"){

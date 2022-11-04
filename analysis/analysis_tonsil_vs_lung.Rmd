@@ -46,7 +46,10 @@ source("../analysis/helpers/helper_fnc.R")
 
 First, we look at U computed using different training datasets. For this, we 
 read in the results from CISI training on the Tonsil th152 and the Immucan lung
-dataset (created by tonsil_vs_lung.py).
+dataset (created by tonsil_vs_lung.py). (Note: Since the training was done on normalized 
+counts using the original normalization used by CISI, e.g. protein expressions 
+are normalized accross cells, all counts shown in this script are actually normalized. 
+If arcsinh is applied, then this is applied on top of the before mentioned normalization.)
 
 ```{r read_tonsil_and_lung}
 ## Read results
@@ -307,9 +310,9 @@ ggdraw(X.imgDiff$plot)
 In the next part, we look at the counts of individual cells for different protein 
 combinations.
 
-#### Scatterplots of arcsinh Transformed Counts *(Immucan Lung)* {.tabset}
+#### Scatterplots of Counts *(Immucan Lung)* {.tabset}
 
-Plot of arcsinh transformed counts coloured by defined celltype.
+Plot of counts coloured by defined celltype.
 
 ```{r plot_scatterplots, fig.height=25, fig.width=10, fig.align="center", results="asis"}
 # Subset to dataset trained and tested on the Immucan lung dataset
