@@ -27,37 +27,27 @@ from utils import compare_results
 
 
 ## Specify input paths
+## TODO: Change paths!!
 data_path = Path('/mnt/bb_dqbm_volume')
-training_path = Path(os.path.join(data_path,
-                                'data/Tonsil_th152/preprocessed_data/spe.h5ad'))
-## TODO: Change!!!
 experiment_path = Path(os.path.join(data_path,
                                 '......'))
 
 U_path = Path(os.path.join(data_path,
-                                'analysis/.../experiment/proof_of_concept_fixed_A/gene_modules.csv'))
+                                'analysis/.../experiment/proof_of_concept/gene_modules.csv'))
 A_path = Path(os.path.join(data_path,
-                                'analysis/.../experiment/proof_of_concept_fixed_A/version_1.txt'))
+                                'analysis/.../experiment/proof_of_concept/version_1.txt'))
 
 ## Specify output path
-out_path_training = Path(os.path.join(data_path, 'analysis/.../experiment/proof_of_concept_fixed_A/training'))
-out_path_experiment = Path(os.path.join(data_path, 'analysis/.../experiment/proof_of_concept_fixed_A/experiment'))
-out_path_experiment_simulation = Path(os.path.join(data_path, 'analysis/.../experiment/proof_of_concept_fixed_A/experiment-simulation'))
+out_path = Path(os.path.join(data_path, 'analysis/.../experiment/proof_of_concept_fixed_A/experiment'))
 # Create output directory if it doesn't exist
-out_path_training.mkdir(parents=True, exist_ok=True)
-out_path_experiment.mkdir(parents=True, exist_ok=True)
-out_path_experiment_simulation.mkdir(parents=True, exist_ok=True)
+out_path.mkdir(parents=True, exist_ok=True)
 
 
 # Check that input files/dictionary exist
-if not helpers.analysis_utils.is_valid_file(training_path, ['.h5ad']):
-    # If file is not found, throw error
-    raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
-                            training_path)
 if not helpers.analysis_utils.is_valid_file(experiment_path, ['.h5ad']):
     # If file is not found, throw error
     raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
-                            experiment_path)    
+                            training_path)   
 if not helpers.analysis_utils.is_valid_file(U_path, ['.csv']):
     # If file is not found, throw error
     raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
@@ -68,23 +58,17 @@ if not helpers.analysis_utils.is_valid_file(A_path, ['.txt']):
                             A_path)
     
 ## Specify parameters for CISI
+## TODO: Adapt!!
 dictionary_size = 20
-normalization = 'none'
-
-# Define test rois
-test_names_training = ('20220520_TsH_th152_cisi1_002',)
 
 
 ## Read in data
 # Read in SingleCellExperiment converted to anndata by cellconverter in R
-sce_training = ad.read_h5ad(training_path)
 sce_experiment = ad.read_h5ad(experiment_path)
 # Channels of interest
 proteins_of_interest = ['CD8a', 'CD20', 'CD4', 'CD11c', 'CD3', 'Ki-67', 'SMA', 'panCK']
 channels_of_interest = ['channel 141', 'channel 145', 'channel 148', 'channel 152',
                        'channel 154', 'channel 165']
-# Remove uninteresting proteins/channels
-sce_training = sce_training[:, sce_training.var.index.isin(proteins_of_interest)]
 
 # Read U
 U = np.genfromtxt(U_path, delimiter=',', skip_header=True,
@@ -120,17 +104,6 @@ else:
                       'Proteins in A: {0}\n'.format(A_names) +
                       'Channels in A: {0}\n'.format(A_channels))
                       
-
-## Predict performance of A given A,U and SCE
-# Test for training data and real experiment data
-(predicted_res_training, 
- predicted_res_noisy_training) = analyze_U_and_A(sce_training[sce_training.obs.index.isin(test_names_training), ],
-                                                 U, [A], ['none'], out_path_training,
-                                                 None, norm=normalization)
-(predicted_res_training, 
- predicted_res_noisy_training) = analyze_U_and_A(sce_experiment[:, sce_experiment.var.index.isin(proteins_of_interest)],
-                                                 U, [A], ['none'], out_path_experiment_simulation,
-                                                 None, norm=normalization)
 
 ## Decompression
 # Decompress composite channels                     

@@ -1,0 +1,311 @@
+---
+title: "Proof-of-Concept Experiment Analysis"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+
+## Setup
+***
+
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+
+# Load libraries
+```
+
+```{r helper_fnc}
+# Import helper fncs
+source("../analysis/helpers/helper_fnc.R")
+```
+
+```{r specify_paths}
+## TODO: Change paths
+# Set general input paths to all analysis files
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/...."
+
+# Set path to masks
+masks.path <- "/mnt/bb_dqbm_volume/data/..."
+```
+
+### Plot defaults
+
+Next, we set some defaults for consisistend plotting accross the script.
+
+```{r set_plot_defaults}
+## TODO: set celltypes and colours
+# Define celltype colours used by the rest of the script
+celltype.col <- c(brewer.pal(12, "Paired"),
+                           brewer.pal(8, "Pastel2")[-c(3,5,8)],
+                           brewer.pal(12, "Set3")[-c(2,3,8,9,11,12)])
+names(celltype.col) <- c()
+```
+
+
+## Read Inputs
+***
+
+First, we read in the results from the proof-of-concept experiment using the 
+SABER-technology to create composite measurements from a pre-defined A, 
+decomposed using the best parameters from the parameter sweep and its predicted 
+dictionary.
+
+```{r read_inputs}
+## Read results
+# Read in all results into one dataframe
+results.files <- list.files(analysis.path, 'simulation_results.txt',
+                            full.names=TRUE, recursive=TRUE)
+results.df <- lapply(results.files, read_single_correlation_results) %>% 
+  bind_rows() 
+
+
+## Read X_test and X_simulated
+# Specify X_test and X_simulated files to be read in
+X.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
+
+# Read in all sce experiments from saved anndata and save additional info in metadata
+# (e.g. if it is the ground truth or decomposed X)
+X.list <- lapply(X.files, read_single_anndata)
+X.list <- lapply(X.list, function(sce.temp){
+  assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
+  
+  sce.temp
+})
+names(X.list) <- unlist(lapply(X.list, function(sce.temp){metadata(sce.temp)$ground_truth}))
+
+
+## Read U
+u.files <- list.files(analysis.path, "gene_modules.csv",
+                      full.names=TRUE, recursive=TRUE)
+u <- lapply(u.files, read_single_U)
+
+
+## Read A
+a.files <- list.files(analysis.path, "version_*",
+                      full.names=TRUE, recursive=TRUE)
+a <- lapply(a.files, read_single_A) 
+
+
+# Read in masks 
+masks <- loadImages(masks.path, as.is=TRUE)
+mcols(masks) <- DataFrame(sample_id=names(masks))
+```
+
+
+## Results
+***
+
+### Barplot of Results 
+
+The barplot shows the different measurements used to evaluate decomposition of CISI
+with the specified U, A and parameters.
+
+```{r plot_results, fig.asp=0.4, fig.width=10, fig.align="center"}
+# For each different measurement of training results, plot barplot 
+
+# Melt dataframe for plotting
+data_temp <- results.df %>%
+  dplyr::select(-c("dataset", "training", "datasize", "version", "Best crossvalidation fold")) %>%
+  pivot_longer(!c("simulation"), names_to="measure", values_to="value")
+
+# Create barplot
+results.barplot <- plot_cisi_results(data_temp, "measure", "value", "simulation")
+print(results.barplot)
+```
+
+### Per Protein Results
+***
+
+#### Correlations per Protein *(arcsinh)*
+
+Correlation between ground truth and decomposed results per protein for  
+asinh transformed counts.
+
+```{r results_per_protein_cor, fig.asp=1, fig.width=8, fig.align="center"}
+aoi <- "exprs"
+# Calculate correlations between ground truth and simulated data for each protein
+X.cor <- lapply(X.list, function(sce){
+  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  cell=variable)
+}) %>% bind_rows() %>%
+  group_by(protein, cell) %>%
+  summarise_all(na.omit) %>%
+  group_by(protein) %>%
+  mutate(correlation=cor(ground_truth, simulated)) %>%
+  ungroup()
+
+# Plot correlations per protein
+proteinCorr <- plot_protein_cor(X.cor %>%
+                                  dplyr::select(protein, correlation) %>%
+                                  distinct()) + ylim(0, 1)
+```
+
+#### Scatterplots of Counts *(arcsinh)*
+
+Scatterplot of ground truth vs decomposed results per protein for arcsinh 
+transformed counts.
+
+```{r results_per_protein_scatter, fig.asp=1.2, fig.width=10, fig.align="center"}
+# Plot for scatter plot of true vs decomposed, add diagonal and regression line, 
+# as well as R (pearson correlation coefficient)
+proteinPlot <- plot_protein_scatterplot(X.cor)
+  
+print(proteinPlot)
+```
+
+#### Scatterplots of a Combination of Two Proteins *(arcsinh)* {.tabset}
+
+In the next part, we look at the combination of arcsinh transformed counts for two 
+proteins. This is especially important for manual gating for celltypes. 
+
+```{r results_per_protein_combined_scatter, fig.asp=0.5, fig.width=10, fig.align="center", results="asis"}
+pcoi <- list(list("CD3", "CD20"), list("CD3", "CD4"), list("CD3", "CD8"))
+
+for (combi in pcoi) {
+  cat("##### ", combi[1], "vs", combi[2], "\n")
+
+  # Plot counts of proteins of interest of decomposed and true 
+  # datasets coloured by different celltypes
+  proteinPlotCombi <- plot_exprs(X.cor, "", combi[1], combi[2])
+  print(proteinPlotCombi)
+  cat("\n\n")
+}
+```
+
+### Image Results
+***
+
+#### Espression Values for All Proteins *(arcsinh)* {.tabset}
+
+Expression values for cells in image for all proteins. 
+
+```{r plot_protein_expr, fig.asp=0.5, fig.width=18, fig.align="center", fig.keep=c(13, 26), results="asis"}
+# Get the names of all proteins in the experiment
+pois <- unique(X.cor$protein)
+
+# Call plot_cells to get individual plots for test roi for decomposed and true
+# results
+for (p in pois){
+  cat("#####", p, "\n")
+  
+  img <- plot_cells(X.list, masks, p)
+  # Plot decomposed vs true results
+  img <- plot_grid(plotlist=append(img[!grepl("legend",
+                                             names(img))],
+                                   img[grepl("legend",
+                                             names(img))]), ncol=2, 
+                   labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
+                   label_size=15, hjust=c(-2, -1.5), 
+                   vjust=1, scale=0.9)
+  print(img)
+  cat("\n\n")
+}
+```
+
+### Clustering Results
+***
+
+To investigate the clustering results of ground truth and simulated data a bit more, 
+we show the overlap of clusters computed using Rphenograph (run with k=100 clusters)
+individually and compare which clusters overlap using a heatmap.
+
+```{r clustering}
+# Compute clusters using Rphenograph 
+all.clusters <- lapply(X.list, function(sce){
+  mat <- t(assay(sce, "exprs"))
+  out <- Rphenograph(mat, k=100)
+  sce$clusters <- factor(membership(out[[2]]))
+  
+  clusters <- as.vector(membership(out[[2]])) %>%
+    as.data.frame() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=".") %>%
+    mutate(cell=colData(sce)$cell_id) 
+
+  clusters
+}) %>% bind_rows() %>%
+  group_by(cell) %>%
+  summarise_all(na.omit) %>%
+  ungroup()
+```
+
+#### Cluster annotation *(arcsinh)*
+
+To identify celltypes according to the clustering, we next have a look at the protein 
+expression of the different clusters and manually add the celltypes accordingly. 
+
+```{r plot_clustering_vs_expression, fig.asp=0.5, fig.width=10, fig.align="center"}
+ht_list <- NULL
+for (n in names(X.list)){
+  ht_list <- ht_list +
+    dittoHeatmap(X.list[[n]], 
+                 #genes=rownames(spe)[rowData(spe)$use_channel],
+                 assay="exprs", scale="none",
+                 heatmap.colors=magma(100), 
+                 annot.by=c("clusters"),
+                 annot.colors=celltype.col,
+                 complex=TRUE)
+}
+
+# Draw heatmaps next to each other
+draw(ht_list)
+```
+
+#### Cluster Overlap between Ground Truth and Decomposed Data *(arcsinh)*
+
+```{r plot_clustering, fig.asp=0.5, fig.width=10, fig.align="center"}
+# Plot heatmaps showing overlap of clusters 
+cluster.matrix <- table(paste("sim", all.clusters) %>% 
+                          pull(simulated), 
+                        paste("gt", all.clusters %>% 
+                                pull(ground_truth))) %>% 
+  as.matrix()
+cluster.matrix <- log10(cluster.matrix + 10)
+
+
+# Create heatmap
+cluster.overlap <- Heatmap(cluster.matrix,
+                           show_row_dend=FALSE,
+                           show_column_dend=FALSE,
+                           col=magma(100),
+                           column_title="Cluster Overlap",
+                           row_names_gp=gpar(fontsize=axis_title.fontsize),
+                           column_names_gp=gpar(fontsize=axis_title.fontsize),
+                           column_title_gp=gpar(fontsize=title.fontsize),
+                           rect_gp=gpar(col="white", lwd=1)) 
+
+print(cluster.overlap)
+```
+
+
+#### ARI *(arcsinh)*
+
+```{r plot_ARI, fig.asp=1, fig.width=7, fig.align="center"}
+```
+
+
+## Matrix designs
+***
+
+### U 
+
+```{r plot_U, fig.asp=0.7, fig.width=8, fig.align="center"}
+# Plot used U
+u.plot <- plot_single_U(u, paste0("U\n(dictionary size: ", length(unique(u$module)), ")"))
+print(u.plot)
+```
+
+### A 
+
+```{r plot_A, fig.asp=0.6, fig.width=8, fig.align="center"}
+# Plot used A
+a.plot <- plot_single_A(a, "A")
+print(a.plot)
+```

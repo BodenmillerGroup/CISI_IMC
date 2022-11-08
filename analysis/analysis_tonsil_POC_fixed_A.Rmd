@@ -1,5 +1,5 @@
 ---
-title: "POC for fixed A/Phi"
+title: "Proof-of-Concept Analysis using Antibody Mixture"
 output: 
   html_document:
     toc: true
@@ -25,6 +25,7 @@ source("../analysis/helpers/helper_fnc.R")
 ```
 
 ```{r specify_paths}
+## TODO: Change paths
 # Set general input paths to all analysis files
 analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152/training/subset/POC_fixed_A"
 
@@ -37,15 +38,17 @@ masks.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell"
 ***
 
 First, we read in the results from the CISI analysis using a pre-defined A and
-the best parameters from the parameter sweep.
+the best parameters from the parameter sweep. For this we have data from simulated 
+composite data from training, from the actual experiment and the decomposed data.
 
 ```{r read_inputs}
 ## Read results
-# Read in all results for tonsil into one dataframe
+# Read in all results into one dataframe
 results.files <- list.files(analysis.path, 'simulation_results.txt',
                             full.names=TRUE, recursive=TRUE)
-results.df <- lapply(results.files, read_single_correlation_results) %>% 
-  bind_rows() 
+results.df <- lapply(results.files, read_results, type="res", voi="comparison") %>% 
+  bind_rows() %>%
+  dplyr::select(-c("dataset", "training", "datasize"))
 
 
 ## Read X_test and X_simulated
@@ -53,9 +56,11 @@ results.df <- lapply(results.files, read_single_correlation_results) %>%
 X.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
 
 # Read in all sce experiments from saved anndata and save additional info in metadata
-# (e.g. which dataset is used in training and testing and if it is the ground truth or simulated X)
-X.list <- lapply(X.files, read_single_anndata)
+# (e.g. if it is the ground truth or simulated X and if it comes from training simulations,
+# experiment simulation or the acutal decomposed experiment)
+X.list <- lapply(X.files, read_results, type="x", voi="comparison")
 X.list <- lapply(X.list, function(sce.temp){
+  metadata(sce.temp) <- within(metadata(sce.temp), rm(dataset, training)) 
   assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
   
   sce.temp
@@ -98,7 +103,7 @@ data_temp <- results.df %>%
   pivot_longer(!c("simulation"), names_to="measure", values_to="value")
 
 # Create barplot
-results.barplot <- plot_cisi_results(data_temp, "measure", "value", "simulation")
+results.barplot <- plot_cisi_results(data_temp, "measure", "value", "comparison")
 print(results.barplot)
 ```
 
@@ -118,9 +123,10 @@ X.cor <- lapply(X.list, function(sce){
     mutate(protein=rownames(.)) %>%
     melt() %>%
     dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
-                  cell=variable)
+                  cell=variable,
+                  comparison=metadata(sce)$comparison)
 }) %>% bind_rows() %>%
-  group_by(protein, cell) %>%
+  group_by(protein, cell, comparison) %>%
   summarise_all(na.omit) %>%
   group_by(protein) %>%
   mutate(correlation=cor(ground_truth, simulated))
