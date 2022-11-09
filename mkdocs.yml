@@ -17,19 +17,25 @@ plugins:
 site_name: CISI IMC
 nav:
     - Home: index.md
-    - Tonsil th152 Preprocessing: results/reports/clean_inputs.html
-    - Stability of Dictionary (Tonsil th152 Dataset): results/reports/analysis_U_stability_Tonsil_th152.html
-    - Stability of Dictionary (Immmucan Lung Dataset): results/reports/analysis_U_stability_Immucan_lung.html
-    - Immucan Lung Dataset: results/reports/analysis_lung.html
-    - Tonsil th152 Dataset: results/reports/analysis_tonsil.html
-    - Shared Markers in Immucan Lung and Tonsil Th152: results/reports/analysis_tonsil_vs_lung.html
-    - Pilot Run for Immune Markers: results/reports/analysis_tonsil_pilot_immune_markers.html
-    - Parameter Sweep (Proof-of-Concept): results/reports/parameter_sweep_evaluation_POC.html
-    - Snakemake Report (Proof-of-Concept): results/reports/snakemake_report_POC.html
-    - Parameter Sweep (Proof-of-Concept, min strategy for A): results/reports/parameter_sweep_evaluation_POC_max_worst_protein.html
-    - Snakemake Report (Proof-of-Concept, min strategy for A): results/reports/snakemake_report_POC_max_worst_protein.html
-    - Parameter Sweep (Immune Markers): results/reports/parameter_sweep_evaluation_immune_channels.html
-    - Snakemake Report (Immune Markers): results/reports/snakemake_report_immune_channels.html
+    - Preprocessing:
+        - Tonsil th152 Preprocessing: results/reports/clean_inputs_tonsil_th152.html
+        - Tonsil th179 Preprocessing: results/reports/clean_inputs_tonsil_th179.html
+    - Stability of Dictionary: 
+        - Tonsil th152 Dataset: results/reports/analysis_U_stability_Tonsil_th152.html
+        - Immmucan Lung Dataset: results/reports/analysis_U_stability_Immucan_lung.html
+    - CISI for IMC Analysis:
+        - Immucan Lung Dataset: results/reports/analysis_lung.html
+        - Tonsil th152 Dataset: results/reports/analysis_tonsil.html
+        - Shared Markers in Immucan Lung and Tonsil Th152: results/reports/analysis_tonsil_vs_lung.html
+        - Pilot Run for Immune Markers: results/reports/analysis_tonsil_pilot_immune_markers.html
+    - Parameter Sweep:
+        - Proof-of-Concept: results/reports/parameter_sweep_evaluation_POC.html
+        - Proof-of-Concept (min strategy for A): results/reports/parameter_sweep_evaluation_POC_max_worst_protein.html
+        - Immune Markers: results/reports/parameter_sweep_evaluation_immune_channels.html
+        - Snakemake Reports:
+            - Proof-of-Concept: results/reports/snakemake_report_POC.html
+            - Proof-of-Concept (min strategy for A): results/reports/snakemake_report_POC_max_worst_protein.html
+            - Immune Markers: results/reports/snakemake_report_immune_channels.html
 
 markdown_extensions:
     - footnotes

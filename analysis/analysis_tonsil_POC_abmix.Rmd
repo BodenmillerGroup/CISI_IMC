@@ -27,7 +27,7 @@ source("../analysis/helpers/helper_fnc.R")
 ```{r specify_paths}
 ## TODO: Change paths
 # Set general input paths to all analysis files
-analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152/training/subset/POC_fixed_A"
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152/training/subset/POC_abmix"
 
 # Set path to masks
 masks.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell"
@@ -51,21 +51,39 @@ results.df <- lapply(results.files, read_results, type="res", voi="comparison") 
   dplyr::select(-c("dataset", "training", "datasize"))
 
 
-## Read X_test and X_simulated
-# Specify X_test and X_simulated files to be read in
-X.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
+## Read X_test, X_simulated and X_decomposed 
+# Specify files to be read in
+X_results.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
 
 # Read in all sce experiments from saved anndata and save additional info in metadata
 # (e.g. if it is the ground truth or simulated X and if it comes from training simulations,
 # experiment simulation or the acutal decomposed experiment)
-X.list <- lapply(X.files, read_results, type="x", voi="comparison")
-X.list <- lapply(X.list, function(sce.temp){
+X_results.list <- lapply(X_results.files, read_results, type="x", voi="comparison")
+X_results.list <- lapply(X_results.list, function(sce.temp){
   metadata(sce.temp) <- within(metadata(sce.temp), rm(dataset, training)) 
   assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
   
   sce.temp
 })
 
+
+## TODO: change path
+## Read anndata object containing composite measurements
+X_simulation.files <- list.files(analysis.path, "*_composite_measurements.h5ad", 
+                             full.names=TRUE, recursive=TRUE)
+X_simulation.list <- lapply(X_simulation.files, read_results, type="x", voi="comparison")
+# Remove non-composite channels, add if data comes form simulated or real composite 
+# measurements and add arcsinh transformed counts
+X_simulation.list <- lapply(1:length(X_simulation.list), function(i){
+  sce.temp <- X_simulation.list[[i]]
+  sce.temp <- sce.temp[grepl("CC\\d_", rownames(sce.temp)), ]
+  metadata(sce.temp) <- within(metadata(sce.temp), rm(dataset, training))
+  metadata(sce.temp)$ground_truth <- ifelse(grepl("simulated", X_simulation.files[i]),
+                                            "simulated", "ground_truth")
+  assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
+  
+  sce.temp
+})
 
 
 ## Read U
@@ -107,6 +125,39 @@ results.barplot <- plot_cisi_results(data_temp, "measure", "value", "comparison"
 print(results.barplot)
 ```
 
+## Simulated vs Real Composite Measurements
+***
+
+### Images {.tabset}
+
+Here we show the composite measurements vs the simulated composite measurements for 
+all images. 
+
+```{r plot_protein_expr, fig.asp=0.5, fig.width=18, fig.align="center", fig.keep=c(13, 26, 39, 52, 65, 78), results="asis"}
+# Find the names of all composite channels
+pois <- rownames(X_simulation.list[[1]])
+names(pois) <- rownames(X_simulation.list[[1]])
+
+# Call plot_cells to get individual plots for all rois for simulated and real
+# composite measurements
+for (n in names(pois)){
+  cat("####", n, "\n")
+  
+  img <- plot_cells(X_simulation.list, masks, pois[[n]])
+  # Plot decomposed vs true results for test roi (002)
+  img <- plot_grid(plotlist=append(img[!grepl("legend",
+                                             names(img))],
+                                   img[grepl("legend",
+                                             names(img))]), ncol=2, 
+                   labels=unlist(lapply(X_simulation.list, function(sce){metadata(sce)$ground_truth})),
+                   label_size=15, hjust=c(-2, -1.5), 
+                   vjust=1, scale=0.9)
+  print(img)
+  cat("\n\n")
+}
+```
+
+
 ## Per protein results
 ***
 
@@ -118,7 +169,7 @@ asinh transformed counts.
 ```{r results_per_protein_cor, fig.height=6, fig.width=5, fig.align="center", results="asis"}
 aoi <- "exprs"
 # Calculate correlations between ground truth and simulated data for each protein
-X.cor <- lapply(X.list, function(sce){
+X.cor <- lapply(X_results.list, function(sce){
   counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
     mutate(protein=rownames(.)) %>%
     melt() %>%
@@ -148,7 +199,7 @@ asinh transformed counts of the best run.
 aoi <- "exprs"
 
 # Calculate correlations between ground truth and simulated data for each protein
-X.cor <- lapply(X.list, function(sce){
+X.cor <- lapply(X_results.list, function(sce){
   counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
     mutate(protein=rownames(.)) %>%
     melt() %>%
@@ -185,13 +236,13 @@ names(pois) <- c("Worst", "Best")
 for (n in names(pois)){
   cat("####", n, "\n")
   
-  img <- plot_cells(X.list, masks, pois[[n]])
+  img <- plot_cells(X_results.list, masks, pois[[n]])
   # Plot decomposed vs true results for test roi (002)
   img <- plot_grid(plotlist=append(img[grepl("20220520_TsH_th152_cisi1_002",
                                              names(img))],
                                    img[grepl("legend",
                                              names(img))]), ncol=2, 
-                   labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
+                   labels=unlist(lapply(X_results.list, function(sce){metadata(sce)$ground_truth})),
                    label_size=15, hjust=c(-2, -1.5), 
                    vjust=1, scale=0.9)
   print(img)

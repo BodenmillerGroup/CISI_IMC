@@ -5,6 +5,7 @@ import errno
 import os
 import numpy as np
 import sys
+import pandas as pd
 
 
 # Helper fncs
@@ -72,7 +73,7 @@ dictionary_size = 20
 normalization = 'none'
 
 # Define test rois
-test_names_training = ('20220520_TsH_th152_cisi1_002',)
+test_names_training = ('',)
 
 
 ## Read in data
@@ -80,9 +81,8 @@ test_names_training = ('20220520_TsH_th152_cisi1_002',)
 sce_training = ad.read_h5ad(training_path)
 sce_experiment = ad.read_h5ad(experiment_path)
 # Channels of interest
-proteins_of_interest = ['CD8a', 'CD20', 'CD4', 'CD11c', 'CD3', 'Ki-67', 'SMA', 'panCK']
-channels_of_interest = ['channel 141', 'channel 145', 'channel 148', 'channel 152',
-                       'channel 154', 'channel 165']
+proteins_of_interest = sce_experiment.var_names.str.contains('CC\d_', regex=True)
+channels_of_interest = sce_experiment.var_names[~sce_experiment.var_names.str.isin(proteins_of_interest)]
 # Remove uninteresting proteins/channels
 sce_training = sce_training[:, sce_training.var.index.isin(proteins_of_interest)]
 
