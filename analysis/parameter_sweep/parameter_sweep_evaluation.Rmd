@@ -350,9 +350,17 @@ a.file <- a.file[grepl(best_run.df$version[1], a.file)]
 a <- read_results(a.file, type="a") 
 
 
-# Read in masks for data
+## Read in masks for data
 masks <- loadImages(masks.path, as.is=TRUE)
 mcols(masks) <- DataFrame(sample_id=names(masks))
+
+
+## Subset test images
+# Chose first image from test images for plotting in this script (only if multiple 
+# test images are given)
+if (class(test.img)=="list"){
+  test.img <- test.img[[1]]
+}
 ```
 
 The compressed markers in this run were: `r rownames(X.list[[1]])`.  
@@ -370,7 +378,7 @@ The best parameter combination is:
 `r parameters[2]` = `r best_run.df[[1, parameters[2]]]`, 
 `r parameters[3]` = `r best_run.df[[1, parameters[3]]]` 
 (path: `r best_run.df$folder[1]`) with mean protein correlation (pearson) of 
-`r round(as.integer(best_run.df[[1, "Gene average"]])*100, digits=0)`%.
+`r round(as.double(best_run.df[[1, "Gene average"]])*100, digits=0)`%.
 
 
 ## Results

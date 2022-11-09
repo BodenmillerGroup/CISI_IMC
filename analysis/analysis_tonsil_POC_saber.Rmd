@@ -221,7 +221,7 @@ individually and compare which clusters overlap using a heatmap.
 # Compute clusters using Rphenograph 
 all.clusters <- lapply(X.list, function(sce){
   mat <- t(assay(sce, "exprs"))
-  out <- Rphenograph(mat, k=100)
+  out <- Rphenograph(mat)
   sce$clusters <- factor(membership(out[[2]]))
   
   clusters <- as.vector(membership(out[[2]])) %>%
@@ -256,6 +256,9 @@ for (n in names(X.list)){
 
 # Draw heatmaps next to each other
 draw(ht_list)
+
+# Add celltypes
+celltypes_to_clusters <- c()
 ```
 
 #### Cluster Overlap between Ground Truth and Decomposed Data *(arcsinh)*
