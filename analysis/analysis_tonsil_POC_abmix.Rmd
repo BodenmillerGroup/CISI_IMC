@@ -27,10 +27,10 @@ source("../analysis/helpers/helper_fnc.R")
 ```{r specify_paths}
 ## TODO: Change paths
 # Set general input paths to all analysis files
-analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152/training/subset/POC_abmix"
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th179"
 
 # Set path to masks
-masks.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell"
+masks.path <- "/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix2_179/steinbock/masks_deepcell"
 ```
 
 
@@ -67,11 +67,10 @@ X_results.list <- lapply(X_results.list, function(sce.temp){
 })
 
 
-## TODO: change path
 ## Read anndata object containing composite measurements
-X_simulation.files <- list.files(analysis.path, "*_composite_measurements.h5ad", 
+X_simulation.files <- list.files(analysis.path, "composite_measurements.h5ad", 
                              full.names=TRUE, recursive=TRUE)
-X_simulation.list <- lapply(X_simulation.files, read_results, type="x", voi="comparison")
+X_simulation.list <- lapply(X_simulation.files, read_results, type="x", use_voi=FALSE)
 # Remove non-composite channels, add if data comes form simulated or real composite 
 # measurements and add arcsinh transformed counts
 X_simulation.list <- lapply(1:length(X_simulation.list), function(i){
@@ -87,18 +86,19 @@ X_simulation.list <- lapply(1:length(X_simulation.list), function(i){
 
 
 ## Read U
-u.files <- list.files(analysis.path, "gene_modules.csv",
+u.files <- list.files(analysis.path, "gene_modules",
                       full.names=TRUE, recursive=TRUE)
-u <- lapply(u.files, read_single_U)
+u.files <- u.files[!grepl("min", u.files)]
+u <- read_single_U(u.files)
 
 
 ## Read A
 a.files <- list.files(analysis.path, "version_*",
                       full.names=TRUE, recursive=TRUE)
-a <- lapply(a.files, read_single_A) 
+a <- read_single_A(a.files) 
 
 
-# Read in masks for tonsil data
+# Read in masks 
 masks <- loadImages(masks.path, as.is=TRUE)
 mcols(masks) <- DataFrame(sample_id=names(masks))
 ```
@@ -114,11 +114,10 @@ with the specified U, A and parameters.
 
 ```{r plot_results, results="asis", fig.height=8, fig.width=18, fig.align="center"}
 # For each different measurement of training results, plot barplot 
-
 # Melt dataframe for plotting
 data_temp <- results.df %>%
-  dplyr::select(-c("dataset", "training", "datasize", "version", "Best crossvalidation fold")) %>%
-  pivot_longer(!c("simulation"), names_to="measure", values_to="value")
+  dplyr::select(-c("version")) %>%
+  pivot_longer(!c("simulation", "comparison"), names_to="measure", values_to="value")
 
 # Create barplot
 results.barplot <- plot_cisi_results(data_temp, "measure", "value", "comparison")
@@ -133,116 +132,59 @@ print(results.barplot)
 Here we show the composite measurements vs the simulated composite measurements for 
 all images. 
 
-```{r plot_protein_expr, fig.asp=0.5, fig.width=18, fig.align="center", fig.keep=c(13, 26, 39, 52, 65, 78), results="asis"}
+```{r plot_images_composite, fig.asp=0.25, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18), results="asis"}
 # Find the names of all composite channels
 pois <- rownames(X_simulation.list[[1]])
 names(pois) <- rownames(X_simulation.list[[1]])
+
 
 # Call plot_cells to get individual plots for all rois for simulated and real
 # composite measurements
 for (n in names(pois)){
   cat("####", n, "\n")
   
-  img <- plot_cells(X_simulation.list, masks, pois[[n]])
-  # Plot decomposed vs true results for test roi (002)
-  img <- plot_grid(plotlist=append(img[!grepl("legend",
-                                             names(img))],
-                                   img[grepl("legend",
-                                             names(img))]), ncol=2, 
+  img <- plot_cells(X_simulation.list, masks, pois[[n]], layer="exprs", display="all")
+  
+  # Plot simulated vs true composite measurements  
+  img <- plot_grid(plotlist=img, ncol=2, 
                    labels=unlist(lapply(X_simulation.list, function(sce){metadata(sce)$ground_truth})),
                    label_size=15, hjust=c(-2, -1.5), 
                    vjust=1, scale=0.9)
   print(img)
   cat("\n\n")
 }
+
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(X_simulation.list)
 ```
 
-
-## Per protein results
+## Decomposed vs Ground truth Measurements
 ***
 
-### Correlations per Protein *(arcsinh)* {.tabset}
+### Images {.tabset}
 
-Correlation between ground truth and decomposed results per protein for  
-asinh transformed counts.
+Here we show the decomposed measurements vs the ground truth measurements for 
+all images. 
 
-```{r results_per_protein_cor, fig.height=6, fig.width=5, fig.align="center", results="asis"}
-aoi <- "exprs"
-# Calculate correlations between ground truth and simulated data for each protein
-X.cor <- lapply(X_results.list, function(sce){
-  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
-    mutate(protein=rownames(.)) %>%
-    melt() %>%
-    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
-                  cell=variable,
-                  comparison=metadata(sce)$comparison)
-}) %>% bind_rows() %>%
-  group_by(protein, cell, comparison) %>%
-  summarise_all(na.omit) %>%
-  group_by(protein) %>%
-  mutate(correlation=cor(ground_truth, simulated))
-
-# Plot correlations per protein
-proteinCorr <- plot_protein_cor(X.cor) + ylim(0, 1)
-```
+```{r plot_images_decomposed, fig.asp=0.5, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18, 21, 24), results="asis"}
+# Subset list to decomposed and ground truth expressions
+X_decomposition.list <- keep(X_results.list, function(x){
+  metadata(x)$comparison=="experiment"})
+# Find the names of all protein channels
+pois <- rownames(X_decomposition.list[[1]])
+names(pois) <- rownames(X_decomposition.list[[1]])
 
 
-## Best Parameters
-***
-
-### Correlations per Protein *(arcsinh)*
-
-Correlation between ground truth and decomposed results per protein for  
-asinh transformed counts of the best run.
-
-```{r results_per_protein_best, fig.asp=1, fig.width=5, fig.align="center"}
-aoi <- "exprs"
-
-# Calculate correlations between ground truth and simulated data for each protein
-X.cor <- lapply(X_results.list, function(sce){
-  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
-    mutate(protein=rownames(.)) %>%
-    melt() %>%
-    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
-                  cell=variable) 
-  
-}) %>% bind_rows() %>%
-  group_by(protein, cell) %>%
-  summarise_all(na.omit) %>%
-  group_by(protein) %>%
-  mutate(correlation=cor(ground_truth, simulated))
-
-# Plot correlations for each protein
-protein.plot <- plot_protein_cor(X.cor) + ylim(0, 1)
-print(protein.plot)
-```
-
-
-## Image results
-***
-
-### Espression Values for Worst and Best Proteins *(arcsinh)* {.tabset}
-
-Expression values for cells in test image for the worst and best performing protein. 
-
-```{r plot_protein_expr, fig.asp=0.5, fig.width=18, fig.align="center", fig.keep=c(13, 26), results="asis"}
-# Find worst and best performing protein
-pois <- c(X.cor[which.min(X.cor$correlation), "protein"],
-          X.cor[which.max(X.cor$correlation), "protein"])
-names(pois) <- c("Worst", "Best")
-
-# Call plot_cells to get individual plots for test roi for decomposed and true
-# results
+# Call plot_cells to get individual plots for all rois for decomposed and real
+# measurements
 for (n in names(pois)){
   cat("####", n, "\n")
   
-  img <- plot_cells(X_results.list, masks, pois[[n]])
-  # Plot decomposed vs true results for test roi (002)
-  img <- plot_grid(plotlist=append(img[grepl("20220520_TsH_th152_cisi1_002",
-                                             names(img))],
-                                   img[grepl("legend",
-                                             names(img))]), ncol=2, 
-                   labels=unlist(lapply(X_results.list, function(sce){metadata(sce)$ground_truth})),
+  img <- plot_cells(X_decomposition.list, masks, pois[[n]], layer="exprs", display="all")
+
+  # Plot decomposed vs true results 
+  img <- plot_grid(plotlist=img, ncol=2, 
+                   labels=unlist(lapply(X_decomposition.list, function(sce){metadata(sce)$ground_truth})),
                    label_size=15, hjust=c(-2, -1.5), 
                    vjust=1, scale=0.9)
   print(img)
@@ -250,6 +192,78 @@ for (n in names(pois)){
 }
 ```
 
+### Correlations per Protein *(arcsinh)*
+
+Correlation between ground truth and decomposed results per protein for  
+arcsinh transformed counts.
+
+```{r results_per_protein_cor, fig.height=6, fig.width=5, fig.align="center"}
+aoi <- "exprs"
+# Calculate correlations between ground truth and decomposed data for each protein
+X.cor <- lapply(X_decomposition.list, function(sce){
+  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  cell=variable)
+}) %>% bind_rows() %>%
+  group_by(protein, cell) %>%
+  summarise_all(na.omit) %>%
+  group_by(protein) %>%
+  summarise(correlation=cor(ground_truth, decomposed))
+
+# Plot correlations per protein
+proteinCorr <- plot_protein_cor(X.cor) + ylim(0, 1)
+print(proteinCorr)
+```
+
+## Training vs Experiment
+***
+
+### Scatterplot of Correlations per Protein *(arcsinh)*
+
+Scatterplot of correlations between ground truth and simulated or decomposed results 
+per protein for arcsinh transformed counts .
+
+```{r results_training_vs_experiment, fig.asp=1, fig.width=4, fig.align="center"}
+aoi <- "exprs"
+
+# Calculate correlations between ground truth and simulated data for each protein
+X.cor <- X.cor %>% 
+  dplyr::rename(correlation_decomposition=correlation) %>%
+  merge(lapply(keep(X_results.list, function(x){
+    metadata(x)$comparison=="training"}), 
+    function(sce){
+      counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
+        mutate(protein=rownames(.)) %>%
+        melt() %>%
+        dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                      cell=variable) 
+      
+    }) %>% bind_rows() %>%
+      group_by(protein, cell) %>%
+      summarise_all(na.omit) %>%
+      group_by(protein) %>%
+      summarise(correlation_training=cor(ground_truth, simulated)))
+
+
+# Plot correlations for each protein
+correlations.plot <- ggscatter(X.cor,
+                               x="correlation_training", 
+                               y="correlation_decomposition",
+                               label="protein",
+                               label.rectangle=TRUE,
+                               color=pal_npg("nrc")("1"),
+                               add.params=list(color=pal_npg("nrc")("4")[4],
+                                               size=2)) +
+  theme_cowplot(title.fontsize) +
+  geom_abline(slope=1, linetype="dashed") +
+  stat_cor(size=2) +
+  ylim(0, 1) +
+  xlim(0, 1)
+
+print(correlations.plot)
+```
 
 ## Matrix designs
 ***
@@ -257,7 +271,7 @@ for (n in names(pois)){
 ### U 
 
 ```{r plot_U, fig.asp=0.7, fig.width=8, fig.align="center"}
-# Plot U for best run
+# Plot U 
 u.plot <- plot_single_U(u, paste0("U\n(dictionary size: ", length(unique(u$module)), ")"))
 print(u.plot)
 ```
@@ -265,8 +279,7 @@ print(u.plot)
 ### A 
 
 ```{r plot_A, fig.asp=0.6, fig.width=8, fig.align="center"}
-# Plot A for best run
-a.plot <- plot_single_A(a %>%
-                          dplyr::select(-training), "A")
+# Plot A 
+a.plot <- plot_single_A(a, "A")
 print(a.plot)
 ```

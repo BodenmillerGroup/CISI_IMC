@@ -759,7 +759,7 @@ plot_cisi_results <- function(df, group, measure, fill){
 
 # Plot results of expression values in "layer" of CISI vs ground truth for 
 # protein of interest poi and segmented according to masks.list
-plot_cells <- function(sce.list, masks.list, poi, layer="none"){
+plot_cells <- function(sce.list, masks.list, poi, layer="none", display="single"){
   
   # Set colours for poi
   colour.cells <- list(el=c("#FFFFFF", pal_npg("nrc")("8")[8]))
@@ -776,28 +776,36 @@ plot_cells <- function(sce.list, masks.list, poi, layer="none"){
       p <- plotCells(mask=masks.list, object=el,
                      cell_id="ObjectNumber", img_id="sample_id", colour_by=poi,
                      return_plot=TRUE,  image_title=list(cex=1),
-                     colour=colour.cells, display="single",
+                     colour=colour.cells, display=display,
                      scale_bar=list(cex=1, lwidth=5),
                      legend=list(colour_by.title.cex=0.7, colour_by.labels.cex=0.7))
     } else {
       p <- plotCells(mask=masks.list, object=el,
                      cell_id="ObjectNumber", img_id="sample_id", colour_by=poi,
                      return_plot=TRUE,  image_title=list(cex=1),
-                     colour=colour.cells, display="single",
+                     colour=colour.cells, display=display,
                      scale_bar=list(cex=1, lwidth=5),
                      legend=list(colour_by.title.cex=0.7, colour_by.labels.cex=0.7),
                      exprs_values=layer)
     }
     # Add plot to image list
-    p.gg <- lapply(p$plot, function(x){ggdraw(x, clip="on") })
-    img.list <- append(img.list, p.gg)
-    idx <- c(idx, seq_along(p.gg))
+    if (display=="single"){
+      p.gg <- lapply(p$plot, function(x){ggdraw(x, clip="on") })
+      img.list <- append(img.list, p.gg)
+      idx <- c(idx, seq_along(p.gg))
+    } else {
+      img.list <- append(img.list, p)
+    }
   }
   
   # Reorder image list
-  names(img.list) <- make.unique(names(img.list))
-  idx <- order(idx)
-  img.list[idx]
+  if (display=="single"){
+    names(img.list) <- make.unique(names(img.list))
+    idx <- order(idx)
+    img.list[idx]
+  }
+  
+  img.list
 }
 
 

@@ -36,6 +36,8 @@ nav:
             - Proof-of-Concept: results/reports/snakemake_report_POC.html
             - Proof-of-Concept (min strategy for A): results/reports/snakemake_report_POC_max_worst_protein.html
             - Immune Markers: results/reports/snakemake_report_immune_channels.html
+    - Experiments:
+        - Proof-of-Concept (abmix, 8 to 6 channels): results/reports/analysis_tonsil_POC_abmix.html
 
 markdown_extensions:
     - footnotes
