@@ -112,6 +112,12 @@ mcols(masks) <- DataFrame(sample_id=names(masks))
 The barplot shows the different measurements used to evaluate decomposition of CISI
 with the specified U, A and parameters.
 
+The channels from the experiment were decomposed using the dictionary U with the 
+best predicted performance (from the run using 'min strategy' for A) for a 8 to 6 
+compression. This dictionary came from the run with the parameters: k=2, d=10 and 
+m=6.
+
+
 ```{r plot_results, results="asis", fig.height=8, fig.width=18, fig.align="center"}
 # For each different measurement of training results, plot barplot 
 # Melt dataframe for plotting
