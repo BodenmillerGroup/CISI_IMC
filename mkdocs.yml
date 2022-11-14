@@ -31,11 +31,13 @@ nav:
     - Parameter Sweep:
         - Proof-of-Concept: results/reports/parameter_sweep_evaluation_POC.html
         - Proof-of-Concept (min strategy for A): results/reports/parameter_sweep_evaluation_POC_max_worst_protein.html
+        - Proof-of-Concept (8 to 4 channels, min strategy for A): results/reports/parameter_sweep_evaluation_POC_8_to_4.html
         - Immune Markers: results/reports/parameter_sweep_evaluation_immune_channels.html
         - Immune Markers (min strategy for A): results/reports/parameter_sweep_evaluation_immune_channels_max_worst_protein.html
         - Snakemake Reports:
             - Proof-of-Concept: results/reports/snakemake_report_POC.html
             - Proof-of-Concept (min strategy for A): results/reports/snakemake_report_POC_max_worst_protein.html
+            - Proof-of-Concept (8 to 4 channels, min strategy for A): results/reports/snakemake_report_POC_8_to_4.html
             - Immune Markers: results/reports/snakemake_report_immune_channels.html
             - Immune Markers (min strategy for A): results/reports/snakemake_report_immune_channels_max_worst_protein.html
     - Experiments:
