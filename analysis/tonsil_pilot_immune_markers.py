@@ -46,7 +46,7 @@ if not helpers.analysis_utils.is_valid_file(tonsil_path, ['.h5ad']):
 # Read in SingleCellExperiment converted to anndata by cellconverter in R
 sce_tonsil = ad.read_h5ad(tonsil_path)
 
-# Remove uninteresting proteins/channels
+# Specify proteins of interest
 immune_channels = ['CD15', 'CD20', 'CD3', 'CD38', 'CD4', 'CD68', 'CD8a', 
                    'ICOS', 'Ki-67', 'MPO', 'panCK', 'SMA', 'CD303', 'FOXP3', 
                    'GranzymeB']

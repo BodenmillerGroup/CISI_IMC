@@ -27,7 +27,7 @@ data.path <- "/mnt/bb_dqbm_volume/data/Immucan_lung"
 
 # Set path to masks
 masks.path <- file.path(data.path, "masks")
-# Set path to random forest classifier
+# Set path to pre-trained random forest classifier
 rf.path <- file.path(data.path, "rffit_v7_all_markers.rds")
 ```
 
@@ -40,7 +40,7 @@ source("../analysis/helpers/helper_fnc.R")
 
 ```{r read_inputs}
 ## Read results
-# Read in all results for tonsil and lung comparison into one dataframe
+# Read in all results for lung data into one dataframe
 results.files <- list.files(analysis.path, 'simulation_results.txt',
                             full.names=TRUE, recursive=TRUE)
 results.files <- results.files[grepl("normalized", results.files)]
@@ -56,8 +56,8 @@ X.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
 X.files <- X.files[grepl("normalized", X.files)]
 
 # Read in all sce experiments from saved anndata and save additional info in metadata
-# (e.g. which dataset is used in training and testing, if spillover correction was used 
-# and if it is the ground truth or simulated X)
+# (e.g. which dataset is used in training and testing, if data was normalized before 
+# training and if it is the ground truth or simulated X)
 X.list <- lapply(X.files, read_results, type="x", voi="norm")
 X.list <- lapply(X.list, function(sce.temp){
   if (grepl("combi", metadata(sce.temp)$norm)){
@@ -78,15 +78,15 @@ mcols(masks) <- DataFrame(sample_id=names(masks))
 rffit.lung <- readRDS(rf.path)
 ```
 
-## Barplot of Results *(k=1, argsinh)*
+## Barplot of Results 
 
 For each different measurement used to test training results, a barplot is shown 
-comparing CISI results using the original normalization (across cells in training, 
+comparing CISI results using the original normalization across cells (used in training, 
 simulating and to what it is compared to) and not using it at all.
 
 ```{r plot_results, results="asis", fig.height=8, fig.width=18, fig.align="center"}
 # For each different measurement of training results, plot barplot comparing
-# spillover corrected and uncorrected results
+# normalized und unnormalized results
 
 # Melt dataframe for plotting
 data_temp <- results.df %>%
@@ -98,7 +98,7 @@ results.barplot <- plot_cisi_results(data_temp, "measure", "value", "norm")
 print(results.barplot)
 ```
 
-## Scatterplot Results with and without Normalization in Training {.tabset}
+## Scatterplot Results with and without Normalization in Training *(k=1, arcsinh)* {.tabset}
 
 The following plots show scatterplots of different proteins of interest where cells
 are coloured according to celltypes of interest for Immucan lung dataset once trained
@@ -113,7 +113,7 @@ poi <- list(c("CD20", "CD3", "B"), c("VISTA", "CD3", ""))
 for (p_vec in poi) {
   cat("###", p_vec[1], "vs", p_vec[2], "\n")
   
-  # Plot asinh transformed counts of proteins of interest of decomposed data trained
+  # Plot arcsinh transformed counts of proteins of interest of decomposed data trained
   # with and without normalization
   X.spillover <- plot_grid(plot_exprs(X.list[1:2], p_vec[3], p_vec[1], p_vec[2]),
                            plot_exprs(X.list[3:4], p_vec[3], p_vec[1], p_vec[2]),
@@ -131,7 +131,8 @@ for (p_vec in poi) {
 
 Next, we use the gating labels of a pre-trained random forest classifier for the 
 Immucan lung dataset to newly train a random forest classifier on our decomposed 
-argsinh transformed data and predict all celltypes.
+arcsinh transformed data and predict all celltypes.
+
 We then compare these results to the 'ground truth' celltypes (celltypes predicted from
 ground truth data) by calculating the precision, sensitivity and specififity.
 
@@ -153,11 +154,11 @@ lungSim.list <- keep(X.list, function(x){
   metadata(x)$ground_truth=="simulated"})
 
 # Train RF classifier
-rffit.sim <- lapply(lungSim.list, 
-  train_rf, rffit.original=rffit.lung)
+# rffit.sim <- lapply(lungSim.list, 
+#   train_rf, rffit.original=rffit.lung)
 
 # saveRDS(rffit.sim, file.path(analysis.path, "rffit_sim_data_norm.rds"))
-# rffit.sim <- readRDS(file.path(analysis.path, "rffit_sim_data_norm.rds"))
+rffit.sim <- readRDS(file.path(analysis.path, "rffit_sim_data_norm.rds"))
 
 # Calculate confusion matrix
 lungSim.cm <- lapply(as.list(1:length(lungSim.list)), function(i){
@@ -259,7 +260,7 @@ for (sce in lungSim.list){
 }
 ```
 
-### Image 2 {.tabset}
+### Image 10 {.tabset}
 
 ```{r celltype_images2, fig.height=20, fig.width=8, fig.align="center", results="asis", fig.keep=c(5, 10, 15)}
 # Specify image index of interest
@@ -276,7 +277,7 @@ for (sce in lungSim.list){
 }
 ```
 
-### Image 3 {.tabset}
+### Image 100 {.tabset}
 
 ```{r celltype_images3, fig.height=20, fig.width=8, fig.align="center", results="asis", fig.keep=c(5, 10, 15)}
 # Specify image index of interest
@@ -293,11 +294,11 @@ for (sce in lungSim.list){
 }
 ```
 
-## Cell Phenotyping per ROI *(k=1, arcsinh)* {.tabset}
+<!-- ## Cell Phenotyping per ROI *(k=1, arcsinh)* {.tabset}
 
 Next, we compare these results to the 'ground truth' celltypes (celltypes predicted from
 ground truth data) by calculating the precision, sensitivity and specififity but this
-time per ROI.
+time per ROI.-->
 
 ```{r rffit_per_ROI, fig.height=8, fig.width=8, fig.align="center", results="asis", include=FALSE, eval=FALSE}
 # Plot prediction results/confusion matrix as shown in IMCDataAnalysis script

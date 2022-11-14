@@ -6,7 +6,7 @@ output:
     toc_float: true
     code_folding: "hide"
     pandoc_args: [ 
-      "--output=analysis_U_stability_Tonsil_th152.html" 
+      "--output=analysis_U_stability_Immucan_lung.html" 
     ]
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
@@ -34,8 +34,8 @@ library(cytomapper)
 
 ```{r specify_paths}
 # Set general input paths to all analysis files
-analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152"
-# analysis.path <- "/mnt/bb_dqbm_volume/analysis/Immucan_lung"
+# analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152"
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Immucan_lung"
 
 u_stability.path <- file.path(analysis.path, "tests/test_U_stability")
 u_stability_par.path <- file.path(analysis.path, "tests/test_U_stability_par")
@@ -194,7 +194,7 @@ print(u_stability_k.mantelBoxplot)
 ### maxItr (number of iterations to compute U) *(k=3, d=80, paper_norm)*
 
 ```{r read_u_stability_maxItr}
-# Define path for results of different k's (sparsity)
+# Define path for results of different max iterations when computing dictionary U
 u_stability_maxItr.path <- file.path(u_stability_par.path, "maxItr")
 
 # Read in segmentation SCE results
@@ -235,7 +235,7 @@ print(u_stability_maxItr.mantelBoxplot)
 ### Transformation of X (before SMAF training) *(k=1, d=80, iter=10)*
 
 ```{r read_u_stability_xform}
-# Define path for results of different k's (sparsity)
+# Define path for results of different transformations before training
 u_stability_xform.path <- file.path(u_stability_par.path, "transformation")
 
 # Read in segmentation SCE results
@@ -249,7 +249,7 @@ u_stability_xform.modules <- lapply(u_stability_modules_xform.files, read_U, typ
 #### Heatmap of U for different transformations {.tabset}
 
 ```{r plot_u_stability_xform, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
-# Plot U for different k's
+# Plot U for different transformations
 u_stability_xform.cor <- plot_U(u_stability_xform.modules, "transformation", "rep")
 ```
 
@@ -278,7 +278,7 @@ print(u_stability_xform.mantelBoxplot)
 ### Dictionary size of U (number of modules in U) *(k=1, iter=10, paper_norm)*
 
 ```{r read_u_stability_dict}
-# Define path for results of different k's (sparsity)
+# Define path for results of different dictionary sizes
 u_stability_dict.path <- file.path(u_stability_par.path, "dictSize")
 
 # Read in segmentation SCE results

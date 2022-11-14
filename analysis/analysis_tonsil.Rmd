@@ -35,7 +35,8 @@ source("../analysis/helpers/helper_fnc.R")
 
 ```{r read_inputs}
 ## Read results
-# Read in all results for tonsil and lung comparison into one dataframe
+# Read in all results for tonsil data (spillover and non-spillover corrected) 
+# into one dataframe
 results.files <- list.files(analysis.path, 'simulation_results.txt',
                             full.names=TRUE, recursive=TRUE)
 results.files <- results.files[grepl("sm_", results.files) & grepl("no_norm", results.files)]
@@ -68,7 +69,7 @@ masks <- loadImages(masks.path, as.is = TRUE)
 mcols(masks) <- DataFrame(sample_id=names(masks))
 ```
 
-## Barplot of Results *(k=1, argsinh)*
+## Barplot of Results 
 
 For each different measurement used to test training results, a barplot is shown 
 comparing spillover corrected and uncorrected results for Tonsil th152 data.
@@ -87,7 +88,7 @@ results.barplot <- plot_cisi_results(data_temp, "measure", "value", "corrected")
 print(results.barplot)
 ```
 
-## Scatterplot of Neighbouring channels *(k=1, argsinh)* {.tabset}
+## Scatterplot of Neighbouring channels *(k=1, arcsinh)* {.tabset}
 
 The following plots show some neighboring channels for Tonsil th152 data trained
 on spillover corrected and non-spillover corrected data.
@@ -102,8 +103,8 @@ poi <- list(c("CD8a", "Tim-3"), c("CD68", "CD20"))
 for (p_vec in poi) {
   cat("###", p_vec[1], "vs", p_vec[2], "\n")
   
-  # Plot asinh transformed counts of proteins of interest of decomposed data trained
-  # with and without normalization
+  # Plot arcsinh transformed counts of proteins of interest of decomposed data trained
+  # with and without spillover correction
   X.spillover <- plot_grid(plot_exprs(X.list[1:2], "", p_vec[1], p_vec[2]),
                            plot_exprs(X.list[3:4], "", p_vec[1], p_vec[2]),
                            plot_exprs(X.list[5:6], "", p_vec[1], p_vec[2]),
@@ -121,7 +122,7 @@ for (p_vec in poi) {
 ### Correlations per Protein (arcsinh) {.tabset}
 
 Correlation between ground truth and decomposed results per protein for  
-asinh transformed counts.
+arcsinh transformed counts.
 
 ```{r results_per_protein_cor, fig.height=6, fig.width=5, fig.align="center", results="asis"}
 aoi <- "exprs"
@@ -142,7 +143,7 @@ X.cor <- lapply(X.list, function(sce){
   mutate(correlation=cor(ground_truth, simulated))
 
 
-# Plot correlations for k=1 for each test/training dataset combination
+# Plot correlations for spillover and non-spillover corrected data
 for (i in unique(X.cor$sm)) {
   cat("####", i, "\n")
   
@@ -154,14 +155,14 @@ for (i in unique(X.cor$sm)) {
 }
 ```
 
-### Protein distributions coloured by correlation results *(arcsinh)* {.tabset}
+### Protein distributions coloured by correlation results *(k=1, argsinh)* {.tabset}
 
 For a manual inspection of different protein distribution characteristics, we
 plot the boxplots of the original protein expressions coloured by correlation
 results. These show: Interquartile range (IQR), 1st and 3rd quantiles, median,
 mean, max, min and outliers.
-"
-```{r results_per_protein_dist, fig.height=12, fig.width=20, fig.align="center",         results="asis"}
+
+```{r results_per_protein_dist, fig.height=12, fig.width=20, fig.align="center", results="asis"}
 # Plot boxplots of protein expr per dataset coloured by protein correlation results
 # (performance)
 

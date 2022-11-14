@@ -41,6 +41,11 @@ First, we read in the results from the CISI analysis using a pre-defined A and
 the best parameters from the parameter sweep. For this we have data from simulated 
 composite data from training, from the actual experiment and the decomposed data.
 
+The channels from the experiment were decomposed using the dictionary U with the 
+best predicted performance (from the run using 'min strategy' for A) for a 8 to 6 
+compression. This dictionary came from the run with the parameters: k=2, d=10 and 
+m=6.
+
 ```{r read_inputs}
 ## Read results
 # Read in all results into one dataframe
@@ -112,11 +117,11 @@ mcols(masks) <- DataFrame(sample_id=names(masks))
 The barplot shows the different measurements used to evaluate decomposition of CISI
 with the specified U, A and parameters.
 
-The channels from the experiment were decomposed using the dictionary U with the 
-best predicted performance (from the run using 'min strategy' for A) for a 8 to 6 
-compression. This dictionary came from the run with the parameters: k=2, d=10 and 
-m=6.
-
+There are three different results: training (decomposed simulated data from training 
+compared to ground truth training data), experiment-simulation (decomposed simulated 
+data from experiment data compared to ground truth experiment data) and experiment 
+(decomposed real composite measurements from experiment compared to ground truth 
+experiment data).
 
 ```{r plot_results, results="asis", fig.height=8, fig.width=18, fig.align="center"}
 # For each different measurement of training results, plot barplot 
@@ -172,7 +177,7 @@ rm(X_simulation.list)
 Here we show the decomposed measurements vs the ground truth measurements for 
 all images. 
 
-```{r plot_images_decomposed, fig.asp=0.5, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18, 21, 24), results="asis"}
+```{r plot_images_decomposed, fig.asp=0.25, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18, 21, 24), results="asis"}
 # Subset list to decomposed and ground truth expressions
 X_decomposition.list <- keep(X_results.list, function(x){
   metadata(x)$comparison=="experiment"})
