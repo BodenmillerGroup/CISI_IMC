@@ -42,7 +42,7 @@ nav:
             - Immune Markers: results/reports/snakemake_report_immune_channels.html
             - Immune Markers (min strategy for A): results/reports/snakemake_report_immune_channels_max_worst_protein.html
     - Experiments:
-        - Proof-of-Concept (abmix, 8 to 6 channels): results/reports/analysis_tonsil_POC_abmix.html
+        - Proof-of-Concept (abmix, 8 to 6 channels): results/reports/analysis_tonsil_POC_abmix_2.html
 
 markdown_extensions:
     - footnotes

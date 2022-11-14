@@ -5,6 +5,9 @@ output:
     toc: true
     toc_float: true
     code_folding: "hide"
+    pandoc_args: [ 
+      "--output=analysis_tonsil_POC_abmix_2.html" 
+    ]
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
@@ -27,7 +30,7 @@ source("../analysis/helpers/helper_fnc.R")
 ```{r specify_paths}
 ## TODO: Change paths
 # Set general input paths to all analysis files
-analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th179"
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th179_2"
 
 # Set path to masks
 masks.path <- "/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix2_179/steinbock/masks_deepcell"

@@ -19,9 +19,9 @@
 This projects adapts the code from the paper [“Compressed sensing for highly efficient imaging transcriptomics.”](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8355028/)
 published in 2021 in Nature biotechnology by Cleary, Brian et al. to IMC data.
 <br />
-The core idea of the paper is that we can use compressed sensing to recover individual
+The core idea of the paper is to use compressed sensing to recover individual
 protein expression levels from composite measurements (e.g. using the same channel/metal-isotop
-to measure multiple proteins). The advantage is that we need less channels overall
+to measure multiple proteins). The advantage of this is that less channels are needed 
 to measure the same amount of proteins as in a normal IMC run.
 <br />
 For more information on the steps of CISI for IMC and how it works, go to
@@ -57,8 +57,8 @@ To get a local copy up and running follow these simple example steps.
 
 ### Prerequisites
 
-To download the environment with all the necessary python packages to run the CISI
-code, as well as to run snakemake for the parameter sweep you need to download conda.
+To install the environment with all the necessary python packages to run the CISI
+code and the snakemake parameter sweep you need to download conda.
 
 * [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html)
 
@@ -69,41 +69,32 @@ code, as well as to run snakemake for the parameter sweep you need to download c
 ### Installation
 
 1. Clone the neccesary folders in the repo.
-
-        ```
-        git clone --depth 1 --no-checkout https://github.com/BodenmillerGroup/CISI_IMC.git
-        cd CISI_IMC
-        git sparse-checkout set code analysis/parameter_sweep
-        git checkout
-        ```
-
-    :exclamation: **Note**
-    If only interested in the CISI for IMC code and not the parameter sweep,
-    `analysis/parameter_sweep` can be removed from `git sparse-checkout`
+   ```sh
+   git clone --depth 1 --no-checkout https://github.com/BodenmillerGroup/CISI_IMC.git
+   cd CISI_IMC
+   git sparse-checkout set code analysis/parameter_sweep
+   git checkout
+   ```
 
 2. For downloading all the packages into a conda environment, follow instructions
-   'a.'. If the CISI code is only accessed via the parameter sweep, there is the
-   option of only installing a conda environment containing snakemake and then
-   running the Snakefile for the parameter sweep using the `--use-conda` parameter.
-   For this, follow option 'b.'
+   'i.'. If the CISI code is only accessed via the parameter sweep, there is the
+   option of installing a conda environment only containing snakemake and then
+   running the Snakefile for the parameter sweep using the --use-conda parameter.
+   For this, follow option 'ii.'
 
-    1. Install cisi_imc_env conda environment.
-
-            ```
-            conda env create -f cisi_imc_env.yml
-            conda activate cisi_imc_env
-            ```
-
-    2. Install conda environment containing snakemake.
-
-            ```
-            conda create -n snakemake_env -c bioconda snakemake=7.17.1
-            conda activate snakemake_env
-            ```
-
-        :warning: **Warning**
-        When running the paramter-sweep, add parameters `--use-conda --conda-frontend conda`
-        to the snakemake call.
+    1. Create cisi_imc_env conda environment.
+       ```sh
+       conda env create -f analysis/parameter_sweep/envs/cisi_imc_env.yml
+       conda activate cisi_imc_env
+       ```
+    2. Create conda environment only containing snakemake.
+       ```sh
+       conda create -n snakemake_env -c bioconda snakemake=7.17.1
+       conda activate snakemake_env
+       ```
+       **Warning**
+       When running the parameter-sweep, add parameters `--use-conda --conda-frontend conda`
+       to the snakemake call.
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -115,7 +106,7 @@ code, as well as to run snakemake for the parameter sweep you need to download c
 
 ### CISI for IMC
 
-As an input, CISI expects an anndata object, containing an expression matrix with
+As an input, CISI expects an anndata object containing an expression matrix with
 dimensions: cells x proteins. For this steinbock can be used to segment the IMC data,
 and the results can then be read into an R SingleCellExperiment [please refer to IMCDataAnalysis](https://bodenmillergroup.github.io/IMCDataAnalysis/).
 To convert the subsequent SingleCellExperiment to an anndata object the function
@@ -130,7 +121,7 @@ The main function is the *train_U_and_A()* function, which takes the anndata obj
 and computes a dictionary U, a experiment design matrix A/Phi and test statistics
 from simulated data using part of the training data kept solely for testing purposes.
 
-```
+```sh
 (training_res, training_res_no_noise,
 U_best, Phi_best, X_test) = train_U_and_A(anndata_object,   
                                           outpath,
@@ -148,7 +139,7 @@ U_best, Phi_best, X_test) = train_U_and_A(anndata_object,
 ```
 
 * **X_input:** anndata object containing numpy array X (cells x proteins)
-         Will be divided into: training, validate and test set
+               Will be divided into: training, validate and test set
 * **outpath:** Specify where output files should be saved to (used in all fnc)
 * **split_by:** either split by 'roi' or 'percentage' (default: 'roi')
 * **k_cv:** number k cross-validations (default: 4)
@@ -186,7 +177,7 @@ This function will create in the specified output path several files. It creates
 two files with result statistics from simulated data once adding noise and once
 without any noise (simulation_results.txt, no_noise_simulation_results.txt), the decomposed anndata object from simulated data from either
 noisy or without noise simulation as specified by the user (X_simulated_0.h5ad),
-the ground truth anndata object subseted to the test set, e.g. the same cells as in the decomposed simulated anndata object (X_test.h5ad ), the computed dictionary U (gene_modules.csv),
+the ground truth anndata object subsetted to the test set, e.g. the same cells as in the decomposed simulated anndata object (X_test.h5ad ), the computed dictionary U (gene_modules.csv),
 the experiment design matrix A (version_*.txt), and two other files, which could be used to correct decomposed expression values (conditional_probability.csv, correlations.csv
 has not been tested yet).
 
@@ -205,7 +196,7 @@ X_decompressed = decompress(y, U, phi)
 * **U:** dictionary from CISI training
 * **phi:** experiment design matrix A/Phi from CISI training
 
-:warning: **Warning**
+**Warning**
 Be sure to have proteins/channels in y, U and phi in the same order, otherwise
 the matrix multiplications in CISI will lead to wrong results.
 
@@ -230,14 +221,14 @@ the parameters accordingly.
 
 The parameter sweep can then be deployed from the parameter_sweep folder using:
 
-```
+```sh
 snakemake --cores <NUMBER_OF_CORES> --configfile <YOUR_CONFIG>.json --keep-going
 ```
 
 Or if using a conda environment only containing snakemake with the flags --use-conda
 --conda-frontend conda.
 
-```
+```sh
 snakemake --cores <NUMBER_OF_CORES> --use-conda --conda-frontend conda --configfile <YOUR_CONFIG>.json --keep-going
 ```
 
@@ -246,7 +237,7 @@ folder for each parameter combination, a summary .html report in the specified r
 path as well as an automatic snakemake report containing additional snakemake statistics
 and configurations in the same folder.
 
-:exclamation: **Note**
+**Note**
 For more information on available flags to run snakemake, refer to
 [command line interface snakemake](https://snakemake.readthedocs.io/en/stable/executing/cli.html).
 

@@ -4,7 +4,7 @@
     "masks_path": "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell",
     "out_path": "/mnt/bb_dqbm_volume/analysis/Tonsil_th152/training/subset/proof_of_concept_max_worst_protein_8_to_4",
     "reports_path": "/home/ubuntu/git/CISI_IMC/results/reports",
-    "proteins_of_interest": ["SMA", "CD4", "CD20", "CD3", "CD11c", "panCK", "Ki-67", "CD8a"],
+    "proteins_of_interest": ["SMA", "CD68", "CD20", "CD3", "CD11c", "CD45RO", "Ki-67", "CD8a"],
     "parameter_sweep": {
         "k": [1, 2, 3, 4],
         "d": [5, 10, 20, 50, 80],
