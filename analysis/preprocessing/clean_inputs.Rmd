@@ -5,6 +5,9 @@ output:
     toc: true
     toc_float: true
     code_folding: "hide"
+    pandoc_args: [ 
+      "--output=clean_inputs_tonsil_th179_1.html" 
+    ]
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
@@ -51,13 +54,14 @@ all the results of this preprocessing script.
 ```{r specify_paths}
 # Specify input paths
 # steinbock.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock"
-steinbock.path <- "/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix2_179/steinbock"
+# steinbock.path <- "/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix2_179/steinbock"
+steinbock.path <- "/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix1_179/steinbock"
 images.path <- paste0(steinbock.path, "/img")
 masks.path <- paste0(steinbock.path, "/masks_deepcell")
 sm.path <- "/mnt/bb_dqbm_volume/data/sm.rds"
 
 # Specify output path
-out.path <- "/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix2_179/preprocessed_data"
+out.path <- "/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix1_179/preprocessed_data"
 # Create output directory if id doesn't exist
 if (!dir.exists(out.path)) {dir.create(out.path, recursive=TRUE)}
 
@@ -275,9 +279,9 @@ plotPixels(cur_images,
            mask=masks,
            img_id="sample_id",
            missing_colour="white",
-           colour_by=c("CD20", "panCK", "SMA", "191Ir"),
+           colour_by=c("CD20", "Ki-67", "SMA", "191Ir"),
            colour=list(CD20=c("black", "red"),
-                       panCK=c("black", "green"),
+                       "Ki-67"=c("black", "green"),
                        SMA=c("black", "cyan"),
                        "191Ir"=c("black", "blue")),
            image_title=NULL,

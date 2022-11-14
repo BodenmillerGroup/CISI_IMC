@@ -19,7 +19,8 @@ nav:
     - Home: index.md
     - Preprocessing:
         - Tonsil th152 Preprocessing: results/reports/clean_inputs_tonsil_th152.html
-        - Tonsil th179 Preprocessing: results/reports/clean_inputs_tonsil_th179.html
+        - Tonsil th179 Preprocessing (1): results/reports/clean_inputs_tonsil_th179_1.html
+        - Tonsil th179 Preprocessing (2): results/reports/clean_inputs_tonsil_th179_2.html
     - Stability of Dictionary: 
         - Tonsil th152 Dataset: results/reports/analysis_U_stability_Tonsil_th152.html
         - Immmucan Lung Dataset: results/reports/analysis_U_stability_Immucan_lung.html

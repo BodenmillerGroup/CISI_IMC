@@ -7,7 +7,7 @@ echo "----------------------------------------------------"
 
 # change directory
 # BASEDIR="/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock"
-BASEDIR="/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix2_179/steinbock"
+BASEDIR="/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix1_179/steinbock"
 cd "${BASEDIR}"
 
 # setup steinbock alias
