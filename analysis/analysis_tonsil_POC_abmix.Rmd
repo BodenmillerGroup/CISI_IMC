@@ -20,6 +20,7 @@ knitr::opts_chunk$set(echo=TRUE)
 knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 
 # Load libraries
+library(batchelor)
 ```
 
 ```{r helper_fnc}
@@ -126,7 +127,7 @@ data from experiment data compared to ground truth experiment data) and experime
 (decomposed real composite measurements from experiment compared to ground truth 
 experiment data).
 
-```{r plot_results, results="asis", fig.height=8, fig.width=18, fig.align="center"}
+```{r plot_results, results="asis", fig.asp=0.5, fig.width=18, fig.align="center"}
 # For each different measurement of training results, plot barplot 
 # Melt dataframe for plotting
 data_temp <- results.df %>%
@@ -172,64 +173,6 @@ for (n in names(pois)){
 rm(X_simulation.list)
 ```
 
-## Decomposed vs Ground truth Measurements
-***
-
-### Images {.tabset}
-
-Here we show the decomposed measurements vs the ground truth measurements for 
-all images. 
-
-```{r plot_images_decomposed, fig.asp=0.25, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18, 21, 24), results="asis"}
-# Subset list to decomposed and ground truth expressions
-X_decomposition.list <- keep(X_results.list, function(x){
-  metadata(x)$comparison=="experiment"})
-# Find the names of all protein channels
-pois <- rownames(X_decomposition.list[[1]])
-names(pois) <- rownames(X_decomposition.list[[1]])
-
-
-# Call plot_cells to get individual plots for all rois for decomposed and real
-# measurements
-for (n in names(pois)){
-  cat("####", n, "\n")
-  
-  img <- plot_cells(X_decomposition.list, masks, pois[[n]], layer="exprs", display="all")
-
-  # Plot decomposed vs true results 
-  img <- plot_grid(plotlist=img, ncol=2, 
-                   labels=unlist(lapply(X_decomposition.list, function(sce){metadata(sce)$ground_truth})),
-                   label_size=15, hjust=c(-2, -1.5), 
-                   vjust=1, scale=0.9)
-  print(img)
-  cat("\n\n")
-}
-```
-
-### Correlations per Protein *(arcsinh)*
-
-Correlation between ground truth and decomposed results per protein for  
-arcsinh transformed counts.
-
-```{r results_per_protein_cor, fig.height=6, fig.width=5, fig.align="center"}
-aoi <- "exprs"
-# Calculate correlations between ground truth and decomposed data for each protein
-X.cor <- lapply(X_decomposition.list, function(sce){
-  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
-    mutate(protein=rownames(.)) %>%
-    melt() %>%
-    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
-                  cell=variable)
-}) %>% bind_rows() %>%
-  group_by(protein, cell) %>%
-  summarise_all(na.omit) %>%
-  group_by(protein) %>%
-  summarise(correlation=cor(ground_truth, decomposed))
-
-# Plot correlations per protein
-proteinCorr <- plot_protein_cor(X.cor) + ylim(0, 1)
-print(proteinCorr)
-```
 
 ## Training vs Experiment
 ***
@@ -278,6 +221,261 @@ correlations.plot <- ggscatter(X.cor,
 
 print(correlations.plot)
 ```
+
+
+## Decomposed vs Ground truth Measurements
+***
+
+### Images {.tabset}
+
+Here we show the decomposed measurements vs the ground truth measurements for 
+all images. 
+
+```{r plot_images_decomposed, fig.asp=0.25, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18, 21, 24), results="asis"}
+# Subset list to decomposed and ground truth expressions
+X_decomposition.list <- keep(X_results.list, function(x){
+  metadata(x)$comparison=="experiment"})
+# Find the names of all protein channels
+pois <- rownames(X_decomposition.list[[1]])
+names(pois) <- rownames(X_decomposition.list[[1]])
+
+
+# Call plot_cells to get individual plots for all rois for decomposed and real
+# measurements
+for (n in names(pois)){
+  cat("####", n, "\n")
+  
+  img <- plot_cells(X_decomposition.list, masks, pois[[n]], layer="exprs", display="all")
+
+  # Plot decomposed vs true results 
+  img <- plot_grid(plotlist=img, ncol=2, 
+                   labels=unlist(lapply(X_decomposition.list, function(sce){metadata(sce)$ground_truth})),
+                   label_size=15, hjust=c(-2, -1.5), 
+                   vjust=1, scale=0.9)
+  print(img)
+  cat("\n\n")
+}
+```
+
+### Correlations per Protein *(arcsinh)*
+
+Correlation between ground truth and decomposed results per protein for  
+arcsinh transformed counts.
+
+```{r results_per_protein_cor, fig.asp=1.2, fig.width=5, fig.align="center"}
+aoi <- "exprs"
+# Calculate correlations between ground truth and decomposed data for each protein
+X.cor <- lapply(X_decomposition.list, function(sce){
+  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  cell=variable)
+}) %>% bind_rows() %>%
+  group_by(protein, cell) %>%
+  summarise_all(na.omit) %>%
+  group_by(protein) %>%
+  summarise(correlation=cor(ground_truth, decomposed))
+
+# Plot correlations per protein
+proteinCorr <- plot_protein_cor(X.cor) + ylim(0, 1)
+print(proteinCorr)
+```
+
+### Clustering
+
+In the next part, we have a look at different clustering results. For this, we first 
+cluster the ground truth and decomposed results together and show the results in a 
+UMAP. We the repeat this for the argsinh and min-max transformed counts. Next, we 
+look at the results if we use batch correction on the decomposed results. Lastly, 
+we use Rhenogrpaph individually on the decomposed and ground truth data and compare 
+the results.
+
+#### UMAP of Combined Clustering of Ground Truth and Decomposed Data {.tabset}
+
+```{r comb_clustering}
+# Rename cells in experiment list before merging into single SCE object
+X_decomposition_renamed.list <- lapply(X_decomposition.list, function(sce.temp){
+  colnames(sce.temp) <- paste(colnames(sce.temp),
+                              metadata(sce.temp)$ground_truth, sep="\n")
+  colData(sce.temp)$ground_truth <- rep(metadata(sce.temp)$ground_truth, 
+                                        nrow(colData(sce.temp)))
+  sce.temp
+})
+# Add decomposed and ground truth data into one SCE
+X.combined <- do.call("cbind", X_decomposition_renamed.list)
+
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(X_decomposition_renamed.list)
+
+# Cluster combined SCE using rphenograph with default parameters
+mat.combined <- t(assay(X.combined, "exprs"))
+out.combined <- Rphenograph(mat.combined, k=30)
+clusters.combined <- factor(membership(out.combined[[2]]))
+
+# Add clustering to SCE
+X.combined$clusters <- clusters
+
+# Add reduced dimensions
+set.seed(220225)
+X.combined <- lapply(X.combined, function(sce.temp){
+  # Add arcsinh and min-max transformed counts
+  assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
+  counts.t <- as.data.frame(t(counts(sce.temp)))
+  assay(sce.temp, "min-max") <- t(predict(preProcess(counts.t, method=c("range")), 
+                                          counts.t))
+  
+  # Run UMAP on raw counts, arsinh and min-max transformed counts
+  sce <- runUMAP(sce, exprs_values="counts", name="UMAP_counts") 
+  sce <- runUMAP(sce, exprs_values="exprs", name="UMAP_exprs") 
+  sce <- runUMAP(sce, exprs_values="min-max", name="UMAP_min-max")
+  sce
+})
+```
+
+```{r plot_comb_clustering, fig.asp=0.8, fig.width=10, fig.align="center", results="asis"}
+# Plot UMAP's
+for (n in names(reducedDim(X.combined))){
+  cat("#####", n, "\n")
+  
+  umap.combined <- dittoDimPlot(X.combined,
+                                var="ground_truth",
+                                reduction.use=n,
+                                size=0.2,
+                                color.panel=pal_npg("nrc")("2")) +
+    theme_cowplot() +
+    theme(legend.position="bottom") +
+    guides(color=guide_legend(override.aes=list(size=axis_title.fontsize)))
+  
+  print(umap.combined)
+  cat("\n\n")
+}
+```
+
+#### Batch Correction of Decomposed Data using Ground Truth
+
+```{r batch_correction}
+set.seed(220228)
+out.mnn <- fastMNN(X.combined, batch=X.combined$ground_truth,
+               auto.merge=TRUE,
+               assay.type="exprs",
+               k=30)
+
+# Transfer the correction results to the main spe object
+reducedDim(X.combined, "fastMNN") <- reducedDim(out.mnn, "corrected")
+
+# Get 30 nearest neighbours and count for how many cells in ground truth the 
+# decomposed cell is in there
+nn_30 <- reducedDim(out.mnn, "merge.info")$pairs
+
+```
+
+`r fds`/`r fdsaf` cells in the ground truth data have their corresponding decomposed 
+cell in their 30 nearest neighbours when using fastMNN() for batch correction.
+
+```{r plot_batch_correction, fig.asp=0.8, fig.width=10, fig.align="center"}
+# Add reduced fastMNN corrected dimensions
+set.seed(220225)
+X.combined <- runUMAP(X.combined, dimred="fastMNN", name="UMAP_mnnCorrected")
+
+# Plot fastMNN corrected UMAP
+umap.combined <- dittoDimPlot(X.combined,
+                              var="ground_truth",
+                              reduction.use="UMAP_mnnCorrected",
+                              size=0.2,
+                              color.panel=pal_npg("nrc")("2")) +
+  theme_cowplot() +
+  theme(legend.position="bottom") +
+  guides(color=guide_legend(override.aes=list(size=axis_title.fontsize)))
+
+print(umap.combined)
+```
+
+#### Individual Clustering of Ground Truth and Decomposed Data {.tabset}
+
+```{r individual_clustering, fig.asp=1, fig.width=15, fig.align="center", results="asis"}
+# Cluster ground truth and decomposed SCE using rphenograph with default parameters 
+# and add to SCE objects
+X_decomposition.list <- lapply(X_decomposition.list, function(sce.temp){
+  mat <- t(assay(sce.temp, "exprs"))
+  out <- Rphenograph(mat, k=30)
+  sce.temp$clusters <- factor(membership(out[[2]]))
+  
+  sce.temp
+})
+# Put all clusters for ground truth and decomposed data for each cell into one 
+# data frame for easier handling later on
+all.clusters <- lapply(X_decomposition.list, function(sce.temp){
+  clusters <- sce.temp$clusters %>%
+    as.data.frame() %>%
+    dplyr::rename(!!as.symbol(metadata(sce.temp)$ground_truth):=".") %>%
+    mutate(cell=colData(sce)$cell_id) 
+  
+  clusters
+}) %>% bind_rows() %>%
+  group_by(cell) %>%
+  summarise_all(na.omit) %>%
+  ungroup()
+
+# Plot expression heatmaps for ground truth and decomposed data
+for (sce in X_decomposition.list){
+  cat("#####", metadata(sce)$ground_truth, "\n")
+  
+  cluster.expr <- dittoHeatmap(sce, 
+                               assay="exprs", 
+                               scale="none",
+                               heatmap.colors=magma(100), 
+                               annot.by=c("clusters"))
+  
+  print(cluster.expr)
+  cat("\n\n")
+}
+```
+
+```{r individual_clustering, fig.asp=1, fig.width=15, fig.align="center", results="asis"}
+# Annotate clusters with celltypes
+celltypes.gt <- data.frame(ground_truth=unique(all.clusters$ground_truth))
+celltypes.gt$celltypes_gt <- c()
+celltypes.dec <- data.frame(decomposed=unique(all.clusters$decomposed))
+celltypes.dec$celltypes_decomposed <- c()
+
+# Add celltypes to clusters dataframe
+all.clusters <- all.clusters %>%
+  merge(celltypes.gt) %>%
+  merge(celltypes_decomposed)
+
+# Add celltypes to SCE objects
+X_decomposition.list <- lapply(X_decomposition.list, function(sce.temp){
+  if (metadata(sce.temp)$ground_truth=="ground_truth"){
+    colData(sce.temp) <- colData(sce.temp) %>%
+      merge(celltypes.gt, by.x="clusters", by.y="ground_truth")
+  } else {
+    colData(sce.temp) <- colData(sce.temp) %>%
+      merge(celltypes.dec, by.x="clusters", by.y="decomposed")
+  }
+})
+
+# Summarize how many ground truth cells of a certain celltype have the same celltype 
+# in the decomposed data (divided by the cluster size)
+clusters.overlap <- table(all.clusters %>% 
+                        pull(celltypes_decomposed),
+                      all.clusters %>% 
+                        pull(celltypes_gt)) %>%
+  scale(center=FALSE, scale=colSums(.))
+
+# Plot how many cells have a specified celltype in ground truth data and the same 
+# celltype in the decomposed data divided by the cluster size of the ground truth data
+cluster_overlap.plot <- Heatmap(clusters.overlap,
+                           show_row_dend=FALSE,
+                           show_column_dend=FALSE,
+                           col=rev(magma(100)), # colorRamp2(c(0, 0.1, 5), rev(magma(3))), 
+                           row_names_gp=gpar(fontsize=axis_title.fontsize),
+                           column_names_gp=gpar(fontsize=axis_title.fontsize),
+                           column_title_gp=gpar(fontsize=title.fontsize),
+                           rect_gp=gpar(col="white", lwd=1)) 
+plot(cluster_overlap.plot)
+```
+
 
 ## Matrix designs
 ***
