@@ -33,7 +33,7 @@ def decompress(y, U, phi, sparsity=0.1, method='lasso', numThreads=20,
                worstFit=1., mink=0, nonneg=True, num_blocks=20,
                correct_comeasured=False, train_corr=None):
     # Call fnc sparse_decode to compute W
-    w = sparse_decode_blocks(y, phi.dot(U).astype(np.float32), sparsity, numThreads, method,
+    w = sparse_decode_blocks(y, phi.dot(U), sparsity, numThreads, method,
                              worstFit, mink, nonneg, num_blocks)
     # Calculate estimated X
     x2 = U.dot(w)
