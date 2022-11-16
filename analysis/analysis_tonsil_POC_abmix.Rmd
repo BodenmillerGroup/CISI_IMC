@@ -356,8 +356,9 @@ for (n in names(reducedDim(X.combined))){
 
 ```{r batch_correction}
 set.seed(220228)
-out.mnn <- fastMNN(X.combined, batch=X.combined$ground_truth,
-               auto.merge=TRUE,
+out.mnn <- fastMNN(X.combined, batch=factor(X.combined$ground_truth, 
+                                            levels=c("ground_truth", "decomposed")),
+               # auto.merge=TRUE,
                assay.type="exprs",
                k=30)
 
