@@ -21,6 +21,9 @@ knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 
 # Load libraries
 library(batchelor)
+library(Rphenograph)
+library(igraph)
+library(dittoSeq)
 ```
 
 ```{r helper_fnc}
@@ -47,8 +50,8 @@ composite data from training, from the actual experiment and the decomposed data
 
 The channels from the experiment were decomposed using the dictionary U with the 
 best predicted performance (from the run using 'min strategy' for A) for a 8 to 6 
-compression. This dictionary came from the run with the parameters: k=2, d=10 and 
-m=6.
+compression. This dictionary came from the run with the parameters: k=4, d=10 and 
+m=4 and contains 17 module.
 
 ```{r read_inputs}
 ## Read results
@@ -57,7 +60,8 @@ results.files <- list.files(analysis.path, 'simulation_results.txt',
                             full.names=TRUE, recursive=TRUE)
 results.df <- lapply(results.files, read_results, type="res", voi="comparison") %>% 
   bind_rows() %>%
-  dplyr::select(-c("dataset", "training", "datasize"))
+  dplyr::select(-c("dataset", "training", "datasize")) %>%
+  mutate(comparison=ifelse(comparison=="best-A", "experiment-simulation_best-A", comparison))
 
 
 ## Read X_test, X_simulated and X_decomposed 
@@ -87,7 +91,7 @@ X_simulation.list <- lapply(1:length(X_simulation.list), function(i){
   sce.temp <- sce.temp[grepl("CC\\d_", rownames(sce.temp)), ]
   metadata(sce.temp) <- within(metadata(sce.temp), rm(dataset, training))
   metadata(sce.temp)$ground_truth <- ifelse(grepl("simulated", X_simulation.files[i]),
-                                            "simulated", "ground_truth")
+                                            "simulated", "real_composite")
   assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
   
   sce.temp
@@ -101,10 +105,15 @@ u.files <- u.files[!grepl("min", u.files)]
 u <- read_single_U(u.files)
 
 
-## Read A
+## Read A's
 a.files <- list.files(analysis.path, "version_*",
                       full.names=TRUE, recursive=TRUE)
-a <- read_single_A(a.files) 
+a <- lapply(a.files, function(a.file) {
+  a.temp <- read_single_A(a.file) %>%
+    mutate(type=ifelse(grepl("best", a.file), "best", "fixed"))
+  
+  a.temp
+}) %>% bind_rows()
 
 
 # Read in masks 
@@ -118,12 +127,15 @@ mcols(masks) <- DataFrame(sample_id=names(masks))
 
 ### Barplot of Results 
 
-The barplot shows the different measurements used to evaluate decomposition of CISI
-with the specified U, A and parameters.
+The barplot shows the different measurements used to evaluate decomposition of CISI.
 
-There are three different results: training (decomposed simulated data from training 
-compared to ground truth training data), experiment-simulation (decomposed simulated 
-data from experiment data compared to ground truth experiment data) and experiment 
+There are five different results: training (decomposed simulated data from training 
+compared to ground truth training data using fixed A), training-original (decomposed 
+simulated data from training compared to ground truth training data using the best A 
+from the parameter sweep), experiment-simulation (decomposed simulated 
+data from experiment data compared to ground truth experiment data using fixed A), 
+experiment-simulation-best-A (decomposed simulated data from experiment data compared 
+to ground truth experiment data using best A from the parameter sweep) and experiment 
 (decomposed real composite measurements from experiment compared to ground truth 
 experiment data).
 
@@ -139,94 +151,11 @@ results.barplot <- plot_cisi_results(data_temp, "measure", "value", "comparison"
 print(results.barplot)
 ```
 
-## Simulated vs Real Composite Measurements
-***
-
-### Images {.tabset}
-
-Here we show the composite measurements vs the simulated composite measurements for 
-all images. 
-
-```{r plot_images_composite, fig.asp=0.25, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18), results="asis"}
-# Find the names of all composite channels
-pois <- rownames(X_simulation.list[[1]])
-names(pois) <- rownames(X_simulation.list[[1]])
-
-
-# Call plot_cells to get individual plots for all rois for simulated and real
-# composite measurements
-for (n in names(pois)){
-  cat("####", n, "\n")
-  
-  img <- plot_cells(X_simulation.list, masks, pois[[n]], layer="exprs", display="all")
-  
-  # Plot simulated vs true composite measurements  
-  img <- plot_grid(plotlist=img, ncol=2, 
-                   labels=unlist(lapply(X_simulation.list, function(sce){metadata(sce)$ground_truth})),
-                   label_size=15, hjust=c(-2, -1.5), 
-                   vjust=1, scale=0.9)
-  print(img)
-  cat("\n\n")
-}
-
-# Delete objects no longer needed (since there are a lot of big objects in this RMD)
-rm(X_simulation.list)
-```
-
-
-## Training vs Experiment
-***
-
-### Scatterplot of Correlations per Protein *(arcsinh)*
-
-Scatterplot of correlations between ground truth and simulated or decomposed results 
-per protein for arcsinh transformed counts .
-
-```{r results_training_vs_experiment, fig.asp=1, fig.width=4, fig.align="center"}
-aoi <- "exprs"
-
-# Calculate correlations between ground truth and simulated data for each protein
-X.cor <- X.cor %>% 
-  dplyr::rename(correlation_decomposition=correlation) %>%
-  merge(lapply(keep(X_results.list, function(x){
-    metadata(x)$comparison=="training"}), 
-    function(sce){
-      counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
-        mutate(protein=rownames(.)) %>%
-        melt() %>%
-        dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
-                      cell=variable) 
-      
-    }) %>% bind_rows() %>%
-      group_by(protein, cell) %>%
-      summarise_all(na.omit) %>%
-      group_by(protein) %>%
-      summarise(correlation_training=cor(ground_truth, simulated)))
-
-
-# Plot correlations for each protein
-correlations.plot <- ggscatter(X.cor,
-                               x="correlation_training", 
-                               y="correlation_decomposition",
-                               label="protein",
-                               label.rectangle=TRUE,
-                               color=pal_npg("nrc")("1"),
-                               add.params=list(color=pal_npg("nrc")("4")[4],
-                                               size=2)) +
-  theme_cowplot(title.fontsize) +
-  geom_abline(slope=1, linetype="dashed") +
-  stat_cor(size=2) +
-  ylim(0, 1) +
-  xlim(0, 1)
-
-print(correlations.plot)
-```
-
 
 ## Decomposed vs Ground truth Measurements
 ***
 
-### Images {.tabset}
+### Images *(arcsinh)* {.tabset}
 
 Here we show the decomposed measurements vs the ground truth measurements for 
 all images. 
@@ -280,8 +209,132 @@ X.cor <- lapply(X_decomposition.list, function(sce){
 # Plot correlations per protein
 proteinCorr <- plot_protein_cor(X.cor) + ylim(0, 1)
 print(proteinCorr)
+
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(X_decomposition.list)
 ```
 
+
+## Simulated vs Real Measurements
+***
+
+### Images of Simulated vs Real Composite Measurements *(arcsinh)* {.tabset}
+
+Here we show the composite measurements vs the simulated composite measurements for 
+all images. 
+
+```{r plot_images_composite, fig.asp=0.25, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18), results="asis"}
+# Find the names of all composite channels
+pois <- rownames(X_simulation.list[[1]])
+names(pois) <- rownames(X_simulation.list[[1]])
+
+
+# Call plot_cells to get individual plots for all rois for simulated and real
+# composite measurements
+for (n in names(pois)){
+  cat("####", n, "\n")
+  
+  img <- plot_cells(X_simulation.list, masks, pois[[n]], layer="exprs", display="all")
+  
+  # Plot simulated vs true composite measurements  
+  img.grid <- plot_grid(plotlist=img, ncol=2, 
+                   labels=unlist(lapply(X_simulation.list, function(sce){metadata(sce)$ground_truth})),
+                   label_size=15, hjust=c(-2, -1.5), 
+                   vjust=1, scale=0.9)
+  print(img.grid)
+  cat("\n\n")
+}
+
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(X_simulation.list)
+```
+
+### Images of Decomposed Simulated vs Real Decomposed Measurements *(arcsinh)* {.tabset}
+
+Here we show the images of decomposed simulated data from the individual ground truth 
+channels in the actual experiment compared to the actual decomposed data. 
+
+```{r plot_images_simulated_vs_decomposed, fig.asp=0.25, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18, 21, 24), results="asis"}
+# Create new list with SCE objects containing decomposed simulated data and real 
+# decomposed data
+X_sim_decomposition.list <- keep(X_results.list, function(x){
+  (metadata(x)$comparison=="experiment-simulation" & metadata(x)$ground_truth=="simulated") |
+    (metadata(x)$comparison=="experiment" & metadata(x)$ground_truth=="decomposed")})
+
+# Find the names of all channels
+pois <- rownames(X_sim_decomposition.list[[1]])
+names(pois) <- rownames(X_sim_decomposition.list[[1]])
+
+
+# Call plot_cells to get individual plots for all rois for simulated and real
+# composite measurements
+for (n in names(pois)){
+  cat("####", n, "\n")
+  
+  img <- plot_cells(X_sim_decomposition.list, masks, pois[[n]], layer="exprs", display="all")
+  
+  # Plot simulated vs true composite measurements  
+  img.grid <- plot_grid(plotlist=img, ncol=2, 
+                   labels=unlist(lapply(X_sim_decomposition.list, function(sce){metadata(sce)$ground_truth})),
+                   label_size=15, hjust=c(-2, -1.5), 
+                   vjust=1, scale=0.9)
+  print(img.grid)
+  cat("\n\n")
+}
+
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(X_sim_decomposition.list)
+```
+
+### Training vs. Decomposition Correlations per Protein *(arcsinh)*
+
+Scatterplot of correlations between ground truth and simulated or decomposed results 
+per protein for arcsinh transformed counts .
+
+```{r results_training_vs_experiment, fig.asp=1, fig.width=4, fig.align="center"}
+aoi <- "exprs"
+
+# Calculate correlations between ground truth and simulated data for each protein
+X.cor <- X.cor %>% 
+  dplyr::rename(correlation_decomposition=correlation) %>%
+  merge(lapply(keep(X_results.list, function(x){
+    metadata(x)$comparison=="training"}), 
+    function(sce){
+      counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
+        mutate(protein=rownames(.)) %>%
+        melt() %>%
+        dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                      cell=variable) 
+      
+    }) %>% bind_rows() %>%
+      group_by(protein, cell) %>%
+      summarise_all(na.omit) %>%
+      group_by(protein) %>%
+      summarise(correlation_training=cor(ground_truth, simulated)))
+
+
+# Plot correlations for each protein
+correlations.plot <- ggscatter(X.cor,
+                               x="correlation_training", 
+                               y="correlation_decomposition",
+                               label="protein",
+                               label.rectangle=TRUE,
+                               color=pal_npg("nrc")("1"),
+                               add.params=list(color=pal_npg("nrc")("4")[4],
+                                               size=2)) +
+  theme_cowplot(title.fontsize) +
+  geom_abline(slope=1, linetype="dashed") +
+  stat_cor(size=2) +
+  ylim(0, 1) +
+  xlim(0, 1)
+
+print(correlations.plot)
+
+# Delete objects no longer needed (since there are a lot of big objects in this RMD)
+rm(X.cor)
+```
+
+<!--
 ### Clustering
 
 In the next part, we have a look at different clustering results. For this, we first 
@@ -291,15 +344,24 @@ look at the results if we use batch correction on the decomposed results. Lastly
 we use Rhenogrpaph individually on the decomposed and ground truth data and compare 
 the results.
 
-#### UMAP of Combined Clustering of Ground Truth and Decomposed Data {.tabset}
+#### UMAP of Combined Clustering of Ground Truth and Decomposed Data *(arcsinh)* {.tabset}
 
-```{r comb_clustering}
+```{r comb_clustering, eval=FALSE}
 # Rename cells in experiment list before merging into single SCE object
 X_decomposition_renamed.list <- lapply(X_decomposition.list, function(sce.temp){
   colnames(sce.temp) <- paste(colnames(sce.temp),
                               metadata(sce.temp)$ground_truth, sep="\n")
   colData(sce.temp)$ground_truth <- rep(metadata(sce.temp)$ground_truth, 
                                         nrow(colData(sce.temp)))
+  if("log_exprs" %in% names(assays(sce.temp))){
+    assay(sce.temp, "log_exprs") <- NULL
+  }
+  
+  # Add min-max transformed counts
+  counts.t <- as.data.frame(t(counts(sce.temp)))
+  assay(sce.temp, "min-max") <- t(predict(preProcess(counts.t, method=c("range")), 
+                                          counts.t))
+  
   sce.temp
 })
 # Add decomposed and ground truth data into one SCE
@@ -314,28 +376,20 @@ out.combined <- Rphenograph(mat.combined, k=30)
 clusters.combined <- factor(membership(out.combined[[2]]))
 
 # Add clustering to SCE
-X.combined$clusters <- clusters
+X.combined$clusters <- clusters.combined
 
 # Add reduced dimensions
 set.seed(220225)
-X.combined <- lapply(X.combined, function(sce.temp){
-  # Add arcsinh and min-max transformed counts
-  assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
-  counts.t <- as.data.frame(t(counts(sce.temp)))
-  assay(sce.temp, "min-max") <- t(predict(preProcess(counts.t, method=c("range")), 
-                                          counts.t))
-  
-  # Run UMAP on raw counts, arsinh and min-max transformed counts
-  sce <- runUMAP(sce, exprs_values="counts", name="UMAP_counts") 
-  sce <- runUMAP(sce, exprs_values="exprs", name="UMAP_exprs") 
-  sce <- runUMAP(sce, exprs_values="min-max", name="UMAP_min-max")
-  sce
-})
+
+# Run UMAP on raw counts, arsinh and min-max transformed counts
+X.combined <- runUMAP(X.combined, exprs_values="counts", name="UMAP_counts") 
+X.combined <- runUMAP(X.combined, exprs_values="exprs", name="UMAP_exprs") 
+X.combined <- runUMAP(X.combined, exprs_values="min-max", name="UMAP_min-max")
 ```
 
-```{r plot_comb_clustering, fig.asp=0.8, fig.width=10, fig.align="center", results="asis"}
+```{r plot_comb_clustering, fig.asp=0.8, fig.width=10, fig.align="center", results="asis", eval=FALSE}
 # Plot UMAP's
-for (n in names(reducedDim(X.combined))){
+for (n in reducedDimNames(X.combined)){
   cat("#####", n, "\n")
   
   umap.combined <- dittoDimPlot(X.combined,
@@ -352,29 +406,21 @@ for (n in names(reducedDim(X.combined))){
 }
 ```
 
-#### Batch Correction of Decomposed Data using Ground Truth
+#### Batch Correction of Decomposed Data using Ground Truth *(arcsinh)*
 
-```{r batch_correction}
+```{r batch_correction, eval=FALSE}
 set.seed(220228)
 out.mnn <- fastMNN(X.combined, batch=factor(X.combined$ground_truth, 
-                                            levels=c("ground_truth", "decomposed")),
+                                            levels=c("decomposed", "ground_truth")),
                # auto.merge=TRUE,
                assay.type="exprs",
                k=30)
 
 # Transfer the correction results to the main spe object
 reducedDim(X.combined, "fastMNN") <- reducedDim(out.mnn, "corrected")
-
-# Get 30 nearest neighbours and count for how many cells in ground truth the 
-# decomposed cell is in there
-nn_30 <- reducedDim(out.mnn, "merge.info")$pairs
-
 ```
 
-`r fds`/`r fdsaf` cells in the ground truth data have their corresponding decomposed 
-cell in their 30 nearest neighbours when using fastMNN() for batch correction.
-
-```{r plot_batch_correction, fig.asp=0.8, fig.width=10, fig.align="center"}
+```{r plot_batch_correction, fig.asp=0.8, fig.width=10, fig.align="center", eval=FALSE}
 # Add reduced fastMNN corrected dimensions
 set.seed(220225)
 X.combined <- runUMAP(X.combined, dimred="fastMNN", name="UMAP_mnnCorrected")
@@ -392,9 +438,9 @@ umap.combined <- dittoDimPlot(X.combined,
 print(umap.combined)
 ```
 
-#### Individual Clustering of Ground Truth and Decomposed Data {.tabset}
+#### Individual Clustering of Ground Truth and Decomposed Data *(arcsinh)* {.tabset}
 
-```{r individual_clustering, fig.asp=1, fig.width=15, fig.align="center", results="asis"}
+```{r individual_clustering_expr, fig.asp=0.8, fig.width=10, fig.align="center", results="asis", eval=FALSE}
 # Cluster ground truth and decomposed SCE using rphenograph with default parameters 
 # and add to SCE objects
 X_decomposition.list <- lapply(X_decomposition.list, function(sce.temp){
@@ -410,7 +456,7 @@ all.clusters <- lapply(X_decomposition.list, function(sce.temp){
   clusters <- sce.temp$clusters %>%
     as.data.frame() %>%
     dplyr::rename(!!as.symbol(metadata(sce.temp)$ground_truth):=".") %>%
-    mutate(cell=colData(sce)$cell_id) 
+    mutate(cell=colnames(sce.temp)) 
   
   clusters
 }) %>% bind_rows() %>%
@@ -433,7 +479,7 @@ for (sce in X_decomposition.list){
 }
 ```
 
-```{r individual_clustering, fig.asp=1, fig.width=15, fig.align="center", results="asis"}
+```{r individual_clustering, fig.asp=1, fig.width=15, fig.align="center", results="asis", eval=FALSE}
 # Annotate clusters with celltypes
 celltypes.gt <- data.frame(ground_truth=unique(all.clusters$ground_truth))
 celltypes.gt$celltypes_gt <- c()
@@ -476,7 +522,7 @@ cluster_overlap.plot <- Heatmap(clusters.overlap,
                            rect_gp=gpar(col="white", lwd=1)) 
 plot(cluster_overlap.plot)
 ```
-
+-->
 
 ## Matrix designs
 ***
@@ -489,10 +535,18 @@ u.plot <- plot_single_U(u, paste0("U\n(dictionary size: ", length(unique(u$modul
 print(u.plot)
 ```
 
-### A 
+### A's {.tabset}
 
-```{r plot_A, fig.asp=0.6, fig.width=8, fig.align="center"}
-# Plot A 
-a.plot <- plot_single_A(a, "A")
-print(a.plot)
+```{r plot_A, fig.asp=0.6, fig.width=8, fig.align="center", results="asis"}
+# Plot A's
+for (n in unique(a$type)){
+  cat("####", n, "\n")
+  
+  a.plot <- plot_single_A(a %>%
+                            dplyr::filter(type==n) %>%
+                            dplyr::select(-type), "A")
+  print(a.plot)
+  
+  cat("\n\n")
+}
 ```

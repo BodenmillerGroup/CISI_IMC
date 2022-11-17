@@ -37,12 +37,13 @@ nav:
         - Immune Markers (min strategy for A): results/reports/parameter_sweep_evaluation_immune_channels_max_worst_protein.html
         - Snakemake Reports:
             - Proof-of-Concept: results/reports/snakemake_report_POC.html
-            - Proof-of-Concept (min strategy for A): results/reports/snakemake_report_POC_max_worst_protein.html
+            - Proof-of-Concept (8 to 6 channels, min strategy for A): results/reports/snakemake_report_POC_max_worst_protein.html
             - Proof-of-Concept (8 to 4 channels, min strategy for A): results/reports/snakemake_report_POC_8_to_4.html
             - Immune Markers: results/reports/snakemake_report_immune_channels.html
             - Immune Markers (min strategy for A): results/reports/snakemake_report_immune_channels_max_worst_protein.html
     - Experiments:
         - Proof-of-Concept (abmix, 8 to 6 channels): results/reports/analysis_tonsil_POC_abmix_2.html
+        - Proof-of-Concept (abmix, 8 to 4 channels) : results/reports/analysis_tonsil_POC_abmix_1.html
 
 markdown_extensions:
     - footnotes
