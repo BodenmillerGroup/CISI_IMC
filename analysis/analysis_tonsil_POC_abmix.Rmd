@@ -6,7 +6,7 @@ output:
     toc_float: true
     code_folding: "hide"
     pandoc_args: [ 
-      "--output=analysis_tonsil_POC_abmix_2.html" 
+      "--output=analysis_tonsil_POC_abmix_1.html" 
     ]
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
@@ -34,10 +34,10 @@ source("../analysis/helpers/helper_fnc.R")
 ```{r specify_paths}
 ## TODO: Change paths
 # Set general input paths to all analysis files
-analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th179_2"
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th179_1"
 
 # Set path to masks
-masks.path <- "/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix2_179/steinbock/masks_deepcell"
+masks.path <- "/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix1_179/steinbock/masks_deepcell"
 ```
 
 
@@ -49,8 +49,8 @@ the best parameters from the parameter sweep. For this we have data from simulat
 composite data from training, from the actual experiment and the decomposed data.
 
 The channels from the experiment were decomposed using the dictionary U with the 
-best predicted performance (from the run using 'min strategy' for A) for a 8 to 6 
-compression. This dictionary came from the run with the parameters: k=4, d=10 and 
+best predicted performance (from the run using 'min strategy' for A) for a 8 to 4 
+compression. This dictionary came from the run with the parameters: k=4, d=20 and 
 m=4 and contains 17 module.
 
 ```{r read_inputs}
