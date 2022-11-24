@@ -240,9 +240,9 @@ knitr::kable(mantel, digits=2,
 To have a better intuition on how CISI performs, we now look at the expression levels 
 of individual cells for the testing image.
 
-#### SMA of Test Image *(Tonsil th152, k=1)*
+#### Test Image *(Tonsil th152, k=1)*  {.tabset}
 
-```{r plot_X, fig.height=10, fig.width=10, fig.align="center", fig.keep="last"}
+```{r plot_X, fig.height=10, fig.width=10, fig.align="center", fig.keep=c(13, 26), results="asis"}
 # Subset to objects trained and tested on tonsil data
 X.tonsil1 <- keep(X.list, function(x){
   metadata(x)$training=="tonsil" & metadata(x)$dataset=="tonsil" & metadata(x)$k=="1"})
@@ -251,18 +251,24 @@ names(X.tonsil1) <- lapply(X.tonsil1,
 
 # Call plot_cells to get individual plots for each roi for decomposed and true
 # results
-poi <- "SMA"
-X.imgList <- plot_cells(X.tonsil1, masks.tonsil, 
-                        poi)
-# Plot decomposed vs true results for test roi (002)
-X.img <- plot_grid(plotlist=append(X.imgList[grepl("20220520_TsH_th152_cisi1_002",
-                                                   names(X.imgList))],
-                                   X.imgList[grepl("legend",
-                                                   names(X.imgList))]),
-                   ncol=2, labels=names(X.tonsil1),
-                   label_size=15, hjust=c(-2, -1.5), 
-                   vjust=1, scale=0.9)
-X.img
+pois <- c("MPO", "SMA")
+
+for (p in pois){
+  cat("##### ", p, "\n")
+  
+  X.imgList <- plot_cells(X.tonsil1, masks.tonsil, p)
+  # Plot decomposed vs true results for test roi (002)
+  X.img <- plot_grid(plotlist=append(X.imgList[grepl("20220520_TsH_th152_cisi1_002",
+                                                     names(X.imgList))],
+                                     X.imgList[grepl("legend",
+                                                     names(X.imgList))]),
+                     ncol=2, labels=names(X.tonsil1),
+                     label_size=15, hjust=c(-2, -1.5), 
+                     vjust=1, scale=0.9)
+  print(X.img)
+  cat("\n\n")
+}
+
 ```
 
 #### CD20 of Test Image Overlayed (Tonsil th152, k=1)
