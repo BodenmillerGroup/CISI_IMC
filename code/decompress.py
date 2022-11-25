@@ -4,21 +4,19 @@ from utils import sparse_decode_blocks, select_and_correct_comeasured
 
 
 '''
-Analyze performance of computed U and A
-(Nine different metrics, correlations and distances gene- and sample-wise)
+Decompress Composite Data
+(using specified U and A)
 
-For given X, U and A, simulate composite results y and analyze performance:
+For given y, U and A, decompose composite measurements y using the given U and A:
 inputs:
     y: Compressed measurements (composite channels (measurements) x samples)
     U: a dictionary of gene modules (proteins x modules)
-    phi: list containing (best) composition matrices (composite channels (measurements) x proteins,
-         binary)
-    sparsity: an error threshold - when optimizing over U we will search for the
-              sparsest fit while tolerating at most this error (default: 0.1)
-    method: 'lasso' or 'omp' used to decompress W
+    phi: composite matrix used for composite measurements y (composite channels
+         (measurements) x proteins)
+    sparsity: an error threshold when computing W using method='lasso' and the sparsity
+              k when using method='lasso'
+    method: 'lasso' or 'omp' used to decompress W (default: lasso)
     numThreads: # Number of threads used (default=20)
-    outpath: If specified, the best 50 U versions are saved as .txt files in
-             compositions_A folder
     correct_comeasured: Correct comeasured genes that are not coexpressed (default: False)
     train_corr: Correlations between genes in training data X (genes that are coexpressed)
                 used in correct_comeasured (default: None)
@@ -26,7 +24,7 @@ inputs:
                 (default: 20)
 
 outputs:
-    Estimated X (proteins x cells/pixels)
+    x2: Numpy array containing decompressed X (proteins x cells/pixels)
 '''
 
 def decompress(y, U, phi, sparsity=0.1, method='lasso', numThreads=20,

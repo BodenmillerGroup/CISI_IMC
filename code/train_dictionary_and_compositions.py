@@ -12,14 +12,13 @@ import pandas as pd
 
 
 '''
-Compute dictionary U and random composite matrix A/Phi from training data and
-save results from crossvalidation
+Compute dictionary U and best composite matrix A/Phi from training data
 
 Find U, A/phi given X and return goodness of fit:
 inputs:
     X_input: anndata object containing numpy array X (cells/pixels x proteins)
              Will be divided into: training, validate and test set
-    outpath: Specify where output files should be saved to (used in all fnc)
+    outpath: Specify where output files should be saved to (used in all fncs)
     layer: Name of layer in anndata object to be used as X (default: None, =anndata.X)
            (used in all fnc)
     lasso_sparsity: error tolerance applied to l1 sparsity constraint (default: 0.2)
@@ -97,11 +96,26 @@ inputs:
 
 
 outputs:
-    training_res: results of training evaluated on test set (pandas dataframe)
-    cor: pairwise protein correlations (numpy array)
-    cond_prob: pairwise conditional probabilities between proteins/channels
-               (numpy array)
+    training_res: results of training evaluated on test set adding noise when simulating
+                  composite measurements (pandas dataframe)
+    training_res_no_noise: results of training evaluated on test set adding no noise
+                           when simulating composite measurements (pandas dataframe)
+    U_best: best dictionary of gene modules (proteins x modules)
+    Phi_best: best composition matrix (experiment design matrix)
+    X_test.obs.index: index in anndata object of cells used for testing
 
+    As well as all the files underneath:
+    gene_modules.csv: best dictionary of gene modules (proteins x modules)
+    version_<i>.txt: best composition matrix (experiment design matrix)
+    simulation_results.txt: Performance analysis
+    no_noise_simulation_results.txt: Performance analysis using no noise when simulating
+                                     composite measurements
+    X_test.h5ad: File containing anndata object of test data normalized using
+                 specified norm
+    X_simulated_0.h5ad: File containing anndata object of simulated
+                          decomposed data
+    correlations.csv: pairwise protein correlations
+    conditional_probability.csv: pairwise conditional probabilities between proteins/channels
 '''
 
 
@@ -194,7 +208,7 @@ def train_U_and_A(X, outpath, layer=None, d=80, lda1=3, lda2=0.2, maxItr=10,
         normalization = "none"
 
     # Analize training
-    training_res, training_res_comp = analyze_U_and_A(X_test, U_best, [Phi_best],
+    training_res, training_res_no_noise = analyze_U_and_A(X_test, U_best, [Phi_best],
                                                       [version_best], outpath,
                                                       lasso_sparsity, THREADS_A_and_U,
                                                       layer, normalization, save, snr,
@@ -205,7 +219,7 @@ def train_U_and_A(X, outpath, layer=None, d=80, lda1=3, lda2=0.2, maxItr=10,
     # Compute pairwise conditional probabilities between proteins/channels
     cond_prob = make_cond_prob(X, outpath, threshold_cond_prob)
 
-    return training_res, training_res_comp, U_best, Phi_best, X_test.obs.index
+    return training_res, training_res_no_noise, U_best, Phi_best, X_test.obs.index
 
 
 # Function splitting X into training, validate and test either by 'roi' or 'percentage'

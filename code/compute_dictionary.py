@@ -43,7 +43,7 @@ inputs:
             further information is available on the respective website
 
 outputs:
-    U: a dictionary of gene modules (proteins x modules)
+    U/gene_modules.csv: a dictionary of gene modules (proteins x modules) 
     W: the module activity levels in each cell (/pixel?) of training data
        (modules x pixels)
 
@@ -68,8 +68,6 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
     # Extract data matrix X from anndata object and apply selected normalization
     match normalization:
         case 'paper_norm':
-            # Normalize X? (otherwise spams.nmf underneath will estimate U to only contain
-            # 0s and smaf won't work)
             # Normalizaiton: Every row in X_input is divided by the corresponding vector
             # element in the rowwise norm (proteins are normalized accross all cells/pixels)
             X = (X_mat.T / np.linalg.norm(X_mat, axis=1)).T
@@ -157,7 +155,7 @@ def smaf(X_input, d, lda1, lda2, maxItr=10, UW=None, posW=False, posU=True,
                               'The computed U has zero columns.'))
 
     # Remove empty columns (modules containing no proteins)
-    U = U[:, (U.sum(0) > 0)] 
+    U = U[:, (U.sum(0) > 0)]
     if np.shape(U)[1] == 0:
             # In case U is empty throw error, since CISI didn't work and will
             # crash with an unspecific error when computing phi/A

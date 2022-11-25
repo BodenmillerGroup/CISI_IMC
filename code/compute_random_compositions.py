@@ -28,8 +28,7 @@ inputs:
     maxcomposition: maximum times each gene is represented (mode G),
                     or max genes per composition (mode M)
     THREADS: # Number of threads used (default=20)
-    outpath: If specified, the best 50 U versions are saved as .txt files in
-             compositions_A folder
+    outpath: If specified, then used as outpath folder
     num_phi: the number of best phi's that are saved (default: 1, at most: 50)
     maxItr: Number of iterations to test random A/Phi's (default: 2000)
     num_blocks: number of blocks used to calculate W (should be bigger for pixel-wise?)
@@ -42,10 +41,11 @@ inputs:
                            (default)
 
 outputs:
-    Phi/A: composition matrix (composite channels (measurements) x proteins,
-           binary)
-    compositions_A/version_<i>.txt: If outpath is specified, the best 50
-                                    composition matrices are saved
+    Phi/A: composition matrix (composite channels (measurements) x proteins)
+    compositions_A/version_<i>.txt: If num_phi!=1 the best composition matrices
+                                    are saved in this folder
+    version_<i>.txt: If num_phi==1 the best composition matrix is directly saved
+                     in the outpath folder
 '''
 
 

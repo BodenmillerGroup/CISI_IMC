@@ -24,9 +24,8 @@ inputs:
          binary)
     lasso_sparsity: error tolerance applied to l1 sparsity constraint (default: 0.2)
     THREADS: # Number of threads used (default=20)
-    outpath: If specified, the best 50 U versions are saved as .txt files in
-             compositions_A folder
-    versions: list containing versions of phi's in Phi
+    outpath: Output path for created files
+    versions: list containing versions of phi's in Phi (added to output df)
     layer: which layer in anndata object to use (default: X)
     norm: which normalization used before simulating decomposition measurements
     save: Which decomposed X is saved.
@@ -42,6 +41,13 @@ inputs:
 outputs:
     results_df: All performance analyis in one pandas df
     simulation_results.txt: Performance analysis
+    no_noise_simulation_results.txt: Performance analysis using no noise when simulating
+                                     composite measurements
+    X_test.h5ad: File containing anndata object of test data normalized using
+                 specified norm
+    X_simulated_<i>.h5ad: File containing anndata object of simulated
+                          decomposed data (simulated using i'th Phi after sorting
+                          according to d_gene)
 '''
 
 def analyze_U_and_A(X_input, U, Phi, versions, outpath, lasso_sparsity=0.2,
@@ -57,8 +63,6 @@ def analyze_U_and_A(X_input, U, Phi, versions, outpath, lasso_sparsity=0.2,
     # Extract data matrix X from anndata object and apply selected normalization
     match norm:
         case 'paper_norm':
-            # Normalize X? (otherwise spams.nmf underneath will estimate U to only contain
-            # 0s and smaf won't work)
             # Normalizaiton: Every row in X_input is divided by the corresponding vector
             # element in the rowwise norm (proteins are normalized accross all cells/pixels)
             X_test = (X_test.T / np.linalg.norm(X_test, axis=1)).T
