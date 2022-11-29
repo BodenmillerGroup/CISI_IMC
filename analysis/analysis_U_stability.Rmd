@@ -6,7 +6,7 @@ output:
     toc_float: true
     code_folding: "hide"
     pandoc_args: [ 
-      "--output=analysis_U_stability_Immucan_lung.html" 
+      "--output=analysis_U_stability_Tonsil_th152.html" 
     ]
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
@@ -34,8 +34,8 @@ library(cytomapper)
 
 ```{r specify_paths}
 # Set general input paths to all analysis files
-# analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152"
-analysis.path <- "/mnt/bb_dqbm_volume/analysis/Immucan_lung"
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152"
+# analysis.path <- "/mnt/bb_dqbm_volume/analysis/Immucan_lung"
 
 u_stability.path <- file.path(analysis.path, "tests/test_U_stability")
 u_stability_par.path <- file.path(analysis.path, "tests/test_U_stability_par")
@@ -80,7 +80,7 @@ u_stability.long <- lapply(u_stability.list, function(stab){
 ggplot(u_stability.long, aes(train_size, distance)) +
   geom_point(aes(color=k, fill=k)) +
   geom_smooth(aes(color=k, fill=k), method="lm") +
-  theme_cowplot() +
+  theme_cowplot(title.fontsize) +
   scale_color_npg() +
   labs(x="Training size", y="Correlation distance")
 ```
@@ -140,7 +140,7 @@ u_stability.mantel <- u_stability.mantel %>%
 u_stability.mantelPlot <- ggplot(u_stability.mantel, aes(size, mantel_cor)) +
   geom_point(aes(color=k, fill=k)) +
   geom_smooth(aes(color=k, fill=k), method="lm", formula=y ~ poly(x, 2)) +
-  theme_cowplot() +
+  theme_cowplot(title.fontsize) +
   scale_color_npg() +
   labs(x="Training size", y=expression(1 - cor["Mantel"]))
 u_stability.mantelPlot

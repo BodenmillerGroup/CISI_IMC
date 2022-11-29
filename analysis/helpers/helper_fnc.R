@@ -32,8 +32,8 @@ library(viridis)
 ## Plot defaults
 
 # Set fontsizes used throughout this script
-title.fontsize <- 10
-axis_title.fontsize <- 8
+title.fontsize <- 16
+axis_title.fontsize <- 10
 
 
 

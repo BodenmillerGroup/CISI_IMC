@@ -17,6 +17,7 @@ knitr::opts_chunk$set(echo=TRUE)
 knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 
 # Load libraries
+library(RColorBrewer)
 ```
 
 ```{r helper_fnc}

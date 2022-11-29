@@ -83,7 +83,7 @@ u <- lapply(u.files, read_U, type="training") %>%
 a.files <- list.files(analysis.path, "version_*",
                       full.names=TRUE, recursive=TRUE)
 # TODO: change this line if more files come along and need to exclude
-a.files <- a.files[grepl("pilot_immune_channels", u.files)]
+a.files <- a.files[grepl("pilot_immune_channels", a.files)]
 a <- lapply(a.files, read_A, voi="normalisation") %>% 
   bind_rows() %>%
   mutate(normalisation=ifelse(!grepl("normalized", normalisation), "unnormalized", "combi"))
