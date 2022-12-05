@@ -32,9 +32,9 @@ library(viridis)
 ## Plot defaults
 
 # Set fontsizes used throughout this script
-title.fontsize <- 16
+title.fontsize <- 12
 axis_title.fontsize <- 10
-
+theme_set(theme_cowplot(font_size=title.fontsize))
 
 
 ## General helper fnc.
@@ -411,9 +411,10 @@ plot_single_U <- function(res, title){
                                        names=c("0", "1")), 
                          show_heatmap_legend=FALSE, 
                          show_row_dend=FALSE, 
-                         row_names_gp=gpar(fontsize=axis_title.fontsize),
-                         column_names_gp=gpar(fontsize=axis_title.fontsize),
-                         column_title_gp=gpar(fontsize=title.fontsize),
+                         row_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                         column_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                         column_title_gp=gpar(fontsize=title.fontsize+6,
+                                              fontface="bold"),
                          rect_gp=gpar(col="white", lwd=1))
   
   res.heatmap
@@ -463,7 +464,10 @@ plot_U <- function(df, iter_var, repetition){
                                                   title="Activity",
                                                   legend_gp=gpar(fill=c("grey", 
                                                                         pal_npg("nrc")("1")[1])),
-                                                  at=c("0", "1"))),
+                                                  at=c("0", "1"),
+                                                  labels_gp=gpar(fontsize=axis_title.fontsize+6),
+                                                  title_gp=gpar(fontsize=axis_title.fontsize+6, 
+                                                                fontface="bold"))),
          column_title=paste0(iter_var, " = ", i))
     
     # Add correlations to final returned df
@@ -527,9 +531,11 @@ plot_U_membership <- function(df, iter_var, repetition){
                                col=structure(c("grey", pal_npg("nrc")("3")[1:3]), 
                                              names=c("0", "1", "2", "3")), 
                                show_heatmap_legend=TRUE, 
-                               show_row_dend=FALSE, row_names_gp=gpar(fontsize=axis_title.fontsize),
-                               column_names_gp=gpar(fontsize=axis_title.fontsize),
-                               column_title_gp=gpar(fontsize=title.fontsize),
+                               show_row_dend=FALSE, 
+                               row_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                               column_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                               column_title_gp=gpar(fontsize=title.fontsize+6,
+                                                    fontface="bold"),
                                rect_gp=gpar(col="white", lwd=1),
                                clustering_distance_columns = function(x, y) 1 - jaccard(ifelse(x>0, 1, 0), 
                                                                                         ifelse(y>0, 1, 0)),
@@ -540,9 +546,9 @@ plot_U_membership <- function(df, iter_var, repetition){
                                                                   paste0("active in ", 
                                                                          unique(df[[repetition]]))),
                                                          title="Proteins",
-                                                         title_gp=gpar(fontsize=title.fontsize, 
+                                                         title_gp=gpar(fontsize=axis_title.fontsize+6, 
                                                                        fontface="bold"),
-                                                         labels_gp=gpar(fontsize=axis_title.fontsize)))
+                                                         labels_gp=gpar(fontsize=axis_title.fontsize+6)))
     print(modules.heatmap)
     cat('\n\n')
   }
@@ -562,9 +568,10 @@ plot_single_A <- function(a, title){
                        col=colorRamp2(c(0, 1), colors=c("grey", pal_npg("nrc")("1"))), 
                        show_heatmap_legend=FALSE, 
                        show_row_dend=FALSE, 
-                       row_names_gp=gpar(fontsize=axis_title.fontsize),
-                       column_names_gp=gpar(fontsize=axis_title.fontsize),
-                       column_title_gp=gpar(fontsize=title.fontsize),
+                       row_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                       column_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                       column_title_gp=gpar(fontsize=title.fontsize+6,
+                                            fontface="bold"),
                        rect_gp=gpar(col="white", lwd=1))
   
   a.heatmap
@@ -634,8 +641,7 @@ plot_dist_boxplot <- function(df, x_lab, to_int=TRUE){
   df.boxplot <- ggplot(df.dist, aes(x=variable, y=Distance, fill=variable)) +
     geom_boxplot() +
     scale_fill_npg() +
-    theme_cowplot(title.fontsize) +
-    theme(legend.position = "none") +
+    theme(legend.position="none") +
     labs(x=x_lab) 
   
   df.boxplot
@@ -714,7 +720,6 @@ plot_mantel_boxplot <- function(df, var_name, to_int=TRUE){
   df.mantelBoxplot <- ggplot(df.mantel, aes(x=variable, y=mantel, fill=variable)) +
     geom_boxplot() +
     scale_fill_npg() +
-    theme_cowplot(title.fontsize) +
     guides(fill=FALSE) +
     labs(x=var_name, y=expression(cor["Mantel"])) 
   
@@ -750,7 +755,7 @@ plot_cisi_results <- function(df, group, measure, fill){
     labs(x=str_to_title(group), y=str_to_title(measure), pattern="Simulation type") + 
     guides(pattern=guide_legend(override.aes=list(fill="white")),
            fill=guide_legend(override.aes=list(pattern="none"))) +
-    theme_cowplot(title.fontsize)
+    theme(text=element_text(size=title.fontsize))
   
   barplot
 }
@@ -774,17 +779,19 @@ plot_cells <- function(sce.list, masks.list, poi, layer="none", display="single"
     if (layer=="none"){
       p <- plotCells(mask=masks.list, object=el,
                      cell_id="ObjectNumber", img_id="sample_id", colour_by=poi,
-                     return_plot=TRUE,  image_title=list(cex=1),
+                     return_plot=TRUE,  image_title=list(cex=fontsize(title.fontsize)),
                      colour=colour.cells, display=display,
-                     scale_bar=list(cex=1, lwidth=5),
-                     legend=list(colour_by.title.cex=0.7, colour_by.labels.cex=0.7))
+                     scale_bar=list(cex=fontsize(axis_title.fontsize), lwidth=5),
+                     legend=list(colour_by.title.cex=fontsize(axis_title.fontsize), 
+                                 colour_by.labels.cex=fontsize(axis_title.fontsize)))
     } else {
       p <- plotCells(mask=masks.list, object=el,
                      cell_id="ObjectNumber", img_id="sample_id", colour_by=poi,
-                     return_plot=TRUE,  image_title=list(cex=1),
+                     return_plot=TRUE,  image_title=list(cex=fontsize(title.fontsize)),
                      colour=colour.cells, display=display,
-                     scale_bar=list(cex=1, lwidth=5),
-                     legend=list(colour_by.title.cex=0.7, colour_by.labels.cex=0.7),
+                     scale_bar=list(cex=fontsize(axis_title.fontsize), lwidth=5),
+                     legend=list(colour_by.title.cex=fontsize(axis_title.fontsize), 
+                                 colour_by.labels.cex=fontsize(axis_title.fontsize)),
                      exprs_values=layer)
     }
     # Add plot to image list
@@ -841,7 +848,6 @@ plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="expr
                             colour=celltype, alpha=celltype), 
                         exprs_values=layer) +
       geom_point(size=0.3) +
-      theme_cowplot(title.fontsize) +
       scale_color_manual(values=col_cells) +
       guides(color=FALSE) +
       scale_alpha_manual(guide='none', values=alpha_cells)
@@ -850,7 +856,6 @@ plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="expr
                              colour=celltype, alpha=celltype), 
                          exprs_values=layer) +
       geom_point(size=0.4) +
-      theme_cowplot(title.fontsize) +
       scale_color_manual(values=col_cells) +
       scale_alpha_manual(guide='none', values=alpha_cells)
     
@@ -859,20 +864,18 @@ plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="expr
     plot.sim <- ggcells(sce.list[[1]], 
                         aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y)), 
                         exprs_values=layer) +
-      geom_point(size=0.3) +
-      theme_cowplot(title.fontsize)  
+      geom_point(size=0.3) 
     
     plot.true <- ggcells(sce.list[[2]], 
                          aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y)), 
                          exprs_values=layer) +
-      geom_point(size=0.4) +
-      theme_cowplot(title.fontsize) 
+      geom_point(size=0.4)
   }
   
   # Add plots next to each other
   plot_grid(plot.sim, plot.true, 
             labels=names(sce.list), 
-            label_size=15, hjust=c(-2, -1.5), vjust=1)
+            label_size=title.fontsize, hjust=c(-2, -1.5), vjust=1)
 }
 
 
@@ -890,9 +893,10 @@ plot_celltype_images <- function(sce, masks, im, celltype.col){
                         colour_by="celltype_NA",
                         colour=list(celltype_NA=celltype.col),
                         return_plot=TRUE,
-                        image_title=list(cex=1.5),
-                        legend=list(colour_by.title.cex=0.001, colour_by.labels.cex=0.001),
-                        scale_bar=list(length=2, cex=1, lwidth=2),
+                        image_title=list(cex=fontsize(title.fontsize)),
+                        legend=list(colour_by.title.cex=fontsize(title.fontsize), 
+                                    colour_by.labels.cex=fontsize(axis_title.fontsize)),
+                        scale_bar=list(length=2, cex=fontsize(title.fontsize), lwidth=2),
                         display="single")
   # Create simulated image with coloured celltypes
   sim.image <- plotCells(masks[im],
@@ -902,9 +906,10 @@ plot_celltype_images <- function(sce, masks, im, celltype.col){
                          colour_by="celltype_pred",
                          colour=list(celltype_pred=celltype.col),
                          return_plot=TRUE,
-                         image_title=list(cex=1.5),
-                         legend=list(colour_by.title.cex=0.001, colour_by.labels.cex=0.001),
-                         scale_bar=list(length=2, cex=1, lwidth=2),
+                         image_title=list(cex=fontsize(title.fontsize)),
+                         legend=list(colour_by.title.cex=fontsize(title.fontsize), 
+                                     colour_by.labels.cex=fontsize(axis_title.fontsize)),
+                         scale_bar=list(length=2, cex=fontsize(title.fontsize), lwidth=2),
                          display="single")
   # Append both images together
   plot.list <- append(append(plot.list, 
@@ -938,7 +943,6 @@ plot_protein_cor <- function(X.cor){
            distinct(),
          aes(x=reorder(protein, correlation), y=correlation, fill=protein)) +
     geom_bar(stat="identity") +
-    theme_cowplot(title.fontsize) +
     scale_fill_igv() +
     guides(fill=FALSE) +
     xlab("protein") +
@@ -957,10 +961,11 @@ plot_protein_dist <- function(X.cor, lower_limit.colour=0.7){
                         aes(x=protein, y=ground_truth, color=correlation)) +
     facet_wrap(~dataset, ncol=1) +
     geom_boxplot() +
-    theme_cowplot(title.fontsize) +
+    theme(axis.text.x=element_text(angle=45, hjust=1)) +
     scale_color_viridis(direction=-1, limits=c(lower_limit.colour, 1), oob=scales::squish) +
     stat_summary(fun=mean, geom="point", shape=8) +
-    labs(y="protein expression")
+    labs(y="protein expression") +
+    theme(text=element_text(size=title.fontsize))
   
   protein.dist
 }
@@ -969,7 +974,7 @@ plot_protein_dist <- function(X.cor, lower_limit.colour=0.7){
 # Plot scatterplot of exrpession values per protein and add add diagonal and 
 # regression line, as well as R (pearson correlation coefficient)
 plot_protein_scatterplot <- function(X.df){
-  # Create barplot with proteins on y-axis and their correlations on the y-axis
+  # Create scatterplot  per protein
   protein.scatter <- ggscatter(X.df,
                                x="ground_truth", y="simulated",
                                add="reg.line",
@@ -977,9 +982,9 @@ plot_protein_scatterplot <- function(X.df){
                                add.params=list(color=pal_npg("nrc")("4")[4],
                                                size=2)) +
     facet_wrap(~ protein, scales="free", ncol=5) +
-    theme_cowplot(title.fontsize) +
+    scale_x_continuous(guide=guide_axis(n.dodge=2)) +
     geom_abline(slope=1, linetype="dashed") +
-    stat_cor(size=2)
+    stat_cor(size=3)
   
   protein.scatter
 }
@@ -995,9 +1000,11 @@ get_anno_clusters <- function(clusters, celltype.col, direction="reverse", which
                                                                      pull(ground_truth)), 
                                                              clusters %>% 
                                                                pull(celltype)), 
-                                                       gp=gpar(fill=celltype.col), 
+                                                       gp=gpar(fill=celltype.col,
+                                                               fontsize=axis_title.fontsize+4), 
                                                        bar_width=1, 
-                                                       height=unit(5, "cm")),
+                                                       height=unit(5, "cm"),
+                                                       axis_param=list(gp=gpar(fontsize=axis_title.fontsize+4))),
                                 show_annotation_name=FALSE)
   # Create row barplot annotation according to celltypes in clusters
   row_anno <- HeatmapAnnotation(celltypes=anno_barplot(table(paste("sim", clusters %>% 
@@ -1007,9 +1014,10 @@ get_anno_clusters <- function(clusters, celltype.col, direction="reverse", which
                                                        gp=gpar(fill=celltype.col), 
                                                        bar_width=1, 
                                                        width=unit(5, "cm"),
-                                                       axis_param=list(direction=direction)),
+                                                       axis_param=list(direction=direction,
+                                                                       gp=gpar(fontsize=axis_title.fontsize+4))),
                                 show_annotation_name=FALSE,
                                 which=which_sim)
-  
+                                
   list(col_anno, row_anno)
 }

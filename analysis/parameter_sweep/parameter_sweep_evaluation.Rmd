@@ -149,6 +149,7 @@ plot_results <- function(df, cor, group, fill, pattern){
     scale_fill_npg() +
     scale_pattern_manual(values=possible_patterns[1:length(unique(df[[pattern]]))], 
                          labels=levels(df[[pattern]])) +
+    scale_x_discrete(guide=guide_axis(n.dodge=2)) +
     labs(x=group, y=cor, pattern=pattern) + 
     guides(pattern=guide_legend(override.aes=list(fill="white")),
            fill=guide_legend(override.aes=list(pattern="none"))) +
