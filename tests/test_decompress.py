@@ -12,7 +12,7 @@ sys.path.append(CODE_DIR)
 import unittest
 import numpy as np
 from decompress import decompress
-from utils import check_file, simulate_composite_measurements
+from utils import check_file, get_observations_no_noise
 import os
 import anndata as ad
 
@@ -24,7 +24,7 @@ class TestDecompression(unittest.TestCase):
         phi = np.loadtxt(os.path.join('data/compositions_A/version_16.txt'),
                          skiprows=1, usecols=list(range(2, 45)))
         X = ad.read_h5ad('data/test.h5ad')[:50, ]
-        y = simulate_composite_measurements(X, phi)
+        y = get_observations_no_noise(X, phi)
 
         results = decompress(y, np.array(np.load('data/gene_modules.npy')), phi)
         self.assertFalse(np.all((results < 0)))

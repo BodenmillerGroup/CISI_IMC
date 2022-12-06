@@ -824,7 +824,7 @@ Next, we assess clustering by looking at the median marker expression of each pr
 in each cluster and then compare it to the celltypes of each cluster. Ideally,
 each cluster has a median protein expression pattern that fits its main celltype.
 
-```{r clustering_exprs, fig.height=15, fig.width=10, fig.align="center", results="asis"}
+```{r clustering_exprs, fig.height=11, fig.width=8, fig.align="center", results="asis"}
 for (i in unique(all.clusters$k)){
   cat("##### k =", i, "\n")
   
