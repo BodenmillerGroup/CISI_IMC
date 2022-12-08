@@ -84,7 +84,7 @@ For each different measurement used to test training results, a barplot is shown
 comparing CISI results using the original normalization across cells (used in training, 
 simulating and to what it is compared to) and not using it at all.
 
-```{r plot_results, results="asis", fig.height=8, fig.width=18, fig.align="center"}
+```{r plot_results, results="asis", fig.height=7, fig.width=12, fig.align="center"}
 # For each different measurement of training results, plot barplot comparing
 # normalized und unnormalized results
 
@@ -120,7 +120,8 @@ for (p_vec in poi) {
                            plot_exprs(X.list[5:6], p_vec[3], p_vec[1], p_vec[2]),
                            ncol=1, labels=unique(unlist(lapply(X.list, function(sce){
                              metadata(sce)$norm}))),
-                           label_size=15, hjust=c(-4.5, -3, -7.5), vjust=0.9, scale=0.9)
+                           label_size=title.fontsize, hjust=c(-4.5, -3, -7.5), 
+                           vjust=0.9, rel_widths = c(1, 2)) #, scale=0.9)
   
   print(X.spillover)
   cat("\n\n")
@@ -136,7 +137,7 @@ arcsinh transformed data and predict all celltypes.
 We then compare these results to the 'ground truth' celltypes (celltypes predicted from
 ground truth data) by calculating the precision, sensitivity and specififity.
 
-```{r rffit, fig.height=8, fig.width=8, fig.align="center", results="asis"}
+```{r rffit, fig.height=6, fig.width=7, fig.align="center", results="asis"}
 ## Fix colours for plotting
 celltype.col <- c(brewer.pal(12, "Paired"),
                            brewer.pal(8, "Pastel2")[-c(3,5,8)],
@@ -177,7 +178,7 @@ for (cm in lungSim.cm){
                    fill=class),
                shape=21) +
     scale_fill_manual(values=celltype.col) +
-    theme_cowplot(10) +
+    theme_cowplot(title.fontsize) +
     ylab("Sensitivity (TPR)") +
     xlab("1 - Specificity (FPR)")
   
@@ -193,7 +194,7 @@ for (cm in lungSim.cm){
 Next, we have a look at which celltypes the RF predicts for wrongly identified
 cells using the classification probabilities per celltype class.
 
-```{r rffit_prob, fig.height=10, fig.width=10, fig.align="center", results="asis"}
+```{r rffit_prob, fig.height=12, fig.width=10, fig.align="center", results="asis"}
 # Predict celltype probabilities
 lungSim.prob <- lapply(as.list(1:length(lungSim.list)), function(i){
   compute_celltypeProb(lungSim.list[[i]], rffit.sim[[i]])})
@@ -209,9 +210,11 @@ for (p in lungSim.prob){
     geom_boxplot(aes(x=name, y=value, fill=name), outlier.size=0.5) +
     facet_wrap(.~truth, ncol=1) + 
     scale_fill_manual(values=celltype.col) +
+    scale_x_discrete(guide=guide_axis(n.dodge=2)) +
     theme(panel.background=element_blank(), 
           axis.text.x=element_text(angle=45, hjust=1)) +
-    theme_cowplot(10) 
+    theme_cowplot(title.fontsize) +
+    labs(x="probability", y="celltype", fill="celltype")
   
   i <- i+1
 
@@ -227,7 +230,7 @@ and decomposed/simulated data.
 
 ### Image 1 {.tabset}
 
-```{r celltype_images, fig.height=20, fig.width=8, fig.align="center", results="asis", fig.keep=c(5, 10, 15)}
+```{r celltype_images, fig.height=8, fig.width=8, fig.align="center", results="asis", fig.keep=c(5, 10, 15)}
 lungSim.list <- lapply(as.list(1:length(lungSim.list)), function(i){
   sce <- lungSim.list[[i]]
   

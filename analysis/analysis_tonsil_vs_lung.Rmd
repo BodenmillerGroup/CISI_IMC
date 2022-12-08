@@ -810,7 +810,14 @@ for (i in unique(all.clusters$k)){
     
     # Add heatmap to list
     ht_list.kl <- append(ht_list.kl, 
-                         list(grid.grabExpr(draw(clusters.klPlot))))
+                         list(grid.grabExpr(draw(clusters.klPlot,
+                                                 heatmap_legend_list=list(
+                                                   Legend(labels=names(celltype.col), 
+                                                          title="Celltypes",
+                                                          legend_gp=gpar(fill=celltype.col),
+                                                          labels_gp=gpar(fontsize=axis_title.fontsize+6),
+                                                          title_gp=gpar(fontsize=axis_title.fontsize+6, 
+                                                                        fontface="bold")))))))
   }
   
   print(plot_grid(plotlist=ht_list.kl, nrow=1))
@@ -824,7 +831,7 @@ Next, we assess clustering by looking at the median marker expression of each pr
 in each cluster and then compare it to the celltypes of each cluster. Ideally,
 each cluster has a median protein expression pattern that fits its main celltype.
 
-```{r clustering_exprs, fig.height=11, fig.width=8, fig.align="center", results="asis"}
+```{r clustering_exprs, fig.height=14, fig.width=10, fig.align="center", results="asis"}
 for (i in unique(all.clusters$k)){
   cat("##### k =", i, "\n")
   
@@ -889,13 +896,13 @@ for (i in unique(all.clusters$k)){
                                  col=magma(100),
                                  column_title="Ground truth",
                                  row_names_gp=gpar(fontsize=axis_title.fontsize+6),
-                                 column_names_gp=gpar(fontsize=axis_title.fontsize+6),
-                                 column_title_gp=gpar(fontsize=title.fontsize+6,
+                                 column_names_gp=gpar(fontsize=axis_title.fontsize+4),
+                                 column_title_gp=gpar(fontsize=title.fontsize+4,
                                                       fontface="bold"),
                                  rect_gp=gpar(col="white", lwd=1),
                                  heatmap_legend_param=list(title="Ground truth",
-                                                           labels_gp=gpar(fontsize=axis_title.fontsize+6),
-                                                           title_gp=gpar(fontsize=axis_title.fontsize+6, 
+                                                           labels_gp=gpar(fontsize=axis_title.fontsize+4),
+                                                           title_gp=gpar(fontsize=axis_title.fontsize+4, 
                                                                          fontface="bold")))
     cluster.exprsPlotSim <- Heatmap(cluster_sim.exprs,
                                  show_row_dend=FALSE,
@@ -903,14 +910,14 @@ for (i in unique(all.clusters$k)){
                                  top_annotation=row_anno,
                                  col=magma(100),
                                  column_title="Simulated",
-                                 row_names_gp=gpar(fontsize=axis_title.fontsize+6),
-                                 column_names_gp=gpar(fontsize=axis_title.fontsize+6),
-                                 column_title_gp=gpar(fontsize=title.fontsize+6,
+                                 row_names_gp=gpar(fontsize=axis_title.fontsize+4),
+                                 column_names_gp=gpar(fontsize=axis_title.fontsize+4),
+                                 column_title_gp=gpar(fontsize=title.fontsize+4,
                                                       fontface="bold"),
                                  rect_gp=gpar(col="white", lwd=1),
                                  heatmap_legend_param=list(title="Simulated",
-                                                           labels_gp=gpar(fontsize=axis_title.fontsize+6),
-                                                           title_gp=gpar(fontsize=axis_title.fontsize+6, 
+                                                           labels_gp=gpar(fontsize=axis_title.fontsize+4),
+                                                           title_gp=gpar(fontsize=axis_title.fontsize+4, 
                                                                          fontface="bold")))
     
     # Add heatmap to list
@@ -920,11 +927,11 @@ for (i in unique(all.clusters$k)){
                                                 Legend(labels=names(celltype.col), 
                                                        title="Celltypes",
                                                        legend_gp=gpar(fill=celltype.col),
-                                                       labels_gp=gpar(fontsize=axis_title.fontsize+6),
-                                                       title_gp=gpar(fontsize=axis_title.fontsize+6, 
+                                                       labels_gp=gpar(fontsize=axis_title.fontsize+4),
+                                                       title_gp=gpar(fontsize=axis_title.fontsize+4, 
                                                                      fontface="bold"))),
                                                 column_title=d,
-                                                column_title_gp=gpar(fontsize=title.fontsize+6,
+                                                column_title_gp=gpar(fontsize=title.fontsize+4,
                                                                      fontface="bold")))))
   }
   

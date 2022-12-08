@@ -6,8 +6,9 @@ output:
     toc_float: true
     code_folding: "hide"
     pandoc_args: [ 
-      "--output=analysis_U_stability_Tonsil_th152.html" 
+      "--output=analysis_U_stability_Immucan_lung.html" 
     ]
+    keep_md: true
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
@@ -34,8 +35,8 @@ library(cytomapper)
 
 ```{r specify_paths}
 # Set general input paths to all analysis files
-analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152"
-# analysis.path <- "/mnt/bb_dqbm_volume/analysis/Immucan_lung"
+# analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152"
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Immucan_lung"
 
 u_stability.path <- file.path(analysis.path, "tests/test_U_stability")
 u_stability_par.path <- file.path(analysis.path, "tests/test_U_stability_par")
@@ -166,7 +167,7 @@ u_stability_k.modules <- lapply(u_stability_modules_k.files, read_U, type="par")
 
 #### Heatmap of U for different k's {.tabset}
 
-```{r plot_u_stability_k, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+```{r plot_u_stability_k, results="asis", fig.height = 9, fig.width = 28, fig.align = "center"}
 # Plot U for different k's
 u_stability_k.cor <- plot_U(u_stability_k.modules, "k", "rep")
 ```
@@ -207,7 +208,7 @@ u_stability_modules_maxItr.modules <- lapply(u_stability_modules_maxItr.files, r
 
 #### Heatmap of U for different maxItr {.tabset}
 
-```{r plot_u_stability_maxItr, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+```{r plot_u_stability_maxItr, results="asis", fig.height = 9, fig.width = 28, fig.align = "center"}
 # Plot U for different maxItr
 u_stability_maxItr.cor <- plot_U(u_stability_modules_maxItr.modules, "maxItr", "rep")
 ```
@@ -248,7 +249,7 @@ u_stability_xform.modules <- lapply(u_stability_modules_xform.files, read_U, typ
 
 #### Heatmap of U for different transformations {.tabset}
 
-```{r plot_u_stability_xform, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+```{r plot_u_stability_xform, results="asis", fig.height = 9, fig.width = 28, fig.align = "center"}
 # Plot U for different transformations
 u_stability_xform.cor <- plot_U(u_stability_xform.modules, "transformation", "rep")
 ```
@@ -291,7 +292,7 @@ u_stability_dict.modules <- lapply(u_stability_modules_dict.files, read_U, type=
 
 #### Heatmap of U for different dictionary sizes {.tabset}
 
-```{r plot_u_stability_dict, results="asis", fig.height = 8, fig.width = 18, fig.align = "center"}
+```{r plot_u_stability_dict, results="asis", fig.height = 9, fig.width = 28, fig.align = "center"}
 # Plot U for different k's
 u_stability_dict.cor <- plot_U(u_stability_dict.modules, "dictionary_size", "rep")
 ```

@@ -468,7 +468,9 @@ plot_U <- function(df, iter_var, repetition){
                                                   labels_gp=gpar(fontsize=axis_title.fontsize+6),
                                                   title_gp=gpar(fontsize=axis_title.fontsize+6, 
                                                                 fontface="bold"))),
-         column_title=paste0(iter_var, " = ", i))
+         column_title=paste0(iter_var, " = ", i),
+         column_title_gp=gpar(fontsize=title.fontsize+6,
+                              fontface="bold"))
     
     # Add correlations to final returned df
     names(temp_list) <- names.repetition
@@ -749,6 +751,7 @@ plot_cisi_results <- function(df, group, measure, fill){
                      pattern_spacing=0.01,
                      pattern_key_scale_factor=0.6) +
     scale_y_continuous(limits=c(0, 1)) +
+    scale_x_discrete(guide=guide_axis(n.dodge=2)) +
     scale_fill_npg() +
     scale_pattern_manual(values=c(no_noise="stripe", noisy="none"),
                          labels=c("No noise", "Noisy (SNR=5)")) +
@@ -1001,10 +1004,10 @@ get_anno_clusters <- function(clusters, celltype.col, direction="reverse", which
                                                              clusters %>% 
                                                                pull(celltype)), 
                                                        gp=gpar(fill=celltype.col,
-                                                               fontsize=axis_title.fontsize+4), 
+                                                               fontsize=axis_title.fontsize+6), 
                                                        bar_width=1, 
                                                        height=unit(5, "cm"),
-                                                       axis_param=list(gp=gpar(fontsize=axis_title.fontsize+4))),
+                                                       axis_param=list(gp=gpar(fontsize=axis_title.fontsize+6))),
                                 show_annotation_name=FALSE)
   # Create row barplot annotation according to celltypes in clusters
   row_anno <- HeatmapAnnotation(celltypes=anno_barplot(table(paste("sim", clusters %>% 
@@ -1015,7 +1018,7 @@ get_anno_clusters <- function(clusters, celltype.col, direction="reverse", which
                                                        bar_width=1, 
                                                        width=unit(5, "cm"),
                                                        axis_param=list(direction=direction,
-                                                                       gp=gpar(fontsize=axis_title.fontsize+4))),
+                                                                       gp=gpar(fontsize=axis_title.fontsize+6))),
                                 show_annotation_name=FALSE,
                                 which=which_sim)
                                 
