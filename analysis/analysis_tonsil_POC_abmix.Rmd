@@ -6,7 +6,7 @@ output:
     toc_float: true
     code_folding: "hide"
     pandoc_args: [ 
-      "--output=analysis_tonsil_POC_abmix_2.html" 
+      "--output=analysis_tonsil_POC_abmix_1.html" 
     ]
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
@@ -34,10 +34,10 @@ source("../analysis/helpers/helper_fnc.R")
 ```{r specify_paths}
 ## TODO: Change paths
 # Set general input paths to all analysis files
-analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th179_2"
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th179_1"
 
 # Set path to masks
-masks.path <- "/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix2_179/steinbock/masks_deepcell"
+masks.path <- "/mnt/bb_dqbm_volume/data/20221108_TsH_LSS_cisiabmix1_179/steinbock/masks_deepcell"
 ```
 
 
@@ -139,7 +139,7 @@ to ground truth experiment data using best A from the parameter sweep) and exper
 (decomposed real composite measurements from experiment compared to ground truth 
 experiment data).
 
-```{r plot_results, results="asis", fig.asp=0.5, fig.width=18, fig.align="center"}
+```{r plot_results, results="asis", fig.asp=0.5, fig.width=12, fig.align="center"}
 # For each different measurement of training results, plot barplot 
 # Melt dataframe for plotting
 data_temp <- results.df %>%
@@ -160,7 +160,7 @@ print(results.barplot)
 Here we show the decomposed measurements vs the ground truth measurements for 
 all images. 
 
-```{r plot_images_decomposed, fig.asp=0.25, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18, 21, 24), results="asis"}
+```{r plot_images_decomposed, fig.asp=0.25, fig.width=13, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18, 21, 24), results="asis"}
 # Subset list to decomposed and ground truth expressions
 X_decomposition.list <- keep(X_results.list, function(x){
   metadata(x)$comparison=="experiment"})
@@ -179,7 +179,7 @@ for (n in names(pois)){
   # Plot decomposed vs true results 
   img <- plot_grid(plotlist=img, ncol=2, 
                    labels=unlist(lapply(X_decomposition.list, function(sce){metadata(sce)$ground_truth})),
-                   label_size=15, hjust=c(-2, -1.5), 
+                   label_size=title.fontsize, hjust=c(-2, -1.5), 
                    vjust=1, scale=0.9)
   print(img)
   cat("\n\n")
@@ -223,7 +223,7 @@ rm(X_decomposition.list)
 Here we show the composite measurements vs the simulated composite measurements for 
 all images. 
 
-```{r plot_images_composite, fig.asp=0.25, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18), results="asis"}
+```{r plot_images_composite, fig.asp=0.25, fig.width=13, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18), results="asis"}
 # Find the names of all composite channels
 pois <- rownames(X_simulation.list[[1]])
 names(pois) <- rownames(X_simulation.list[[1]])
@@ -239,7 +239,7 @@ for (n in names(pois)){
   # Plot simulated vs true composite measurements  
   img.grid <- plot_grid(plotlist=img, ncol=2, 
                    labels=unlist(lapply(X_simulation.list, function(sce){metadata(sce)$ground_truth})),
-                   label_size=15, hjust=c(-2, -1.5), 
+                   label_size=title.fontsize, hjust=c(-2, -1.5), 
                    vjust=1, scale=0.9)
   print(img.grid)
   cat("\n\n")
@@ -254,7 +254,7 @@ rm(X_simulation.list)
 Here we show the images of decomposed simulated data from the individual ground truth 
 channels in the actual experiment compared to the actual decomposed data. 
 
-```{r plot_images_simulated_vs_decomposed, fig.asp=0.25, fig.width=18, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18, 21, 24), results="asis"}
+```{r plot_images_simulated_vs_decomposed, fig.asp=0.25, fig.width=13, fig.align="center", fig.keep=c(3, 6, 9, 12, 15, 18, 21, 24), results="asis"}
 # Create new list with SCE objects containing decomposed simulated data and real 
 # decomposed data
 X_sim_decomposition.list <- keep(X_results.list, function(x){
@@ -276,7 +276,7 @@ for (n in names(pois)){
   # Plot simulated vs true composite measurements  
   img.grid <- plot_grid(plotlist=img, ncol=2, 
                    labels=unlist(lapply(X_sim_decomposition.list, function(sce){metadata(sce)$ground_truth})),
-                   label_size=15, hjust=c(-2, -1.5), 
+                   label_size=title.fontsize, hjust=c(-2, -1.5), 
                    vjust=1, scale=0.9)
   print(img.grid)
   cat("\n\n")

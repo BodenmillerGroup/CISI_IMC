@@ -5,6 +5,7 @@ output:
     toc: true
     toc_float: true
     code_folding: "hide"
+    keep_md: true
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
@@ -101,7 +102,7 @@ mcols(masks) <- DataFrame(sample_id=names(masks))
 For each different measurement used to test training results, a barplot is shown 
 comparing CISI results.
 
-```{r plot_results, results="asis", fig.height=8, fig.width=18, fig.align="center"}
+```{r plot_results, results="asis", fig.height=7, fig.width=12, fig.align="center"}
 # For each different measurement of training results, plot barplot 
 
 # Melt dataframe for plotting
@@ -173,7 +174,7 @@ for (n in unique(X.cor$normalisation)){
                                          img.foxp3[grepl("legend",
                                                          names(img.foxp3))]), ncol=2, 
                          labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
-                         label_size=15, hjust=c(-2, -1.5), 
+                         label_size=title.fontsize, hjust=c(-2, -1.5), 
                          vjust=1, scale=0.9)
   print(img.foxp3)
   cat("\n\n")
@@ -203,7 +204,7 @@ for (n in unique(X.cor$normalisation)){
                                          img.cd303[grepl("legend",
                                                          names(img.cd303))]), ncol=2, 
                          labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
-                         label_size=15, hjust=c(-2, -1.5), 
+                         label_size=title.fontsize, hjust=c(-2, -1.5), 
                          vjust=1, scale=0.9)
   print(img.cd303)
   cat("\n\n")
@@ -233,7 +234,7 @@ for (n in unique(X.cor$normalisation)){
                                         img.cd68[grepl("legend",
                                                        names(img.cd68))]), ncol=2, 
                         labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
-                        label_size=15, hjust=c(-2, -1.5), 
+                        label_size=title.fontsize, hjust=c(-2, -1.5), 
                         vjust=1, scale=0.9)
   print(img.cd68)
   cat("\n\n")
@@ -263,7 +264,7 @@ for (n in unique(X.cor$normalisation)){
                                         img.cd38[grepl("legend",
                                                        names(img.cd38))]), ncol=2, 
                         labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
-                        label_size=15, hjust=c(-2, -1.5), 
+                        label_size=title.fontsize, hjust=c(-2, -1.5), 
                         vjust=1, scale=0.9)
   print(img.cd38)
   cat("\n\n")
@@ -293,7 +294,7 @@ for (n in unique(X.cor$normalisation)){
                                              img.granzymeB[grepl("legend",
                                                                  names(img.granzymeB))]), ncol=2, 
                              labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
-                             label_size=15, hjust=c(-2, -1.5), 
+                             label_size=title.fontsize, hjust=c(-2, -1.5), 
                              vjust=1, scale=0.9)
   print(img.granzymeB)
   cat("\n\n")
@@ -323,7 +324,7 @@ for (n in unique(X.cor$normalisation)){
                                         img.cd20[grepl("legend",
                                                        names(img.cd20))]), ncol=2, 
                         labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
-                        label_size=15, hjust=c(-2, -1.5), 
+                        label_size=title.fontsize, hjust=c(-2, -1.5), 
                         vjust=1, scale=0.9)
   print(img.cd20)
   cat("\n\n")
@@ -353,7 +354,7 @@ for (n in unique(X.cor$normalisation)){
                                        img.cd3[grepl("legend",
                                                      names(img.cd3))]), ncol=2, 
                        labels=unlist(lapply(X.list, function(sce){metadata(sce)$ground_truth})),
-                       label_size=15, hjust=c(-2, -1.5), 
+                       label_size=title.fontsize, hjust=c(-2, -1.5), 
                        vjust=1, scale=0.9)
   print(img.cd3)
   cat("\n\n")
