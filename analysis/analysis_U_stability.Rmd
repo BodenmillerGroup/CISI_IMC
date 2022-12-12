@@ -8,7 +8,6 @@ output:
     pandoc_args: [ 
       "--output=analysis_U_stability_Immucan_lung.html" 
     ]
-    keep_md: true
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
