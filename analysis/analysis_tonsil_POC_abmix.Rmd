@@ -60,8 +60,7 @@ results.files <- list.files(analysis.path, 'simulation_results.txt',
                             full.names=TRUE, recursive=TRUE)
 results.df <- lapply(results.files, read_results, type="res", voi="comparison") %>% 
   bind_rows() %>%
-  dplyr::select(-c("dataset", "training", "datasize")) %>%
-  mutate(comparison=ifelse(comparison=="best-A", "experiment-simulation_best-A", comparison))
+  dplyr::select(-c("dataset", "training", "datasize"))
 
 
 ## Read X_test, X_simulated and X_decomposed 
