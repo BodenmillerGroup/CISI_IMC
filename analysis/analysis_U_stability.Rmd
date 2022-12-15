@@ -6,7 +6,7 @@ output:
     toc_float: true
     code_folding: "hide"
     pandoc_args: [ 
-      "--output=analysis_U_stability_Immucan_lung.html" 
+      "--output=analysis_U_stability_Tonsil_th152.html" 
     ]
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
@@ -32,18 +32,25 @@ library(SingleCellExperiment)
 library(cytomapper)
 ```
 
-```{r specify_paths}
-# Set general input paths to all analysis files
-# analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152"
-analysis.path <- "/mnt/bb_dqbm_volume/analysis/Immucan_lung"
-
-u_stability.path <- file.path(analysis.path, "tests/test_U_stability")
-u_stability_par.path <- file.path(analysis.path, "tests/test_U_stability_par")
-```
-
 ```{r helper_fnc}
 # Import helper fncs
 source("../analysis/helpers/helper_fnc.R")
+```
+
+```{r specify_paths}
+# Set general input paths to all analysis files
+dataset <- "Tonsil_th152"
+dataset.short = "T"
+# dataset <- "Immucan_lung"
+# dataset.short = "L"
+analysis.path <- file.path("/mnt/bb_dqbm_volume/analysis", dataset)
+
+u_stability.path <- file.path(analysis.path, "tests/test_U_stability")
+u_stability_par.path <- file.path(analysis.path, "tests/test_U_stability_par")
+
+# Output folder for plots
+plot.folder <- file.path(thesis_output.folder, paste0("analysis_U_stability_", dataset))
+if(!dir.exists(plot.folder)){dir.create(plot.folder)}
 ```
 
 ## Training Data Size
@@ -77,12 +84,14 @@ u_stability.long <- lapply(u_stability.list, function(stab){
 }) %>% bind_rows()
   
 # Plot stability of U
-ggplot(u_stability.long, aes(train_size, distance)) +
+training_size.plot <- ggplot(u_stability.long, aes(train_size, distance)) +
   geom_point(aes(color=k, fill=k)) +
   geom_smooth(aes(color=k, fill=k), method="lm") +
   theme_cowplot(title.fontsize) +
   scale_color_npg() +
   labs(x="Training size", y="Correlation distance")
+
+print(training_size.plot)
 ```
 
 ### Mantel Test for k=3 and k=1 *(d=80, iter=10, paper_norm)*
@@ -142,8 +151,14 @@ u_stability.mantelPlot <- ggplot(u_stability.mantel, aes(size, mantel_cor)) +
   geom_smooth(aes(color=k, fill=k), method="lm", formula=y ~ poly(x, 2)) +
   theme_cowplot(title.fontsize) +
   scale_color_npg() +
-  labs(x="Training size", y=expression(1 - cor["Mantel"]))
+  labs(x="Training Size", y=expression(1 - Cor["Mantel"]))
 u_stability.mantelPlot
+
+# Save plot for master thesis
+ggsave(file.path(plot.folder, paste0("r_training_size_", dataset.short, ".pdf")), 
+       u_stability.mantelPlot + 
+         theme_cowplot(thesis_title.fontsize), 
+       width=13.5, height=7, units="cm")
 ```
 
 ## SMAF Parameters
@@ -169,6 +184,12 @@ u_stability_k.modules <- lapply(u_stability_modules_k.files, read_U, type="par")
 ```{r plot_u_stability_k, results="asis", fig.height = 9, fig.width = 28, fig.align = "center"}
 # Plot U for different k's
 u_stability_k.cor <- plot_U(u_stability_k.modules, "k", "rep")
+
+# Save plot for master thesis
+plot_U_thesis(u_stability_k.modules, "k", "rep", "1", 
+              file.path(plot.folder, paste0("r_dictionary_", dataset.short, "_1.pdf")))
+plot_U_thesis(u_stability_k.modules, "k", "rep", "4", 
+              file.path(plot.folder, paste0("r_dictionary_", dataset.short, "_4.pdf")))
 ```
 
 ```{r plot_u_stability_k_dist,  fig.height = 8, fig.width = 18, fig.align = "center", include=FALSE}
@@ -189,6 +210,10 @@ The boxplot shows a summary of the above mantel test results, by only looking at
 ```{r plot_u_stability_k_mantel_boxplot, fig.height = 8, fig.width = 18, fig.align = "center"}
 u_stability_k.mantelBoxplot <- plot_mantel_boxplot(u_stability_k.cor, "k")
 print(u_stability_k.mantelBoxplot)
+
+# Save plot for master thesis
+r_smaf_param.1 <- u_stability_k.mantelBoxplot + 
+  theme_cowplot(thesis_title.fontsize)
 ```
 
 ### maxItr (number of iterations to compute U) *(k=3, d=80, paper_norm)*
@@ -230,6 +255,10 @@ The boxplot shows a summary of the above mantel test results, by only looking at
 ```{r plot_u_stability_maxItr_mantel_boxplot, fig.height = 8, fig.width = 18, fig.align = "center"}
 u_stability_maxItr.mantelBoxplot <- plot_mantel_boxplot(u_stability_maxItr.cor, "maxItr")
 print(u_stability_maxItr.mantelBoxplot)
+
+# Save plot for master thesis
+r_smaf_param.2 <- u_stability_maxItr.mantelBoxplot + 
+  theme_cowplot(thesis_title.fontsize)
 ```
 
 ### Transformation of X (before SMAF training) *(k=1, d=80, iter=10)*
@@ -273,6 +302,12 @@ The boxplot shows a summary of the above mantel test results, by only looking at
 u_stability_xform.mantelBoxplot <- plot_mantel_boxplot(u_stability_xform.cor, "transformation", 
                                                        to_int=FALSE)
 print(u_stability_xform.mantelBoxplot)
+
+# Save plot for master thesis
+r_smaf_param.3 <- u_stability_xform.mantelBoxplot + 
+  theme_cowplot(thesis_title.fontsize) +
+  labs(x=update_text(u_stability_xform.mantelBoxplot$labels$x)) +
+  scale_x_discrete(labels=function(x){gsub("_", "_\n", x)})
 ```
 
 ### Dictionary size of U (number of modules in U) *(k=1, iter=10, paper_norm)*
@@ -316,4 +351,18 @@ The boxplot shows a summary of the above mantel test results, by only looking at
 u_stability_dict.mantelBoxplot <- plot_mantel_boxplot(u_stability_dict.cor, "dictionary_size", 
                                                        to_int=TRUE)
 print(u_stability_dict.mantelBoxplot)
+
+# Save plot for master thesis
+r_smaf_param.4 <- u_stability_dict.mantelBoxplot + 
+  theme_cowplot(thesis_title.fontsize) +
+  labs(x=update_text(u_stability_dict.mantelBoxplot$labels$x))
+```
+
+```{r save_plots}
+# Arrange plots for master thesis
+r_smaf_param.grid <- plot_grid(r_smaf_param.1, r_smaf_param.2, r_smaf_param.3, 
+                               r_smaf_param.4, nrow=2, labels="AUTO", align="hv",
+                               axis="lrtb")
+save_plot(file.path(plot.folder, paste0("r_smaf_param_", dataset.short, ".pdf")),
+          r_smaf_param.grid, base_width=4.77)
 ```

@@ -36,6 +36,16 @@ title.fontsize <- 12
 axis_title.fontsize <- 10
 theme_set(theme_cowplot(font_size=title.fontsize))
 
+# Set fontsizes used throughout this script for plots for the master thesis
+thesis_title.fontsize <- 10
+thesis_axis_title.fontsize <- 8
+# Set output folder
+thesis_output.folder <- "/home/ubuntu/git/CISI_IMC/results/plots"
+# Function to make text in plot nicer
+update_text <- function(old.txt){
+  new.txt <- gsub("_", " ", old.txt)
+  stringr::str_to_title(new.txt)
+}
 
 ## General helper fnc.
 
@@ -415,9 +425,74 @@ plot_single_U <- function(res, title){
                          column_names_gp=gpar(fontsize=axis_title.fontsize+6),
                          column_title_gp=gpar(fontsize=title.fontsize+6,
                                               fontface="bold"),
-                         rect_gp=gpar(col="white", lwd=1))
+                         rect_gp=gpar(col="white", lwd=1),
+                         use_raster=TRUE)
   
   res.heatmap
+}
+
+
+# Plots U for specified iter_var and i as heatmaps for thesis
+plot_U_thesis <- function(df, iter_var, repetition, i, output.file=""){
+  # Create empty HeatmapList and add all repetitions as individual heatmaps
+  ht_list <-NULL
+  for (r in unique(df[[repetition]])) {
+    # Filter for current iter_var and repetition and convert to matrix used
+    # by ComplexHeatmaps
+    res.temp <- df %>%
+      dplyr::filter(!!as.symbol(repetition)==r & !!as.symbol(iter_var)==i) %>%
+      dplyr::select(-c(repetition, iter_var))
+    
+    if (nrow(res.temp)!=0){
+      # Pivot dataframe to long format
+      res <- res.temp %>%
+        pivot_wider(names_from=module, values_from=membership) %>%
+        column_to_rownames(var="protein") %>%
+        as.matrix()
+      # Compute module membership for all proteins
+      res.membership <- apply(res, 2, compute_module_membership)
+      
+      # Create heatmap of module membership
+      res.heatmap <- Heatmap(res.membership, 
+                             column_title=paste0(str_to_title(repetition), 
+                                                 " ", 
+                                                 r, 
+                                                 "\n(d = ", 
+                                                 ncol(res), 
+                                                 ")"),
+                             col=structure(c("grey", pal_npg("nrc")("1")[1]), 
+                                           names=c("0", "1")), 
+                             show_heatmap_legend=FALSE, 
+                             show_row_dend=FALSE, 
+                             show_column_dend=FALSE,
+                             row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                             show_column_names=FALSE,
+                             column_title_gp=gpar(fontsize=thesis_axis_title.fontsize,
+                                                  fontface="bold"),
+                             rect_gp=gpar(col="white", lwd=1))
+      
+      # Create heatmap of module membership
+      ht_list <- ht_list + res.heatmap
+    }
+  }
+  
+  pdf(file=output.file, width=9, height=5)
+  
+  # Draw all heatmaps together
+  draw(ht_list, heatmap_legend_list=list(Legend(labels=c("Not Active", "Active"), 
+                                                title="Activity",
+                                                legend_gp=gpar(fill=c("grey", 
+                                                                      pal_npg("nrc")("1")[1])),
+                                                at=c("0", "1"),
+                                                labels_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                title_gp=gpar(fontsize=thesis_axis_title.fontsize, 
+                                                              fontface="bold"))),
+       column_title=paste0(iter_var, " = ", i),
+       column_title_gp=gpar(fontsize=thesis_title.fontsize,
+                            fontface="bold"),
+       heatmap_legend_side="bottom")
+  
+  dev.off()
 }
 
 
@@ -723,7 +798,7 @@ plot_mantel_boxplot <- function(df, var_name, to_int=TRUE){
     geom_boxplot() +
     scale_fill_npg() +
     guides(fill=FALSE) +
-    labs(x=var_name, y=expression(cor["Mantel"])) 
+    labs(x=var_name, y=expression(Cor["Mantel"])) 
   
   df.mantelBoxplot  
 }
