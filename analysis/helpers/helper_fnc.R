@@ -966,7 +966,7 @@ plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="expr
                 theme_cowplot(thesis_title.fontsize), 
               plot.true +
                 theme_cowplot(thesis_title.fontsize), 
-              labels=unlist(lapply(names(sce.list), update_text)),
+              labels=unlist(lapply(names(sce.list), clean_plot_labels)),
               align="hv", axis="lrtb", label_size=thesis_title.fontsize,
               hjust=-1)
   } else {
