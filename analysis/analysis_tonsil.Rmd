@@ -18,17 +18,21 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(scater)
 ```
 
+```{r helper_fnc}
+# Import helper fncs
+source("../analysis/helpers/helper_fnc.R")
+```
+
 ```{r specify_paths}
 # Set general input paths to all analysis files
 analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152/training/full"
 
 # Set path to masks
 masks.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152/steinbock/masks_deepcell"
-```
 
-```{r helper_fnc}
-# Import helper fncs
-source("../analysis/helpers/helper_fnc.R")
+# Output folder for plots
+plot.folder <- file.path(thesis_output.folder, "analysis_tonsil")
+if(!dir.exists(plot.folder)){dir.create(plot.folder)}
 ```
 
 ## Read Inputs
@@ -178,4 +182,46 @@ for (i in unique(X.cor$sm)) {
   print(proteinDist)
   cat("\n\n")
 }
+```
+
+```{r save_plots}
+# Create barplot for d_res_T
+thesis_results.barplot <- ggplot(data_temp %>% 
+                                   dplyr::filter(corrected=="uncorrected") %>%
+                                   mutate(simulation=ifelse(simulation=="composite", 
+                                                            "no_noise", simulation)), 
+                                 aes(x=measure, y=value, pattern=simulation, 
+                                     fill=simulation)) +
+  geom_bar(stat="identity",
+           position=position_dodge(preserve="single"),
+           width=0.6) +
+  scale_y_continuous(limits=c(0, 1)) +
+  scale_fill_npg() +
+  labs(x="Measure", y="Value", fill="Simulation Type") + 
+  theme_cowplot(thesis_title.fontsize) +
+  theme(legend.position="bottom",
+        axis.text.x=element_text(angle=45, vjust=1, hjust=1))
+# Save d_res_T
+ggsave(file.path(plot.folder, "d_res_T.pdf"), thesis_results.barplot, 
+       width=13.5, height=10, units="cm")
+
+# Create images for d_neighbours_T
+d_neighbours_T.grid <- plot_grid(plot_exprs(X.list[3:4], "", poi[[1]][1], 
+                                            poi[[1]][2], thesis=TRUE),
+                                 plot_exprs(X.list[3:4], "", poi[[2]][1], 
+                                            poi[[2]][2], thesis=TRUE),
+                                 ncol=1, labels="AUTO", align="h", axis="l")
+# Save d_neighbours_T
+save_plot(file.path(plot.folder, "d_neighbours_T.pdf"),
+          d_neighbours_T.grid, base_width=4.77)
+
+# Create correlation plot for d_protein_cor
+d_protein_cor.plot <- plot_protein_cor(X.cor %>% dplyr::filter(sm=="uncorrected")) +
+  theme_cowplot(thesis_title.fontsize)
+# Save d_protein_cor.pdf
+ggsave(file.path(plot.folder, "d_protein_cor.pdf"), 
+       d_protein_cor.plot +
+         labs(x=clean_plot_labels(d_protein_cor.plot$labels$x),
+              y=clean_plot_labels(d_protein_cor.plot$labels$y)), 
+       width=11, height=12, units="cm")
 ```

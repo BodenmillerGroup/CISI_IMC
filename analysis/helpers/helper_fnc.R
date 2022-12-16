@@ -26,6 +26,7 @@ library(jaccard)
 library(ggpattern)
 library(scater)
 library(viridis)
+library(scales)
 
 
 
@@ -42,7 +43,7 @@ thesis_axis_title.fontsize <- 8
 # Set output folder
 thesis_output.folder <- "/home/ubuntu/git/CISI_IMC/results/plots"
 # Function to make text in plot nicer
-update_text <- function(old.txt){
+clean_plot_labels <- function(old.txt){
   new.txt <- gsub("_", " ", old.txt)
   stringr::str_to_title(new.txt)
 }
@@ -895,7 +896,8 @@ plot_cells <- function(sce.list, masks.list, poi, layer="none", display="single"
 
 # Function that plots exprs (stored in "layer") of protein_x vs protein_y for both
 # ground truth and decomposed data coloured by celltype_col
-plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="exprs"){
+plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="exprs",
+                       thesis=FALSE){
   # Remove special characters in protein names to make plotting of such proteins
   # possible
   sce.list <- lapply(sce.list, function(sce){
@@ -925,35 +927,54 @@ plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="expr
                         aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y), 
                             colour=celltype, alpha=celltype), 
                         exprs_values=layer) +
-      geom_point(size=0.3) +
+      geom_point(size=0.2) +
       scale_color_manual(values=col_cells) +
       guides(color=FALSE) +
-      scale_alpha_manual(guide='none', values=alpha_cells)
+      scale_alpha_manual(guide='none', values=alpha_cells) +
+      scale_y_continuous(labels=label_number(accuracy=0.1)) +
+      scale_x_continuous(labels=label_number(accuracy=0.1))
     plot.true <- ggcells(sce.list[[2]], 
                          aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y), 
                              colour=celltype, alpha=celltype), 
                          exprs_values=layer) +
-      geom_point(size=0.4) +
+      geom_point(size=0.2) +
       scale_color_manual(values=col_cells) +
-      scale_alpha_manual(guide='none', values=alpha_cells)
+      scale_alpha_manual(guide='none', values=alpha_cells) +
+      scale_y_continuous(labels=label_number(accuracy=0.1)) +
+      scale_x_continuous(labels=label_number(accuracy=0.1))
     
   } else {
     # If no celltype column is present, then all cells are black
     plot.sim <- ggcells(sce.list[[1]], 
                         aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y)), 
                         exprs_values=layer) +
-      geom_point(size=0.3) 
+      geom_point(size=0.2) +
+      scale_y_continuous(labels=label_number(accuracy=0.1)) +
+      scale_x_continuous(labels=label_number(accuracy=0.1))
     
     plot.true <- ggcells(sce.list[[2]], 
                          aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y)), 
                          exprs_values=layer) +
-      geom_point(size=0.4)
+      geom_point(size=0.2) +
+      scale_y_continuous(labels=label_number(accuracy=0.1)) +
+      scale_x_continuous(labels=label_number(accuracy=0.1))
   }
   
-  # Add plots next to each other
-  plot_grid(plot.sim, plot.true, 
-            labels=names(sce.list), 
-            label_size=title.fontsize, hjust=c(-2, -1.5), vjust=1)
+  if(thesis==TRUE){
+    # Add plots next to each other
+    plot_grid(plot.sim +
+                theme_cowplot(thesis_title.fontsize), 
+              plot.true +
+                theme_cowplot(thesis_title.fontsize), 
+              labels=unlist(lapply(names(sce.list), update_text)),
+              align="hv", axis="lrtb", label_size=thesis_title.fontsize,
+              hjust=-1)
+  } else {
+    # Add plots next to each other
+    plot_grid(plot.sim, plot.true, 
+              labels=names(sce.list), 
+              label_size=title.fontsize, hjust=c(-2, -1.5), vjust=1)
+  }
 }
 
 
@@ -1024,7 +1045,8 @@ plot_protein_cor <- function(X.cor){
     scale_fill_igv() +
     guides(fill=FALSE) +
     xlab("protein") +
-    coord_flip()
+    coord_flip() +
+    ylim(0, 1)
   
   protein.plot
 }

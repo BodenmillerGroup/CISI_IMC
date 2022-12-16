@@ -153,12 +153,6 @@ u_stability.mantelPlot <- ggplot(u_stability.mantel, aes(size, mantel_cor)) +
   scale_color_npg() +
   labs(x="Training Size", y=expression(1 - Cor["Mantel"]))
 u_stability.mantelPlot
-
-# Save plot for master thesis
-ggsave(file.path(plot.folder, paste0("r_training_size_", dataset.short, ".pdf")), 
-       u_stability.mantelPlot + 
-         theme_cowplot(thesis_title.fontsize), 
-       width=13.5, height=7, units="cm")
 ```
 
 ## SMAF Parameters
@@ -184,12 +178,6 @@ u_stability_k.modules <- lapply(u_stability_modules_k.files, read_U, type="par")
 ```{r plot_u_stability_k, results="asis", fig.height = 9, fig.width = 28, fig.align = "center"}
 # Plot U for different k's
 u_stability_k.cor <- plot_U(u_stability_k.modules, "k", "rep")
-
-# Save plot for master thesis
-plot_U_thesis(u_stability_k.modules, "k", "rep", "1", 
-              file.path(plot.folder, paste0("r_dictionary_", dataset.short, "_1.pdf")))
-plot_U_thesis(u_stability_k.modules, "k", "rep", "4", 
-              file.path(plot.folder, paste0("r_dictionary_", dataset.short, "_4.pdf")))
 ```
 
 ```{r plot_u_stability_k_dist,  fig.height = 8, fig.width = 18, fig.align = "center", include=FALSE}
@@ -210,10 +198,6 @@ The boxplot shows a summary of the above mantel test results, by only looking at
 ```{r plot_u_stability_k_mantel_boxplot, fig.height = 8, fig.width = 18, fig.align = "center"}
 u_stability_k.mantelBoxplot <- plot_mantel_boxplot(u_stability_k.cor, "k")
 print(u_stability_k.mantelBoxplot)
-
-# Save plot for master thesis
-r_smaf_param.1 <- u_stability_k.mantelBoxplot + 
-  theme_cowplot(thesis_title.fontsize)
 ```
 
 ### maxItr (number of iterations to compute U) *(k=3, d=80, paper_norm)*
@@ -255,10 +239,6 @@ The boxplot shows a summary of the above mantel test results, by only looking at
 ```{r plot_u_stability_maxItr_mantel_boxplot, fig.height = 8, fig.width = 18, fig.align = "center"}
 u_stability_maxItr.mantelBoxplot <- plot_mantel_boxplot(u_stability_maxItr.cor, "maxItr")
 print(u_stability_maxItr.mantelBoxplot)
-
-# Save plot for master thesis
-r_smaf_param.2 <- u_stability_maxItr.mantelBoxplot + 
-  theme_cowplot(thesis_title.fontsize)
 ```
 
 ### Transformation of X (before SMAF training) *(k=1, d=80, iter=10)*
@@ -302,12 +282,6 @@ The boxplot shows a summary of the above mantel test results, by only looking at
 u_stability_xform.mantelBoxplot <- plot_mantel_boxplot(u_stability_xform.cor, "transformation", 
                                                        to_int=FALSE)
 print(u_stability_xform.mantelBoxplot)
-
-# Save plot for master thesis
-r_smaf_param.3 <- u_stability_xform.mantelBoxplot + 
-  theme_cowplot(thesis_title.fontsize) +
-  labs(x=update_text(u_stability_xform.mantelBoxplot$labels$x)) +
-  scale_x_discrete(labels=function(x){gsub("_", "_\n", x)})
 ```
 
 ### Dictionary size of U (number of modules in U) *(k=1, iter=10, paper_norm)*
@@ -351,15 +325,37 @@ The boxplot shows a summary of the above mantel test results, by only looking at
 u_stability_dict.mantelBoxplot <- plot_mantel_boxplot(u_stability_dict.cor, "dictionary_size", 
                                                        to_int=TRUE)
 print(u_stability_dict.mantelBoxplot)
-
-# Save plot for master thesis
-r_smaf_param.4 <- u_stability_dict.mantelBoxplot + 
-  theme_cowplot(thesis_title.fontsize) +
-  labs(x=update_text(u_stability_dict.mantelBoxplot$labels$x))
 ```
 
 ```{r save_plots}
-# Arrange plots for master thesis
+# Save r_training_size
+ggsave(file.path(plot.folder, paste0("r_training_size_", dataset.short, ".pdf")), 
+       u_stability.mantelPlot + 
+         theme_cowplot(thesis_title.fontsize), 
+       width=13.5, height=7, units="cm")
+
+# Save r_dictionary
+plot_U_thesis(u_stability_k.modules, "k", "rep", "1", 
+              file.path(plot.folder, paste0("r_dictionary_", dataset.short, "_1.pdf")))
+plot_U_thesis(u_stability_k.modules, "k", "rep", "4", 
+              file.path(plot.folder, paste0("r_dictionary_", dataset.short, "_4.pdf")))
+
+# Save r_smaf_param.1
+r_smaf_param.1 <- u_stability_k.mantelBoxplot + 
+  theme_cowplot(thesis_title.fontsize)
+# Save r_smaf_param.2
+r_smaf_param.2 <- u_stability_maxItr.mantelBoxplot + 
+  theme_cowplot(thesis_title.fontsize)
+# Save r_smaf_param.3
+r_smaf_param.3 <- u_stability_xform.mantelBoxplot + 
+  theme_cowplot(thesis_title.fontsize) +
+  labs(x=clean_plot_labels(u_stability_xform.mantelBoxplot$labels$x)) +
+  scale_x_discrete(labels=function(x){gsub("_", "_\n", x)})
+# Save r_smaf_param.4
+r_smaf_param.4 <- u_stability_dict.mantelBoxplot + 
+  theme_cowplot(thesis_title.fontsize) +
+  labs(x=clean_plot_labels(u_stability_dict.mantelBoxplot$labels$x))
+# Arrange plots for r_smaf_param
 r_smaf_param.grid <- plot_grid(r_smaf_param.1, r_smaf_param.2, r_smaf_param.3, 
                                r_smaf_param.4, nrow=2, labels="AUTO", align="hv",
                                axis="lrtb")
