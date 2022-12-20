@@ -41,7 +41,7 @@ theme_set(theme_cowplot(font_size=title.fontsize))
 thesis_title.fontsize <- 10
 thesis_axis_title.fontsize <- 8
 # Set output folder
-thesis_output.folder <- "/home/ubuntu/git/CISI_IMC/results/plots"
+thesis_output.folder <- "/mnt/bb_dqbm_volume/plots"
 # Function to make text in plot nicer
 clean_plot_labels <- function(old.txt){
   new.txt <- gsub("_", " ", old.txt)
@@ -469,8 +469,7 @@ plot_U_thesis <- function(df, iter_var, repetition, i, output.file=""){
                              row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
                              show_column_names=FALSE,
                              column_title_gp=gpar(fontsize=thesis_axis_title.fontsize,
-                                                  fontface="bold"),
-                             rect_gp=gpar(col="white", lwd=1))
+                                                  fontface="bold"))
       
       # Create heatmap of module membership
       ht_list <- ht_list + res.heatmap
@@ -558,6 +557,73 @@ plot_U <- function(df, iter_var, repetition){
   names(df.cor) <- unique(df[[iter_var]])
   
   df.cor  
+}
+
+
+# Plots U as heatmaps where two U's are concatenated and coloured by which 
+# dataset the module belongs to for thesis
+# Shared modules are only shown once and coloured accordingl
+plot_U_membership_thesis <- function(df, iter_var, repetition, i, output.file){
+  # Create temporary list 
+  temp_list <-  list()
+  for (r in unique(df[[repetition]])) {
+    # Filter for current iter_var and repetition and convert to matrix used
+    # by ComplexHeatmaps
+    res.temp <- df %>%
+      dplyr::filter(!!as.symbol(repetition)==r & !!as.symbol(iter_var)==i) %>%
+      dplyr::select(-c(repetition, iter_var)) %>%
+      pivot_wider(names_from=module, values_from=membership) %>%
+      column_to_rownames(var="protein") %>%
+      as.matrix()
+    
+    # Compute module memberships
+    temp_list[length(temp_list)+1] <- list(apply(res.temp, 2, compute_module_membership))
+  }
+  names(temp_list) <- unique(df[[repetition]])
+  
+  # Compare modules and retain only modules present in both U's
+  modules.both <- lapply(1:ncol(temp_list[[1]]), function(i){
+    unlist(lapply(1:ncol(temp_list[[2]]), function(j){
+      if (all(temp_list[[1]][, i]==temp_list[[2]][, j])){
+        data.frame(x=c(i), y=c(j))
+      }
+    }))
+  }) %>% bind_rows()
+  
+  # Add missing modules only present in one of the two U's
+  modules.matrix <- temp_list[[1]][, modules.both$x] %>%
+    bind_cols(2 * temp_list[[1]][, -(modules.both$x)]) %>%
+    bind_cols(3 * temp_list[[2]][, -(modules.both$y)]) %>%
+    as.matrix()
+  colnames(modules.matrix) <- NULL
+  rownames(modules.matrix) <- rownames(temp_list[[1]])
+  
+  # Create heatmap of combined module membership and cluster according to jaccard distance
+  modules.heatmap <- Heatmap(modules.matrix, 
+                             col=structure(c("grey", pal_npg("nrc")("3")[1:3]), 
+                                           names=c("0", "1", "2", "3")), 
+                             show_heatmap_legend=TRUE, 
+                             show_row_dend=FALSE, 
+                             row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                             column_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                             column_title_gp=gpar(fontsize=thesis_title.fontsize,
+                                                  fontface="bold"),
+                             clustering_distance_columns = function(x, y) 1 - jaccard(ifelse(x>0, 1, 0), 
+                                                                                      ifelse(y>0, 1, 0)),
+                             clustering_distance_rows=function(x, y) 1 - jaccard(ifelse(x>0, 1, 0),
+                                                                                 ifelse(y>0, 1, 0)),
+                             heatmap_legend_param=list(at=c("0", "1", "2", "3"),
+                                                       labels=c("Not Active", "Active in Both",
+                                                                paste0("Active in ", 
+                                                                       unique(df[[repetition]]))),
+                                                       title="Proteins",
+                                                       title_gp=gpar(fontsize=thesis_axis_title.fontsize, 
+                                                                     fontface="bold"),
+                                                       labels_gp=gpar(fontsize=thesis_axis_title.fontsize)))
+  pdf(file=output.file, width=9, height=5)
+  # Draw heatmap
+  draw(modules.heatmap)
+  dev.off()
 }
 
 
@@ -842,7 +908,8 @@ plot_cisi_results <- function(df, group, measure, fill){
 
 # Plot results of expression values in "layer" of CISI vs ground truth for 
 # protein of interest poi and segmented according to masks.list
-plot_cells <- function(sce.list, masks.list, poi, layer="none", display="single"){
+plot_cells <- function(sce.list, masks.list, poi, layer="none", display="single",
+                       ft_size=title.fontsize){
   
   # Set colours for poi
   colour.cells <- list(el=c("#FFFFFF", pal_npg("nrc")("8")[8]))
@@ -861,16 +928,16 @@ plot_cells <- function(sce.list, masks.list, poi, layer="none", display="single"
                      return_plot=TRUE,  image_title=list(cex=fontsize(title.fontsize)),
                      colour=colour.cells, display=display,
                      scale_bar=list(cex=fontsize(axis_title.fontsize), lwidth=5),
-                     legend=list(colour_by.title.cex=fontsize(axis_title.fontsize), 
-                                 colour_by.labels.cex=fontsize(axis_title.fontsize)))
+                     legend=list(colour_by.title.cex=fontsize(ft_size-2), 
+                                 colour_by.labels.cex=fontsize(ft_size-2)))
     } else {
       p <- plotCells(mask=masks.list, object=el,
                      cell_id="ObjectNumber", img_id="sample_id", colour_by=poi,
-                     return_plot=TRUE,  image_title=list(cex=fontsize(title.fontsize)),
+                     return_plot=TRUE,  image_title=list(cex=fontsize(ft_size)),
                      colour=colour.cells, display=display,
-                     scale_bar=list(cex=fontsize(axis_title.fontsize), lwidth=5),
-                     legend=list(colour_by.title.cex=fontsize(axis_title.fontsize), 
-                                 colour_by.labels.cex=fontsize(axis_title.fontsize)),
+                     scale_bar=list(cex=fontsize(ft_size-2), lwidth=5),
+                     legend=list(colour_by.title.cex=fontsize(ft_size-2), 
+                                 colour_by.labels.cex=fontsize(ft_size-2)),
                      exprs_values=layer)
     }
     # Add plot to image list
@@ -980,7 +1047,8 @@ plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="expr
 
 # Plot ground_truth and simulated image "im" where cells are colored according 
 # to celltypes using the colours "celltype.col"
-plot_celltype_images <- function(sce, masks, im, celltype.col){
+plot_celltype_images <- function(sce, masks, im, celltype.col, 
+                                 ft_size=title.fontsize, thesis=FALSE){
   # Create empty plot list
   plot.list <- list()
   
@@ -992,10 +1060,10 @@ plot_celltype_images <- function(sce, masks, im, celltype.col){
                         colour_by="celltype_NA",
                         colour=list(celltype_NA=celltype.col),
                         return_plot=TRUE,
-                        image_title=list(cex=fontsize(title.fontsize)),
-                        legend=list(colour_by.title.cex=fontsize(title.fontsize), 
-                                    colour_by.labels.cex=fontsize(axis_title.fontsize)),
-                        scale_bar=list(length=2, cex=fontsize(title.fontsize), lwidth=2),
+                        image_title=list(cex=fontsize(ft_size)),
+                        legend=list(colour_by.title.cex=fontsize(ft_size-2), 
+                                    colour_by.labels.cex=fontsize(ft_size-2)),
+                        scale_bar=list(length=2, cex=fontsize(ft_size-2), lwidth=2),
                         display="single")
   # Create simulated image with coloured celltypes
   sim.image <- plotCells(masks[im],
@@ -1005,10 +1073,10 @@ plot_celltype_images <- function(sce, masks, im, celltype.col){
                          colour_by="celltype_pred",
                          colour=list(celltype_pred=celltype.col),
                          return_plot=TRUE,
-                         image_title=list(cex=fontsize(title.fontsize)),
-                         legend=list(colour_by.title.cex=fontsize(title.fontsize), 
-                                     colour_by.labels.cex=fontsize(axis_title.fontsize)),
-                         scale_bar=list(length=2, cex=fontsize(title.fontsize), lwidth=2),
+                         image_title=list(cex=fontsize(ft_size)),
+                         legend=list(colour_by.title.cex=fontsize(ft_size-2), 
+                                     colour_by.labels.cex=fontsize(ft_size-2)),
+                         scale_bar=list(length=2, cex=fontsize(ft_size-2), lwidth=2),
                          display="single")
   # Append both images together
   plot.list <- append(append(plot.list, 
@@ -1025,9 +1093,14 @@ plot_celltype_images <- function(sce, masks, im, celltype.col){
                                      grid_width=unit(5, "mm"))))))
   
   # Put two images and legend into a single row of plots
-  images <- plot_grid(plotlist=plot.list, nrow=1, labels=c("Ground truth", "Simulated"),
-                      label_size=15, hjust=c(-2, -1.5), 
-                      vjust=1, scale=0.9)
+  if(thesis==TRUE){
+    images <- plot_grid(plotlist=plot.list, nrow=1, labels=c("Ground truth", "Simulated"),
+                        label_size=ft_size, hjust=-1, vjust=1)
+  } else {
+    images <- plot_grid(plotlist=plot.list, nrow=1, labels=c("Ground truth", "Simulated"),
+                        label_size=15, hjust=c(-2, -1.5), 
+                        vjust=1, scale=0.9) 
+  }
   
   images
 }
@@ -1073,18 +1146,18 @@ plot_protein_dist <- function(X.cor, lower_limit.colour=0.7){
 
 # Plot scatterplot of exrpession values per protein and add add diagonal and 
 # regression line, as well as R (pearson correlation coefficient)
-plot_protein_scatterplot <- function(X.df){
+plot_protein_scatterplot <- function(X.df, ncol=5, cor_size=3){
   # Create scatterplot  per protein
   protein.scatter <- ggscatter(X.df,
                                x="ground_truth", y="simulated",
                                add="reg.line",
                                color=pal_npg("nrc")("1"),
                                add.params=list(color=pal_npg("nrc")("4")[4],
-                                               size=2)) +
-    facet_wrap(~ protein, scales="free", ncol=5) +
+                                               size=1)) +
+    facet_wrap(~ protein, scales="free", ncol=ncol) +
     scale_x_continuous(guide=guide_axis(n.dodge=2)) +
     geom_abline(slope=1, linetype="dashed") +
-    stat_cor(size=3)
+    stat_cor(size=cor_size)
   
   protein.scatter
 }

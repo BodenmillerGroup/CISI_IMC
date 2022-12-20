@@ -415,17 +415,19 @@ for (i in unique(X.df$dataset)) {
 
 # Create s_protein plot 1 and 2
 s_protein_1.plot <- plot_protein_scatterplot(X.df %>%
-                                               dplyr::filter(k=="1" & dataset=="lung_lung")) +
-  theme_cowplot(thesis_title.fontsize) +
-  theme(legend.position="bottom", legend.box="vertical", 
-        axis.text.x=element_text(angle=45, vjust=1, hjust=1)) +
-  scale_x_discrete(guide=guide_axis(n.dodge=1))
+                                               dplyr::filter(k=="1" & dataset=="lung_lung"),
+                                             ncol=4, cor_size=2.5) +
+  theme_cowplot(thesis_title.fontsize) 
+  # theme(legend.position="bottom", legend.box="vertical",
+  #       axis.text.x=element_text(angle=45, vjust=1, hjust=1)) +
+  # scale_x_discrete(guide=guide_axis(n.dodge=1))
 s_protein_2.plot <- plot_protein_scatterplot(X.df %>%
-                                               dplyr::filter(k=="1" & dataset=="tonsil_tonsil")) +
-  theme_cowplot(thesis_title.fontsize) +
-  theme(legend.position="bottom", legend.box="vertical", 
-        axis.text.x=element_text(angle=45, vjust=1, hjust=1)) +
-  scale_x_discrete(guide=guide_axis(n.dodge=1))
+                                               dplyr::filter(k=="1" & dataset=="tonsil_tonsil"),
+                                             ncol=4, cor_size=2.5) +
+  theme_cowplot(thesis_title.fontsize) 
+  # theme(legend.position="bottom", legend.box="vertical",
+  #       axis.text.x=element_text(angle=45, vjust=1, hjust=1)) +
+  # scale_x_discrete(guide=guide_axis(n.dodge=1))
 
 # Delete objects no longer needed (since there are a lot of big objects in this RMD)
 rm(X.df)
@@ -514,11 +516,11 @@ for (i in unique(X.cor$dataset)) {
 }
 
 # Create s_protein plot 3 and 4
-s_protein_3.plot <-  plot_protein_scatterplot(X.cor %>%
-                                                dplyr::filter(dataset=="lung_lung")) +
+s_protein_3.plot <-  plot_protein_cor(X.cor %>%
+                                        dplyr::filter(dataset=="lung_lung")) +
   theme_cowplot(thesis_title.fontsize)
-s_protein_4.plot <-  plot_protein_scatterplot(X.cor %>%
-                                                dplyr::filter(dataset=="tonsil_tonsil")) +
+s_protein_4.plot <-  plot_protein_cor(X.cor %>%
+                                        dplyr::filter(dataset=="tonsil_tonsil")) +
   theme_cowplot(thesis_title.fontsize)
 ```
 
@@ -1183,11 +1185,26 @@ plot_U_thesis(u, "k", "dataset", "1", file.path(plot.folder, "r_dictionary.pdf")
 plot_U_membership_thesis(u, "k", "dataset", "1", file.path(plot.folder, "r_dictionary_comb.pdf"))
 
 # Save s_protein
-s_protein.grid <- plot_grid(s_protein_1.plot, s_protein_2.plot, s_protein_3.plot,
-                            s_protein_4.plot, ncol=1, labels="AUTO", align="h", axis="l")
-# Save d_neighbours_L
-save_plot(file.path(plot.folder, "s_protein.pdf"),
-          s_protein.grid, base_width=4.77)
+s_protein_1.grid <- plot_grid(s_protein_1.plot, ncol=1, labels="A", 
+                              align="h", axis="l")
+s_protein_2.grid <- plot_grid(s_protein_2.plot, ncol=1, labels="B", 
+                              align="h", axis="l")
+s_protein_3.grid <- plot_grid(s_protein_3.plot +
+                                labs(x=clean_plot_labels(s_protein_3.plot$labels$x),
+                                     y=clean_plot_labels(s_protein_3.plot$labels$y)), 
+                              s_protein_4.plot +
+                                labs(x=clean_plot_labels(s_protein_4.plot$labels$x),
+                                     y=clean_plot_labels(s_protein_4.plot$labels$y)),
+                              ncol=1, labels="AUTO", 
+                              align="h", axis="l")
+
+# Save s_protein_scatter
+save_plot(file.path(plot.folder, "s_protein_scatter_L.pdf"),
+          s_protein_1.grid, base_width=6, base_height=9)
+save_plot(file.path(plot.folder, "s_protein_scatter_T.pdf"),
+          s_protein_2.grid, base_width=6, base_height=9)
+save_plot(file.path(plot.folder, "s_protein_cor.pdf"),
+          s_protein_3.grid, base_width=4.33, base_height=9)
 
 # Save s_protein_snr 
 ggsave(file.path(plot.folder, "s_protein_snr.pdf"), 
