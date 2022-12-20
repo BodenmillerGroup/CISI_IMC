@@ -28,6 +28,11 @@ library(RColorBrewer)
 library(mclust)
 ```
 
+```{r helper_fnc}
+# Import helper fncs
+source("../analysis/helpers/helper_fnc.R")
+```
+
 ```{r specify_paths}
 # Set general input paths to all analysis files
 analysis.path <- "/mnt/bb_dqbm_volume/analysis"
@@ -35,11 +40,10 @@ analysis.path <- "/mnt/bb_dqbm_volume/analysis"
 # Set path to masks
 tonsil.path <- "/mnt/bb_dqbm_volume/data/Tonsil_th152"
 lung.path <- "/mnt/bb_dqbm_volume/data/Immucan_lung"
-```
 
-```{r helper_fnc}
-# Import helper fncs
-source("../analysis/helpers/helper_fnc.R")
+# Output folder for plots
+plot.folder <- file.path(thesis_output.folder, "analysis_tonsil_vs_lung")
+if(!dir.exists(plot.folder)){dir.create(plot.folder)}
 ```
 
 ### Read Inputs
@@ -268,7 +272,29 @@ for (p in pois){
   print(X.img)
   cat("\n\n")
 }
+```
 
+```{r save_plots_1}
+# Create s_img
+s_img_1.plot <- plot_grid(plotlist=plot_cells(X.tonsil1, 
+                                              masks.tonsil["20220520_TsH_th152_cisi1_002"], "MPO",
+                                              ft_size=thesis_title.fontsize),
+                          nrow=1, labels=c("", names(X.tonsil1)[1], "", names(X.tonsil1)[2]),
+                          rel_widths=c(1,2,1,2),
+                          label_size=thesis_title.fontsize, hjust=-1)
+s_img_2.plot <- plot_grid(plotlist=plot_cells(X.tonsil1, 
+                                              masks.tonsil["20220520_TsH_th152_cisi1_002"], "SMA", 
+                                              ft_size=thesis_title.fontsize),
+                          nrow=1, labels=c("", names(X.tonsil1)[1], "", names(X.tonsil1)[2]),
+                          rel_widths=c(1,2,1,2),
+                          label_size=thesis_title.fontsize, hjust=-1)
+
+s_img.grid <- plot_grid(s_img_1.plot, s_img_2.plot,
+                        ncol=1, labels="AUTO",
+                        label_size=thesis_title.fontsize)
+# Save s_img
+save_plot(file.path(plot.folder, "s_img.pdf"),
+          s_img.grid, base_width=6.5, base_height=6)
 ```
 
 #### CD20 of Test Image Overlayed (Tonsil th152, k=1)
@@ -387,9 +413,24 @@ for (i in unique(X.df$dataset)) {
   cat("\n\n")
 }
 
+# Create s_protein plot 1 and 2
+s_protein_1.plot <- plot_protein_scatterplot(X.df %>%
+                                               dplyr::filter(k=="1" & dataset=="lung_lung")) +
+  theme_cowplot(thesis_title.fontsize) +
+  theme(legend.position="bottom", legend.box="vertical", 
+        axis.text.x=element_text(angle=45, vjust=1, hjust=1)) +
+  scale_x_discrete(guide=guide_axis(n.dodge=1))
+s_protein_2.plot <- plot_protein_scatterplot(X.df %>%
+                                               dplyr::filter(k=="1" & dataset=="tonsil_tonsil")) +
+  theme_cowplot(thesis_title.fontsize) +
+  theme(legend.position="bottom", legend.box="vertical", 
+        axis.text.x=element_text(angle=45, vjust=1, hjust=1)) +
+  scale_x_discrete(guide=guide_axis(n.dodge=1))
+
 # Delete objects no longer needed (since there are a lot of big objects in this RMD)
 rm(X.df)
 ```
+
 
 #### Correlations per Protein (k=1, arcsinh) {.tabset}
 
@@ -471,6 +512,14 @@ for (i in unique(X.cor$dataset)) {
   print(proteinCorr)
   cat("\n\n")
 }
+
+# Create s_protein plot 3 and 4
+s_protein_3.plot <-  plot_protein_scatterplot(X.cor %>%
+                                                dplyr::filter(dataset=="lung_lung")) +
+  theme_cowplot(thesis_title.fontsize)
+s_protein_4.plot <-  plot_protein_scatterplot(X.cor %>%
+                                                dplyr::filter(dataset=="tonsil_tonsil")) +
+  theme_cowplot(thesis_title.fontsize)
 ```
 
 #### Protein distributions coloured by correlation results *(k=1, arcsinh)*
@@ -541,6 +590,21 @@ for (i in coi) {
   print(proteinChar)
   cat("\n\n")
 }
+
+# Create s_protein_snr plot
+s_protein_snr.plot <- ggplot(X.cor, 
+                        aes(x=snr, y=correlation, label=protein)) +
+    geom_point(color=pal_npg("nrc")("1")) +
+    facet_wrap(~ dataset, scales="free", ncol=2) +
+    stat_cor(size=2.8,
+             label.x.npc="center",
+             label.y.npc="bottom") +
+    stat_smooth(method="lm",
+                formula=y ~ log(x),
+                se=FALSE,
+                color=pal_npg("nrc")("4")[4], size=2) +
+    geom_text_repel(size=2.8) +
+  theme_cowplot(thesis_title.fontsize)
 
 # Delete objects no longer needed (since there are a lot of big objects in this RMD)
 rm(X.cor)
@@ -620,21 +684,29 @@ for (sce in keep(X.lung_lung, function(x){metadata(x)$k=="1"})){
   
   # Create empty list for plots
   X.redDimlist <- list()
+  # Create empty list for plots to save
+  s_low_dim.list <- list()
+  s_low_dim.names <- list()
   # Extract for simulated and true results for UMAP and TSNE and plot and
   # colour by celltype
   for (method in c("UMAP", "TSNE")){
+    X.redDim_temp <- dittoDimPlot(sce,
+                                  var="celltype",
+                                  reduction.use=method,
+                                  size=0.2,
+                                  color.panel=celltype.col,
+                                  main="") +
+      theme(legend.position="bottom") +
+      guides(color=guide_legend(nrow=4, 
+                                byrow=TRUE,
+                                override.aes=list(size=3)))
     X.redDimlist <- append(X.redDimlist,
-                           list(dittoDimPlot(sce,
-                                             var="celltype",
-                                             reduction.use=method,
-                                             size=0.2,
-                                             color.panel=celltype.col,
-                                             main="") +
-                                  theme(legend.position="bottom") +
-                                  guides(color=guide_legend(nrow=4, 
-                                                            byrow=TRUE,
-                                                            override.aes=list(size=3)))))
-    
+                           list(dittoDimPlot))
+    s_low_dim.list <- append(s_low_dim.list,
+                             list(dittoDimPlot +
+                                    theme_cowplot(thesis_title.fontsize)))
+    s_low_dim.names <- append(s_low_dim.names, paste(metadata(sce)$ground_truth, 
+                                                     method, " "))
   }
   # Plot simulated and true reduced dim on top of each other
   X.redDimPlot <- plot_grid(plotlist=X.redDimlist,
@@ -689,6 +761,8 @@ all.clusters <- lapply(X.lung,
   summarise_all(na.omit) %>%
   ungroup()
 
+# Initialize empty list for saving heatmaps for thesis
+s_clustering.list <- list()
 
 # Plot heatmaps showing overlap of clusters for each dataset and k
 for (i in unique(all.clusters$k)){
@@ -742,6 +816,31 @@ for (i in unique(all.clusters$k)){
                                                        labels_gp=gpar(fontsize=axis_title.fontsize+6),
                                                        title_gp=gpar(fontsize=axis_title.fontsize+6, 
                                                                      fontface="bold")))))))
+    if(i=="1" & d=="lung_lung"){
+      s_clustering.list <- append(s_clustering.list,
+                                  list(grid.grabExpr(draw(Heatmap(temp.matrix,
+                                                                  show_row_dend=FALSE,
+                                                                  show_column_dend=FALSE,
+                                                                  top_annotation=col_anno,
+                                                                  left_annotation=row_anno,
+                                                                  col=magma(100),
+                                                                  column_title=d,
+                                                                  row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                                  column_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                                  column_title_gp=gpar(fontsize=thesis_title.fontsize,
+                                                                                       fontface="bold"),
+                                                                  rect_gp=gpar(col="white", lwd=1),
+                                                                  heatmap_legend_param=list(labels_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                                                            title_gp=gpar(fontsize=thesis_axis_title.fontsize, 
+                                                                                                          fontface="bold"))),
+                                                          heatmap_legend_list=list(
+                                                            Legend(labels=names(celltype.col), 
+                                                                   title="Celltypes",
+                                                                   legend_gp=gpar(fill=celltype.col),
+                                                                   labels_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                                   title_gp=gpar(fontsize=thesis_axis_title.fontsize, 
+                                                                                 fontface="bold")))))))
+    }
   }
   
   print(plot_grid(plotlist=ht_list, nrow=1))
@@ -819,6 +918,31 @@ for (i in unique(all.clusters$k)){
                                                           title_gp=gpar(fontsize=axis_title.fontsize+6, 
                                                                         fontface="bold")))))))
   }
+  
+  if(i=="1" & d=="lung_lung"){
+    s_clustering.list <- append(s_clustering.list,
+                                list(grid.grabExpr(draw(Heatmap(t(clusters.kl),
+                                                                show_row_dend=FALSE,
+                                                                show_column_dend=FALSE,
+                                                                top_annotation=col_anno,
+                                                                left_annotation=row_anno,
+                                                                col=colorRamp2(c(0, 0.1, 5),
+                                                                               rev(magma(3))),
+                                                                column_title=d,
+                                                                row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                                column_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                                column_title_gp=gpar(fontsize=thesis_title.fontsize, fontface="bold"), 
+                                                                rect_gp=gpar(col="white", lwd=1),
+                                                                heatmap_legend_param=list(labels_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                                                          title_gp=gpar(fontsize=axis_title.fontsize+6, fontface="bold"))), 
+                                                        heatmap_legend_list=list(
+                                                          Legend(labels=names(celltype.col), 
+                                                                 title="Celltypes",
+                                                                 legend_gp=gpar(fill=celltype.col),
+                                                                 labels_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                                 title_gp=gpar(fontsize=thesis_axis_title.fontsize, fontface="bold")))))))
+  }
+  
   
   print(plot_grid(plotlist=ht_list.kl, nrow=1))
   cat("\n\n")
@@ -1034,3 +1158,53 @@ for (i in unique(cluster.jaccard$k)) {
 }
 ```
 
+```{r save_plots}
+# Save d_comb_res
+thesis_res.plot <- plot_cisi_results(res %>%
+                                       dplyr::select(dataset, training, 
+                                                     simulation, k, `Gene average`) %>%
+                                       mutate(group=paste(training, dataset, sep="_")), 
+                                     "group", "Gene average", "k")
+
+ggsave(file.path(plot.folder, "d_comb_res.pdf"), 
+       thesis_res.plot +
+         theme_cowplot(thesis_title.fontsize) +
+         labs(x="Training_Decomposition Datasets",
+              y=clean_plot_labels(thesis_res.plot$labels$y),
+              pattern=clean_plot_labels(thesis_res.plot$labels$pattern)) +
+         theme(legend.position="bottom", legend.box="vertical", 
+               axis.text.x=element_text(angle=45, vjust=1, hjust=1)) +
+         scale_x_discrete(guide=guide_axis(n.dodge=1)), 
+       width=13.5, height=12, units="cm")
+
+# Save r_dictionary
+plot_U_thesis(u, "k", "dataset", "1", file.path(plot.folder, "r_dictionary.pdf"))
+# Save r_dictionary_comb
+plot_U_membership_thesis(u, "k", "dataset", "1", file.path(plot.folder, "r_dictionary_comb.pdf"))
+
+# Save s_protein
+s_protein.grid <- plot_grid(s_protein_1.plot, s_protein_2.plot, s_protein_3.plot,
+                            s_protein_4.plot, ncol=1, labels="AUTO", align="h", axis="l")
+# Save d_neighbours_L
+save_plot(file.path(plot.folder, "s_protein.pdf"),
+          s_protein.grid, base_width=4.77)
+
+# Save s_protein_snr 
+ggsave(file.path(plot.folder, "s_protein_snr.pdf"), 
+       s_protein_snr.plot +
+         labs(x=toupper(s_protein_snr.plot$labels$x),
+              y=clean_plot_labels(s_protein_snr.plot$labels$y)), 
+       width=13.5, height=7, units="cm")
+
+# Create s_low_dim
+s_low_dim.grid <- plot_grid(plot_grid(plotlist=s_low_dim.list[1:2], ncol=2,
+                                      labels=s_low_dim.list[1:2], 
+                                      align="v", axis="b", label_size=thesis_title.fontsize), 
+                            plot_grid(plotlist=s_low_dim.list[3:4], 
+                                      labels=s_low_dim.list[3:4], align="v", 
+                                      axis="b", label_size=thesis_title.fontsize),
+                            ncol=1, labels="AUTO", align="h", axis="l")
+# Save s_low_dim
+save_plot(file.path(plot.folder, "s_low_dim.pdf"),
+          s_low_dim.grid, base_width=4.77, ncol=2)
+```

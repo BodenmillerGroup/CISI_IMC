@@ -18,6 +18,11 @@ knitr::opts_chunk$set(warning=FALSE, message=FALSE)
 library(RColorBrewer)
 ```
 
+```{r helper_fnc}
+# Import helper fncs
+source("../analysis/helpers/helper_fnc.R")
+```
+
 ```{r specify_paths}
 # Set general input paths to all analysis files
 analysis.path <- "/mnt/bb_dqbm_volume/analysis/Immucan_lung/training/full"
@@ -29,11 +34,10 @@ data.path <- "/mnt/bb_dqbm_volume/data/Immucan_lung"
 masks.path <- file.path(data.path, "masks")
 # Set path to pre-trained random forest classifier
 rf.path <- file.path(data.path, "rffit_v7_all_markers.rds")
-```
 
-```{r helper_fnc}
-# Import helper fncs
-source("../analysis/helpers/helper_fnc.R")
+# Output folder for plots
+plot.folder <- file.path(thesis_output.folder, "analysis_lung")
+if(!dir.exists(plot.folder)){dir.create(plot.folder)}
 ```
 
 ## Read Inputs
@@ -324,4 +328,73 @@ for (sce in lungSim.list){
 
   cat("\n\n")
 }
+```
+
+```{r save_plots}
+# Save d_norm_res
+ggsave(file.path(plot.folder, "d_norm_res.pdf"), 
+       results.barplot +
+         theme_cowplot(thesis_title.fontsize) +
+         labs(fill=clean_plot_labels(results.barplot$labels$fill),
+              pattern=clean_plot_labels(results.barplot$labels$pattern)) +
+         theme(legend.position="bottom", legend.box="vertical", 
+               axis.text.x=element_text(angle=45, vjust=1, hjust=1)) +
+         scale_x_discrete(guide=guide_axis(n.dodge=1)), 
+       width=13.5, height=12, units="cm")
+
+# Create images for d_neighbours_L
+d_neighbours_L.grid <- plot_grid(plot_exprs(X.list[3:4], "B", "CD20", "CD3", 
+                                            thesis=TRUE),
+                                 plot_exprs(X.list[3:4], c("CD8", "CD4"), 
+                                            "CD8a", "CD4", thesis=TRUE),
+                                 ncol=1, labels="AUTO", align="h", axis="l")
+# Save d_neighbours_L
+save_plot(file.path(plot.folder, "d_neighbours_L.pdf"),
+          d_neighbours_L.grid, base_width=4.77)
+
+# Create d_rf_1 
+thesis_d_rf_1.plot <- data.frame(lungSim.cm[[2]]$byClass) %>%
+  mutate(class=sub("Class: ", "", rownames(lungSim.cm[[2]]$byClass))) %>%
+  ggplot() +
+  geom_point(aes(1 - Specificity, Sensitivity,
+                 size=Detection.Rate,
+                 fill=class),
+             shape=21) +
+  scale_fill_manual(values=celltype.col) +
+  theme_cowplot(thesis_title.fontsize) +
+  ylab("Sensitivity (TPR)") +
+  xlab("1 - Specificity (FPR)") 
+
+# Create d_rf_2
+thesis_d_rf_2.plot <- lungSim.prob[[2]] %>%
+    pivot_longer(cols=B:Tumor_Ki67) %>%
+    ggplot() +
+    geom_boxplot(aes(x=name, y=value, fill=name), outlier.size=0.5) +
+    facet_wrap(.~truth, ncol=1) + 
+    scale_fill_manual(values=celltype.col) +
+    theme(panel.background=element_blank(), 
+          axis.text.x=element_text(angle=45, hjust=1, vjust=1)) +
+    theme_cowplot(thesis_title.fontsize) +
+    labs(x="Probability", y="Cell Type", fill="Cell Type")
+# Save d_rf plots
+ggsave(file.path(plot.folder, "d_rf_roc.pdf"), 
+       thesis_d_rf_1.plot +
+         labs(fill=clean_plot_labels(thesis_d_rf_1.plot$labels$fill),
+              size=clean_plot_labels(thesis_d_rf_1.plot$labels$size)), 
+       width=13.5, height=12, units="cm")
+ggsave(file.path(plot.folder, "d_rf_prob.pdf"), 
+       thesis_d_rf_2.plot, 
+       width=13.5, height=20, units="cm")
+
+# Create d_images
+d_images.grid <- plot_grid(plot_celltype_images(lungSim.list[[2]], masks, 1, celltype.col, 
+                                                ft_size=thesis_title.fontsize, thesis=TRUE),
+                           NULL,
+                           plot_celltype_images(lungSim.list[[2]], masks, 10, celltype.col,
+                                                ft_size=thesis_title.fontsize, thesis=TRUE),
+                           ncol=1, labels=c("A", "", "B"), rel_heights = c(1, 0.03, 1), 
+                           align="h", axis="l", vjust=-0.1)
+# Save d_images
+save_plot(file.path(plot.folder, "d_images.pdf"),
+          d_images.grid, base_width=3.5, base_height=4.25, ncol=2)
 ```
