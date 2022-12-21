@@ -1167,28 +1167,30 @@ plot_protein_scatterplot <- function(X.df, ncol=5, cor_size=3){
 # using celltype.col for the colours defined per celltype, direction for the facing
 # of the barplots (reversed for row annotations) and which_sim to specify if simulated
 # annotation is a row or column annotation
-get_anno_clusters <- function(clusters, celltype.col, direction="reverse", which_sim="row"){
+get_anno_clusters <- function(clusters, celltype.col, direction="reverse", which_sim="row",
+                              size=5, ft_size=axis_title.fontsize){
   # Create column barplot annotation according to celltypes in clusters
   col_anno <- HeatmapAnnotation(celltypes=anno_barplot(table(paste("gt", clusters %>% 
                                                                      pull(ground_truth)), 
                                                              clusters %>% 
                                                                pull(celltype)), 
                                                        gp=gpar(fill=celltype.col,
-                                                               fontsize=axis_title.fontsize+6), 
+                                                               fontsize=ft_size), 
                                                        bar_width=1, 
-                                                       height=unit(5, "cm"),
-                                                       axis_param=list(gp=gpar(fontsize=axis_title.fontsize+6))),
+                                                       height=unit(size, "cm"),
+                                                       axis_param=list(gp=gpar(fontsize=ft_size))),
                                 show_annotation_name=FALSE)
   # Create row barplot annotation according to celltypes in clusters
   row_anno <- HeatmapAnnotation(celltypes=anno_barplot(table(paste("sim", clusters %>% 
                                                                      pull(simulated)), 
                                                              clusters %>% 
                                                                pull(celltype)), 
-                                                       gp=gpar(fill=celltype.col), 
+                                                       gp=gpar(fill=celltype.col,
+                                                               fontsize=ft_size), 
                                                        bar_width=1, 
-                                                       width=unit(5, "cm"),
+                                                       width=unit(size, "cm"),
                                                        axis_param=list(direction=direction,
-                                                                       gp=gpar(fontsize=axis_title.fontsize+6))),
+                                                                       gp=gpar(fontsize=ft_size))),
                                 show_annotation_name=FALSE,
                                 which=which_sim)
                                 

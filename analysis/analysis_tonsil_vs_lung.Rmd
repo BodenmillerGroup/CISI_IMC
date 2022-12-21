@@ -598,14 +598,14 @@ s_protein_snr.plot <- ggplot(X.cor,
                         aes(x=snr, y=correlation, label=protein)) +
     geom_point(color=pal_npg("nrc")("1")) +
     facet_wrap(~ dataset, scales="free", ncol=2) +
-    stat_cor(size=2.8,
+    stat_cor(size=2.5,
              label.x.npc="center",
              label.y.npc="bottom") +
     stat_smooth(method="lm",
                 formula=y ~ log(x),
                 se=FALSE,
-                color=pal_npg("nrc")("4")[4], size=2) +
-    geom_text_repel(size=2.8) +
+                color=pal_npg("nrc")("4")[4], size=1) +
+    geom_text_repel(size=3) +
   theme_cowplot(thesis_title.fontsize)
 
 # Delete objects no longer needed (since there are a lot of big objects in this RMD)
@@ -681,14 +681,14 @@ present in the training data already).
 
 ```{r clustering, fig.height=5, fig.width=10, fig.align="center", results="asis"}
 # Plot UMAP and TSNE for k=1 and lung data
+# Create empty list for plots to save
+s_low_dim.list <- list()
+s_low_dim.names <- list()
 for (sce in keep(X.lung_lung, function(x){metadata(x)$k=="1"})){
   cat("#####", metadata(sce)$ground_truth, "\n")
   
   # Create empty list for plots
   X.redDimlist <- list()
-  # Create empty list for plots to save
-  s_low_dim.list <- list()
-  s_low_dim.names <- list()
   # Extract for simulated and true results for UMAP and TSNE and plot and
   # colour by celltype
   for (method in c("UMAP", "TSNE")){
@@ -703,9 +703,9 @@ for (sce in keep(X.lung_lung, function(x){metadata(x)$k=="1"})){
                                 byrow=TRUE,
                                 override.aes=list(size=3)))
     X.redDimlist <- append(X.redDimlist,
-                           list(dittoDimPlot))
+                           list(X.redDim_temp))
     s_low_dim.list <- append(s_low_dim.list,
-                             list(dittoDimPlot +
+                             list(X.redDim_temp +
                                     theme_cowplot(thesis_title.fontsize)))
     s_low_dim.names <- append(s_low_dim.names, paste(metadata(sce)$ground_truth, 
                                                      method, " "))
@@ -819,6 +819,14 @@ for (i in unique(all.clusters$k)){
                                                        title_gp=gpar(fontsize=axis_title.fontsize+6, 
                                                                      fontface="bold")))))))
     if(i=="1" & d=="lung_lung"){
+      # Get barplot annotations of celltypes
+      anno.list <- get_anno_clusters(all.clusters %>% 
+                                       dplyr::filter(k==i & dataset==d),
+                                     celltype.col=celltype.col, size=1.5,
+                                     ft_size=thesis_axis_title.fontsize)
+      col_anno <- anno.list[[1]]
+      row_anno <- anno.list[[2]]
+      
       s_clustering.list <- append(s_clustering.list,
                                   list(grid.grabExpr(draw(Heatmap(temp.matrix,
                                                                   show_row_dend=FALSE,
@@ -827,20 +835,29 @@ for (i in unique(all.clusters$k)){
                                                                   left_annotation=row_anno,
                                                                   col=magma(100),
                                                                   column_title=d,
-                                                                  row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
-                                                                  column_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
-                                                                  column_title_gp=gpar(fontsize=thesis_title.fontsize,
-                                                                                       fontface="bold"),
+                                                                  row_names_gp=gpar(
+                                                                    fontsize=thesis_axis_title.fontsize),
+                                                                  column_names_gp=gpar(
+                                                                    fontsize=thesis_axis_title.fontsize),
+                                                                  column_title_gp=gpar(
+                                                                    fontsize=thesis_title.fontsize,
+                                                                    fontface="bold"),
                                                                   rect_gp=gpar(col="white", lwd=1),
-                                                                  heatmap_legend_param=list(labels_gp=gpar(fontsize=thesis_axis_title.fontsize),
-                                                                                            title_gp=gpar(fontsize=thesis_axis_title.fontsize, 
-                                                                                                          fontface="bold"))),
+                                                                  heatmap_legend_param=list(
+                                                                    title="Cluster Overlap",
+                                                                    labels_gp=gpar(
+                                                                      fontsize=thesis_axis_title.fontsize),
+                                                                                            title_gp=gpar(
+                                                                                              fontsize=thesis_axis_title.fontsize,
+                                                                                              fontface="bold"))),
                                                           heatmap_legend_list=list(
                                                             Legend(labels=names(celltype.col), 
                                                                    title="Celltypes",
                                                                    legend_gp=gpar(fill=celltype.col),
-                                                                   labels_gp=gpar(fontsize=thesis_axis_title.fontsize),
-                                                                   title_gp=gpar(fontsize=thesis_axis_title.fontsize, 
+                                                                   labels_gp=gpar(
+                                                                     fontsize=thesis_axis_title.fontsize),
+                                                                   title_gp=gpar(
+                                                                     fontsize=thesis_axis_title.fontsize, 
                                                                                  fontface="bold")))))))
     }
   }
@@ -872,12 +889,12 @@ for (i in unique(all.clusters$k)){
     clusters_sim.kl <- table(clusters.filtered %>% 
                                dplyr::pull(celltype), 
                              paste0("sim_", clusters.filtered %>% 
-                               dplyr::pull(simulated))) %>%
+                                      dplyr::pull(simulated))) %>%
       scale(center=FALSE, scale=colSums(.))
     clusters_gt.kl <- table(clusters.filtered %>% 
-                               dplyr::pull(celltype), 
-                             paste0("gt_", clusters.filtered %>% 
-                               dplyr::pull(ground_truth))) %>%
+                              dplyr::pull(celltype), 
+                            paste0("gt_", clusters.filtered %>% 
+                                     dplyr::pull(ground_truth))) %>%
       scale(center=FALSE, scale=colSums(.))
     
     clusters.kl <- apply(clusters_sim.kl, 2, function(x){
@@ -891,23 +908,23 @@ for (i in unique(all.clusters$k)){
                                    celltype.col=celltype.col)
     col_anno <- anno.list[[1]]
     row_anno <- anno.list[[2]]
-
+    
     # Create heatmap
     clusters.klPlot <- Heatmap(t(clusters.kl),
-                           show_row_dend=FALSE,
-                           show_column_dend=FALSE,
-                           top_annotation=col_anno,
-                           left_annotation=row_anno,
-                           col=colorRamp2(c(0, 0.1, 5), rev(magma(3))), #rev(magma(100)),
-                           column_title=d,
-                           row_names_gp=gpar(fontsize=axis_title.fontsize+6),
-                           column_names_gp=gpar(fontsize=axis_title.fontsize+6),
-                           column_title_gp=gpar(fontsize=title.fontsize+6,
-                                                fontface="bold"),
-                           rect_gp=gpar(col="white", lwd=1),
-                           heatmap_legend_param=list(labels_gp=gpar(fontsize=axis_title.fontsize+6),
-                                                     title_gp=gpar(fontsize=axis_title.fontsize+6, 
-                                                                   fontface="bold"))) 
+                               show_row_dend=FALSE,
+                               show_column_dend=FALSE,
+                               top_annotation=col_anno,
+                               left_annotation=row_anno,
+                               col=colorRamp2(c(0, 0.1, 5), rev(magma(3))), #rev(magma(100)),
+                               column_title=d,
+                               row_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                               column_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                               column_title_gp=gpar(fontsize=title.fontsize+6,
+                                                    fontface="bold"),
+                               rect_gp=gpar(col="white", lwd=1),
+                               heatmap_legend_param=list(labels_gp=gpar(fontsize=axis_title.fontsize+6),
+                                                         title_gp=gpar(fontsize=axis_title.fontsize+6, 
+                                                                       fontface="bold"))) 
     
     # Add heatmap to list
     ht_list.kl <- append(ht_list.kl, 
@@ -919,30 +936,43 @@ for (i in unique(all.clusters$k)){
                                                           labels_gp=gpar(fontsize=axis_title.fontsize+6),
                                                           title_gp=gpar(fontsize=axis_title.fontsize+6, 
                                                                         fontface="bold")))))))
-  }
-  
-  if(i=="1" & d=="lung_lung"){
-    s_clustering.list <- append(s_clustering.list,
-                                list(grid.grabExpr(draw(Heatmap(t(clusters.kl),
-                                                                show_row_dend=FALSE,
-                                                                show_column_dend=FALSE,
-                                                                top_annotation=col_anno,
-                                                                left_annotation=row_anno,
-                                                                col=colorRamp2(c(0, 0.1, 5),
-                                                                               rev(magma(3))),
-                                                                column_title=d,
-                                                                row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
-                                                                column_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
-                                                                column_title_gp=gpar(fontsize=thesis_title.fontsize, fontface="bold"), 
-                                                                rect_gp=gpar(col="white", lwd=1),
-                                                                heatmap_legend_param=list(labels_gp=gpar(fontsize=thesis_axis_title.fontsize),
-                                                                                          title_gp=gpar(fontsize=axis_title.fontsize+6, fontface="bold"))), 
-                                                        heatmap_legend_list=list(
-                                                          Legend(labels=names(celltype.col), 
-                                                                 title="Celltypes",
-                                                                 legend_gp=gpar(fill=celltype.col),
-                                                                 labels_gp=gpar(fontsize=thesis_axis_title.fontsize),
-                                                                 title_gp=gpar(fontsize=thesis_axis_title.fontsize, fontface="bold")))))))
+    
+    
+    if(i=="1" & d=="lung_lung"){
+      # Get barplot annotations of celltypes
+      anno.list <- get_anno_clusters(all.clusters %>% 
+                                       dplyr::filter(k==i & dataset==d),
+                                     celltype.col=celltype.col, size=1.5,
+                                     ft_size=thesis_axis_title.fontsize)
+      col_anno <- anno.list[[1]]
+      row_anno <- anno.list[[2]]
+      
+      s_clustering.list <- append(s_clustering.list,
+                                  list(grid.grabExpr(draw(Heatmap(t(clusters.kl),
+                                                                  show_row_dend=FALSE,
+                                                                  show_column_dend=FALSE,
+                                                                  top_annotation=col_anno,
+                                                                  left_annotation=row_anno,
+                                                                  col=colorRamp2(c(0, 0.1, 5),
+                                                                                 rev(magma(3))),
+                                                                  column_title=d,
+                                                                  row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                                  column_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                                  column_title_gp=gpar(fontsize=thesis_title.fontsize, fontface="bold"), 
+                                                                  rect_gp=gpar(col="white", lwd=1),
+                                                                  heatmap_legend_param=list(
+                                                                    title="Kullback-Leibner Divergence",
+                                                                                            labels_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                                                                            title_gp=gpar(fontsize=thesis_axis_title.fontsize, fontface="bold"))), 
+                                                          heatmap_legend_list=list(
+                                                            Legend(labels=names(celltype.col), 
+                                                                   title="Celltypes",
+                                                                   legend_gp=gpar(fill=celltype.col),
+                                                                   labels_gp=gpar(
+                                                                     fontsize=thesis_axis_title.fontsize),
+                                                                   title_gp=gpar(
+                                                                     fontsize=thesis_axis_title.fontsize, fontface="bold")))))))
+    }
   }
   
   
@@ -970,11 +1000,14 @@ for (i in unique(all.clusters$k)){
     # and simulated data
     cluster_gt.exprs <- assay(X.lung[grepl(i, names(X.lung)) &
                                        grepl(d, names(X.lung)) &
-                                       grepl("ground_truth", names(X.lung))][[1]], "exprs") %>%
+                                       grepl("ground_truth", names(X.lung))][[1]], "counts") %>%
       as.data.frame() %>%
       mutate(protein=rownames(.)) %>%
       melt() %>%
-      dplyr::rename(cell=variable, expr=value)
+      dplyr::rename(cell=variable, expr=value) %>%
+      group_by(protein) %>%
+      mutate(expr=(expr-min(expr))/max(expr)) %>%
+      ungroup()
     cluster_gt.exprs <- all.clusters %>% 
       dplyr::filter(k==i & dataset==d) %>%
       merge(cluster_gt.exprs) %>%
@@ -988,12 +1021,15 @@ for (i in unique(all.clusters$k)){
       as.matrix
     
     cluster_sim.exprs <- assay(X.lung[grepl(i, names(X.lung)) &
-                                       grepl(d, names(X.lung)) &
-                                       grepl("simulated", names(X.lung))][[1]], "exprs") %>%
+                                        grepl(d, names(X.lung)) &
+                                        grepl("simulated", names(X.lung))][[1]], "exprs") %>%
       as.data.frame() %>%
       mutate(protein=rownames(.)) %>%
       melt() %>%
-      dplyr::rename(cell=variable, expr=value)
+      dplyr::rename(cell=variable, expr=value) %>%
+      group_by(protein) %>%
+      mutate(expr=(expr-min(expr))/max(expr)) %>%
+      ungroup()
     cluster_sim.exprs <- all.clusters %>% 
       dplyr::filter(k==i & dataset==d) %>%
       merge(cluster_sim.exprs) %>%
@@ -1016,49 +1052,105 @@ for (i in unique(all.clusters$k)){
     
     # Create heatmap
     cluster.exprsPlotGt <- Heatmap(cluster_gt.exprs,
-                                 show_row_dend=FALSE,
-                                 show_column_dend=FALSE,
-                                 top_annotation=col_anno,
-                                 col=magma(100),
-                                 column_title="Ground truth",
-                                 row_names_gp=gpar(fontsize=axis_title.fontsize+6),
-                                 column_names_gp=gpar(fontsize=axis_title.fontsize+4),
-                                 column_title_gp=gpar(fontsize=title.fontsize+4,
-                                                      fontface="bold"),
-                                 rect_gp=gpar(col="white", lwd=1),
-                                 heatmap_legend_param=list(title="Ground truth",
-                                                           labels_gp=gpar(fontsize=axis_title.fontsize+4),
-                                                           title_gp=gpar(fontsize=axis_title.fontsize+4, 
-                                                                         fontface="bold")))
+                                   show_row_dend=FALSE,
+                                   show_column_dend=FALSE,
+                                   top_annotation=col_anno,
+                                   col=magma(100),
+                                   column_title="Ground truth",
+                                   row_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                                   column_names_gp=gpar(fontsize=axis_title.fontsize+4),
+                                   column_title_gp=gpar(fontsize=title.fontsize+4,
+                                                        fontface="bold"),
+                                   rect_gp=gpar(col="white", lwd=1),
+                                   heatmap_legend_param=list(title="Ground truth",
+                                                             labels_gp=gpar(fontsize=axis_title.fontsize+4),
+                                                             title_gp=gpar(fontsize=axis_title.fontsize+4, 
+                                                                           fontface="bold")))
     cluster.exprsPlotSim <- Heatmap(cluster_sim.exprs,
-                                 show_row_dend=FALSE,
-                                 show_column_dend=FALSE,
-                                 top_annotation=row_anno,
-                                 col=magma(100),
-                                 column_title="Simulated",
-                                 row_names_gp=gpar(fontsize=axis_title.fontsize+4),
-                                 column_names_gp=gpar(fontsize=axis_title.fontsize+4),
-                                 column_title_gp=gpar(fontsize=title.fontsize+4,
-                                                      fontface="bold"),
-                                 rect_gp=gpar(col="white", lwd=1),
-                                 heatmap_legend_param=list(title="Simulated",
-                                                           labels_gp=gpar(fontsize=axis_title.fontsize+4),
-                                                           title_gp=gpar(fontsize=axis_title.fontsize+4, 
-                                                                         fontface="bold")))
+                                    show_row_dend=FALSE,
+                                    show_column_dend=FALSE,
+                                    top_annotation=row_anno,
+                                    col=magma(100),
+                                    column_title="Simulated",
+                                    row_names_gp=gpar(fontsize=axis_title.fontsize+4),
+                                    column_names_gp=gpar(fontsize=axis_title.fontsize+4),
+                                    column_title_gp=gpar(fontsize=title.fontsize+4,
+                                                         fontface="bold"),
+                                    rect_gp=gpar(col="white", lwd=1),
+                                    heatmap_legend_param=list(title="Simulated",
+                                                            labels_gp=gpar(
+                                                              fontsize=axis_title.fontsize+4),
+                                                              title_gp=gpar(
+                                                                fontsize=axis_title.fontsize+4, 
+                                                                            fontface="bold")))
     
     # Add heatmap to list
     ht_list.exprs <- append(ht_list.exprs, 
                             list(grid.grabExpr(draw(cluster.exprsPlotGt + cluster.exprsPlotSim,
                                                     heatmap_legend_list=list(
-                                                Legend(labels=names(celltype.col), 
-                                                       title="Celltypes",
-                                                       legend_gp=gpar(fill=celltype.col),
-                                                       labels_gp=gpar(fontsize=axis_title.fontsize+4),
-                                                       title_gp=gpar(fontsize=axis_title.fontsize+4, 
-                                                                     fontface="bold"))),
-                                                column_title=d,
-                                                column_title_gp=gpar(fontsize=title.fontsize+4,
-                                                                     fontface="bold")))))
+                                                      Legend(labels=names(celltype.col), 
+                                                             title="Celltypes",
+                                                             legend_gp=gpar(
+                                                               fill=celltype.col),
+                                                             labels_gp=gpar(
+                                                               fontsize=axis_title.fontsize+4),
+                                                             title_gp=gpar(
+                                                               fontsize=axis_title.fontsize+4, 
+                                                               fontface="bold"))),
+                                                    column_title=d,
+                                                    column_title_gp=gpar(fontsize=title.fontsize+4,
+                                                                         fontface="bold")))))
+    if(i=="1" & d=="lung_lung"){
+      #  Get barplot annotations of celltypes
+      anno.list <- get_anno_clusters(all.clusters %>% 
+                                       dplyr::filter(k==i & dataset==d),
+                                     celltype.col=celltype.col, direction="normal", 
+                                     which_sim="column", size=1.5,
+                                     ft_size=thesis_axis_title.fontsize)
+      col_anno <- anno.list[[1]]
+      row_anno <- anno.list[[2]]
+      s_clustering.exprGT <- Heatmap(cluster_gt.exprs,
+                                     show_row_dend=FALSE,
+                                     show_column_dend=FALSE,
+                                     top_annotation=col_anno,
+                                     col=magma(100),
+                                     column_title="Ground Truth",
+                                     row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                     column_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                     column_title_gp=gpar(fontsize=thesis_title.fontsize,
+                                                          fontface="bold"),
+                                     rect_gp=gpar(col="white", lwd=1),
+                                     heatmap_legend_param=list(title="ground_truth",
+                                                               labels_gp=gpar(fontsize=thesis_axis_title.fontsize), title_gp=gpar(fontsize=thesis_axis_title.fontsize, fontface="bold")))
+      s_clustering.exprSIM <- Heatmap(cluster_sim.exprs,
+                                      show_row_dend=FALSE,
+                                      show_column_dend=FALSE,
+                                      top_annotation=row_anno,
+                                      col=magma(100),
+                                      column_title="Simulated",
+                                      row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                      column_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                                      column_title_gp=gpar(fontsize=thesis_title.fontsize,
+                                                           fontface="bold"),
+                                      rect_gp=gpar(col="white", lwd=1),
+                                      heatmap_legend_param=list(title="simulated",
+                                                                labels_gp=gpar(fontsize=thesis_axis_title.fontsize), title_gp=gpar(fontsize=thesis_axis_title.fontsize, fontface="bold")))
+      
+      s_clustering.list <- append(s_clustering.list,
+                                  list(grid.grabExpr(
+                                    draw(s_clustering.exprGT + s_clustering.exprSIM,
+                                         heatmap_legend_list=list(
+                                           Legend(labels=names(celltype.col),
+                                                  title="Celltypes",
+                                                  legend_gp=gpar(
+                                                    fill=celltype.col),
+                                                  labels_gp=gpar(
+                                                    fontsize=thesis_axis_title.fontsize),
+                                                  title_gp=gpar(
+                                                    fontsize=thesis_axis_title.fontsize,
+                                                    fontface="bold")))))))
+      
+    }
   }
   
   print(plot_grid(plotlist=ht_list.exprs, ncol=1))
@@ -1080,10 +1172,10 @@ all.clusters <- all.clusters %>%
 
 # Create barplot for ARI (cluster overlap)
 ari.plot <- ggplot(all.clusters %>%
-                    group_by(dataset, k) %>%
-                    summarize(ARI=ARI(simulated, ground_truth),
-                              point.x=point.x,
-                              max_ari=max_ari)) +
+                     group_by(dataset, k) %>%
+                     summarize(ARI=ARI(simulated, ground_truth),
+                               point.x=point.x,
+                               max_ari=max_ari)) +
   geom_bar(aes(x=dataset, y=ARI, fill=k), position="dodge", stat="identity") +
   geom_point(aes(x=point.x, y=max_ari)) +
   scale_fill_npg() +
@@ -1211,17 +1303,33 @@ ggsave(file.path(plot.folder, "s_protein_snr.pdf"),
        s_protein_snr.plot +
          labs(x=toupper(s_protein_snr.plot$labels$x),
               y=clean_plot_labels(s_protein_snr.plot$labels$y)), 
-       width=13.5, height=7, units="cm")
+       width=15, height=9, units="cm")
 
 # Create s_low_dim
+s_low_dim.list <- lapply(s_low_dim.list, function(p){
+  p + theme(legend.position="bottom", legend.box="vertical") +
+    guides(color=guide_legend(ncol=3, override.aes=list(size=5)))
+})
 s_low_dim.grid <- plot_grid(plot_grid(plotlist=s_low_dim.list[1:2], ncol=2,
-                                      labels=s_low_dim.list[1:2], 
+                                      labels=s_low_dim.names[1:2], 
                                       align="v", axis="b", label_size=thesis_title.fontsize), 
                             plot_grid(plotlist=s_low_dim.list[3:4], 
-                                      labels=s_low_dim.list[3:4], align="v", 
+                                      labels=s_low_dim.names[3:4], align="v", 
                                       axis="b", label_size=thesis_title.fontsize),
                             ncol=1, labels="AUTO", align="h", axis="l")
 # Save s_low_dim
 save_plot(file.path(plot.folder, "s_low_dim.pdf"),
-          s_low_dim.grid, base_width=4.77, ncol=2)
+          s_low_dim.grid, base_width=6.4, base_height=9)
+
+# Create s_clustering plots
+s_clustering1.grid <- plot_grid(plotlist=s_clustering.list[1:2], 
+                                ncol=1, labels="AUTO", align="h", axis="l")
+s_clustering2.grid <- plot_grid(plotlist=s_clustering.list[3], 
+                                ncol=1, labels="C", align="h", axis="l")
+
+# Save s_clustering
+save_plot(file.path(plot.folder, "s_clustering_1.pdf"),
+          s_clustering1.grid, base_width=6.5, base_height=9)
+save_plot(file.path(plot.folder, "s_clustering_2.pdf"),
+          s_clustering2.grid, base_width=6.5, base_height=6)
 ```
