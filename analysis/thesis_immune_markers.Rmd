@@ -1,0 +1,114 @@
+---
+title: "Immunne Marker Panel Plots for Thesis"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: "hide"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+
+## Setup
+***
+
+```{r init_renv}
+renv::init()
+renv::restore()
+```
+
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+
+# Load libraries
+```
+
+```{r helper_fnc}
+# Import helper fncs
+source("../analysis/helpers/helper_fnc.R")
+```
+
+```{r specify_paths}
+# Set general input paths to all analysis files
+analysis.path <- "/mnt/bb_dqbm_volume/analysis/Tonsil_th152/training/subset/immune_markers_max_worst_protein/parameter_sweep/k_2/d_50/m_8"
+
+# Output folder for plots
+plot.folder <- file.path(thesis_output.folder, "analysis_immune_panel")
+if(!dir.exists(plot.folder)){dir.create(plot.folder)}
+```
+
+## Read Inputs
+
+```{r read_inputs}
+## Read results
+# Read in all results into one dataframe
+results.files <- list.files(analysis.path, 'simulation_results.txt',
+                            full.names=TRUE, recursive=TRUE)
+
+results.df <- lapply(results.files, read_results, type="res", use_voi=FALSE) %>% 
+  bind_rows()
+
+
+## Read X_test and X_simulated
+# Specify X_test and X_simulated files to be read in
+X.files <- list.files(analysis.path, "X_", full.names=TRUE, recursive=TRUE)
+
+
+# Read in all sce experiments from saved anndata and save additional info in metadata
+# (e.g. which is the ground truth or simulated X)
+X.list <- lapply(X.files, read_results, type="x", use_voi=FALSE)
+X.list <- lapply(X.list, function(sce.temp){
+  assay(sce.temp, "exprs") <- asinh(counts(sce.temp)/1)
+  
+  sce.temp
+})
+
+## Read U
+u.files <- list.files(analysis.path, "gene_modules",
+                      full.names=TRUE, recursive=TRUE)
+u <- read_single_U(u.files)
+
+
+## Read A's
+a.files <- list.files(analysis.path, "version_*",
+                      full.names=TRUE, recursive=TRUE)
+a <- read_single_A(a.files)
+```
+
+```{r save_plots}
+# Create p_design
+s_panel_design.grid <- plot_grid(grid.grabExpr(draw(
+  plot_single_A(a, "A", thesis=TRUE))),
+  grid.grabExpr(draw(plot_single_U(u, "U", thesis=TRUE))),
+  ncol=1, labels="AUTO", align="h", axis="l")
+# Save p_design
+save_plot(file.path(plot.folder, "s_panel_design.pdf"),
+          s_panel_design.grid, base_width=5.5, base_height=7)
+
+# Create correlation plot for s_panel_res
+# Set array of interest
+aoi <- "exprs"
+# Calculate correlations between ground truth and simulated data for each protein
+X.cor <- lapply(X.list, function(sce){
+  counts.long <- as.data.frame(assays(sce)[[aoi]]) %>%
+    mutate(protein=rownames(.)) %>%
+    melt() %>%
+    dplyr::rename(!!as.symbol(metadata(sce)$ground_truth):=value,
+                  cell=variable)
+  
+}) %>% bind_rows() %>%
+  group_by(protein, cell) %>%
+  summarise_all(na.omit) %>%
+  group_by(protein) %>%
+  mutate(correlation=cor(ground_truth, simulated))
+
+s_panel_res.plot <- plot_protein_cor(X.cor) +
+  theme_cowplot(thesis_title.fontsize)
+# Save s_panel_res.pdf
+ggsave(file.path(plot.folder, "s_panel_res.pdf"), 
+       s_panel_res.plot +
+         labs(x=clean_plot_labels(s_panel_res.plot$labels$x),
+              y=clean_plot_labels(s_panel_res.plot$labels$y)), 
+       width=11, height=12, units="cm")
+```

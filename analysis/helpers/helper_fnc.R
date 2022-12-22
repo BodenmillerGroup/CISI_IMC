@@ -405,7 +405,7 @@ compute_celltypeProb <- function(sce, rffit){
 
 # Plot single U heatmap with specified "title" from res dataframe as is read in
 # read_single_U fnc
-plot_single_U <- function(res, title){
+plot_single_U <- function(res, title, thesis=FALSE){
   # Pivot dataframe to long format
   res <- res %>%
     pivot_wider(names_from=module, values_from=membership) %>%
@@ -416,18 +416,33 @@ plot_single_U <- function(res, title){
   res.membership <- apply(res, 2, compute_module_membership)
   
   # Create heatmap of module membership
-  res.heatmap <- Heatmap(res.membership, 
-                         column_title=title,
-                         col=structure(c("grey", pal_npg("nrc")("1")[1]), 
-                                       names=c("0", "1")), 
-                         show_heatmap_legend=FALSE, 
-                         show_row_dend=FALSE, 
-                         row_names_gp=gpar(fontsize=axis_title.fontsize+6),
-                         column_names_gp=gpar(fontsize=axis_title.fontsize+6),
-                         column_title_gp=gpar(fontsize=title.fontsize+6,
-                                              fontface="bold"),
-                         rect_gp=gpar(col="white", lwd=1),
-                         use_raster=TRUE)
+  if(thesis==TRUE){
+    res.heatmap <- Heatmap(res.membership, 
+                           column_title=title,
+                           col=structure(c("grey", pal_npg("nrc")("1")[1]), 
+                                         names=c("0", "1")), 
+                           show_heatmap_legend=FALSE, 
+                           show_row_dend=FALSE, 
+                           row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                           column_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                           column_title_gp=gpar(fontsize=thesis_title.fontsize,
+                                                fontface="bold"),
+                           rect_gp=gpar(col="white", lwd=1),
+                           use_raster=TRUE)
+  } else {
+    res.heatmap <- Heatmap(res.membership, 
+                           column_title=title,
+                           col=structure(c("grey", pal_npg("nrc")("1")[1]), 
+                                         names=c("0", "1")), 
+                           show_heatmap_legend=FALSE, 
+                           show_row_dend=FALSE, 
+                           row_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                           column_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                           column_title_gp=gpar(fontsize=title.fontsize+6,
+                                                fontface="bold"),
+                           rect_gp=gpar(col="white", lwd=1),
+                           use_raster=TRUE)
+  }
   
   res.heatmap
 }
@@ -701,22 +716,36 @@ plot_U_membership <- function(df, iter_var, repetition){
 
 # Plot single A heatmap with specified "title" from df dataframe as is read in
 # read_single_A fnc
-plot_single_A <- function(a, title){
+plot_single_A <- function(a, title, thesis=FALSE){
   # Transform into matrix with channels as rownames
   a.matrix <- a %>%
     column_to_rownames("channel") %>%
     as.matrix()
   
-  a.heatmap <- Heatmap(a.matrix, 
-                       column_title=title,
-                       col=colorRamp2(c(0, 1), colors=c("grey", pal_npg("nrc")("1"))), 
-                       show_heatmap_legend=FALSE, 
-                       show_row_dend=FALSE, 
-                       row_names_gp=gpar(fontsize=axis_title.fontsize+6),
-                       column_names_gp=gpar(fontsize=axis_title.fontsize+6),
-                       column_title_gp=gpar(fontsize=title.fontsize+6,
-                                            fontface="bold"),
-                       rect_gp=gpar(col="white", lwd=1))
+  # Create heatmap
+  if(thesis==TRUE){
+    a.heatmap <- Heatmap(a.matrix, 
+                         column_title=title,
+                         col=colorRamp2(c(0, 1), colors=c("grey", pal_npg("nrc")("1"))), 
+                         show_heatmap_legend=FALSE, 
+                         show_row_dend=FALSE, 
+                         row_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                         column_names_gp=gpar(fontsize=thesis_axis_title.fontsize),
+                         column_title_gp=gpar(fontsize=thesis_title.fontsize,
+                                              fontface="bold"),
+                         rect_gp=gpar(col="white", lwd=1))
+  } else{
+    a.heatmap <- Heatmap(a.matrix, 
+                         column_title=title,
+                         col=colorRamp2(c(0, 1), colors=c("grey", pal_npg("nrc")("1"))), 
+                         show_heatmap_legend=FALSE, 
+                         show_row_dend=FALSE, 
+                         row_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                         column_names_gp=gpar(fontsize=axis_title.fontsize+6),
+                         column_title_gp=gpar(fontsize=title.fontsize+6,
+                                              fontface="bold"),
+                         rect_gp=gpar(col="white", lwd=1)) 
+  }
   
   a.heatmap
 }
@@ -890,7 +919,7 @@ plot_cisi_results <- function(df, group, measure, fill){
                      pattern_fill="black",
                      pattern_angle=45,
                      pattern_density=0.3,
-                     pattern_spacing=0.01,
+                     pattern_spacing=0.02,
                      pattern_key_scale_factor=0.6) +
     scale_y_continuous(limits=c(0, 1)) +
     scale_x_discrete(guide=guide_axis(n.dodge=2)) +
@@ -976,12 +1005,19 @@ plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="expr
   
   # If "celltype" column is present in ground_truth SCE and celltype_col is given
   # then every cell specified as a celltype_col type cell will be plotted in red
-  if ("celltype" %in% names(colData(sce.list[[2]]))){
+  if (("celltype" %in% names(colData(sce.list[[2]])))){
     col_cells <- rep("grey", length(unique(colData(sce.list[[1]])$celltype)))
     names(col_cells) <- unique(colData(sce.list[[1]])$celltype)
-    if (celltype_col!=""){
+    if (length(celltype_col)>1){
+      for (i in 1:length(celltype_col)){
+        col_cells[celltype_col[i]] <- pal_npg("nrc")("10")[i]
+      }
+    } else if (celltype_col!=""){
       col_cells[celltype_col] <- "red"
     }
+    
+    
+
     
     # Grey cells are made somewhat transparent to allow easier spotting of red cells
     # since there is a lot of overlap
@@ -994,21 +1030,22 @@ plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="expr
                         aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y), 
                             colour=celltype, alpha=celltype), 
                         exprs_values=layer) +
-      geom_point(size=0.2) +
+      geom_point(size=0.1) +
       scale_color_manual(values=col_cells) +
       guides(color=FALSE) +
       scale_alpha_manual(guide='none', values=alpha_cells) +
       scale_y_continuous(labels=label_number(accuracy=0.1)) +
-      scale_x_continuous(labels=label_number(accuracy=0.1))
+      scale_x_continuous(labels=label_number(accuracy=0.1)) 
     plot.true <- ggcells(sce.list[[2]], 
                          aes(x=!!as.symbol(protein_x), y=!!as.symbol(protein_y), 
                              colour=celltype, alpha=celltype), 
                          exprs_values=layer) +
-      geom_point(size=0.2) +
+      geom_point(size=0.1) +
       scale_color_manual(values=col_cells) +
       scale_alpha_manual(guide='none', values=alpha_cells) +
       scale_y_continuous(labels=label_number(accuracy=0.1)) +
-      scale_x_continuous(labels=label_number(accuracy=0.1))
+      scale_x_continuous(labels=label_number(accuracy=0.1)) +
+      guides(color=guide_legend(override.aes=list(size=2)))
     
   } else {
     # If no celltype column is present, then all cells are black
@@ -1034,8 +1071,8 @@ plot_exprs <- function(sce.list, celltype_col, protein_x, protein_y, layer="expr
               plot.true +
                 theme_cowplot(thesis_title.fontsize), 
               labels=unlist(lapply(names(sce.list), clean_plot_labels)),
-              align="hv", axis="lrtb", label_size=thesis_title.fontsize,
-              hjust=-1)
+              align="h", axis="tb", label_size=thesis_title.fontsize,
+              hjust=-1, rel_widths=c(1, 1.5))
   } else {
     # Add plots next to each other
     plot_grid(plot.sim, plot.true, 
