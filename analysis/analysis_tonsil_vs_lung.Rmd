@@ -275,6 +275,15 @@ for (p in pois){
 ```
 
 ```{r save_plots_1}
+# Correct for outlier in SMA
+X.tonsil1 <- lapply(X.tonsil1, function(sce.temp){
+  # Find outlier and change to second highest value for SMA
+  counts(sce.temp)["SMA", 
+                   which.max(counts(sce.temp)["SMA", ])] <- sort(counts(sce.temp)["SMA", ],
+                                                                 TRUE)[2]
+  sce.temp
+})
+
 # Create s_img
 s_img_1.plot <- plot_grid(plotlist=plot_cells(X.tonsil1, 
                                               masks.tonsil["20220520_TsH_th152_cisi1_002"], "MPO",

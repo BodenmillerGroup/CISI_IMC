@@ -929,7 +929,7 @@ plot_cisi_results <- function(df, group, measure, fill){
     labs(x=str_to_title(group), y=str_to_title(measure), pattern="Simulation type") + 
     guides(pattern=guide_legend(override.aes=list(fill="white")),
            fill=guide_legend(override.aes=list(pattern="none"))) +
-    theme(text=element_text(size=title.fontsize))
+    theme(text=element_text(size=title.fontsize))x
   
   barplot
 }
